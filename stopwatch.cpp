@@ -34,12 +34,12 @@ namespace dutil
 
   void Stopwatch::start()
   {
-    m_start = steady_clock::now();
+    m_start = clock_type::now();
   }
 
   void Stopwatch::stop()
   {
-    m_end = steady_clock::now();
+    m_end = clock_type::now();
   }
 
   long Stopwatch::s() const
@@ -62,23 +62,63 @@ namespace dutil
     return duration_cast<nanoseconds>(m_end - m_start).count();
   }
 
+  double Stopwatch::fs() const
+  {
+    return duration<double>{m_end - m_start}.count();
+  }
+
+  double Stopwatch::fms() const
+  {
+    return duration<double, std::milli>{m_end - m_start}.count();
+  }
+
+  double Stopwatch::fus() const
+  {
+    return duration<double, std::micro>{m_end - m_start}.count();
+  }
+
+  double Stopwatch::fns() const
+  {
+    return duration<double, std::nano>{m_end - m_start}.count();
+  }
+
   long Stopwatch::now_s() const
   {
-    return duration_cast<seconds>(steady_clock::now() - m_start).count();
+    return duration_cast<seconds>(clock_type::now() - m_start).count();
   }
 
   long Stopwatch::now_ms() const
   {
-    return duration_cast<milliseconds>(steady_clock::now() - m_start).count();
+    return duration_cast<milliseconds>(clock_type::now() - m_start).count();
   }
 
   long Stopwatch::now_us() const
   {
-    return duration_cast<microseconds>(steady_clock::now() - m_start).count();
+    return duration_cast<microseconds>(clock_type::now() - m_start).count();
   }
 
   long Stopwatch::now_ns() const
   {
-    return duration_cast<nanoseconds>(steady_clock::now() - m_start).count();
+    return duration_cast<nanoseconds>(clock_type::now() - m_start).count();
+  }
+
+  double Stopwatch::fnow_s() const
+  {
+    return duration<double>{clock_type::now() - m_start}.count();
+  }
+
+  double Stopwatch::fnow_ms() const
+  {
+    return duration<double, std::milli>{clock_type::now() - m_start}.count();
+  }
+
+  double Stopwatch::fnow_us() const
+  {
+    return duration<double, std::micro>{clock_type::now() - m_start}.count();
+  }
+
+  double Stopwatch::fnow_ns() const
+  {
+    return duration<double, std::nano>{clock_type::now() - m_start}.count();
   }
 }

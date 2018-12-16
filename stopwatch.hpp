@@ -39,6 +39,8 @@ using namespace std::chrono;
 
 namespace dutil
 {
+  using clock_type = high_resolution_clock;
+
   class Stopwatch
   {
 
@@ -49,25 +51,35 @@ namespace dutil
 
     void stop();
 
+    /**
+     * Get time elapsed from start to stop.
+     */
     long s() const;
-
     long ms() const;
-
     long us() const;
-
     long ns() const;
 
+    double fs() const;
+    double fms() const;
+    double fus() const;
+    double fns() const;
+
+    /**
+     * Get elapsed time since start.
+     */
     long now_s() const;
-
     long now_ms() const;
-
     long now_us() const;
-
     long now_ns() const;
 
+    double fnow_s() const;
+    double fnow_ms() const;
+    double fnow_us() const;
+    double fnow_ns() const;
+
   private:
-    time_point<steady_clock> m_start;
-    time_point<steady_clock> m_end;
+    time_point<clock_type> m_start;
+    time_point<clock_type> m_end;
 
   };
 }
