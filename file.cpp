@@ -32,91 +32,92 @@
 #pragma warning(disable : 4996)
 #endif
 
-namespace tf
+namespace dutil
 {
 
 File::File(const std::string& path)
+    : path_(path)
 {
-    FILE* file = fopen(path.c_str(), "rb");
-    if (file) {
-        int res = fseek(file, 0, SEEK_END);
-        constexpr int SEEK_SUCCESS = 0;
-        if (res == SEEK_SUCCESS) {
+  FILE* file = fopen(path.c_str(), "rb");
+  if (file) {
+    int res = fseek(file, 0, SEEK_END);
+    constexpr int SEEK_SUCCESS = 0;
+    if (res == SEEK_SUCCESS) {
 
-            const long size = ftell(file);
-            constexpr long FTELL_FAIL = -1L;
-            if (size != FTELL_FAIL) {
-                this->buf.resize(size);
+      const long size = ftell(file);
+      constexpr long FTELL_FAIL = -1L;
+      if (size != FTELL_FAIL) {
+        this->buf.resize(size);
 
-                rewind(file);
-                const size_t bytes = fread(this->buf.data(), 1, size, file);
-                if (bytes == static_cast<size_t>(size)) {
-                    this->buf[size] = 0; // ensure null termination
-                    this->error = FileError::NO_ERROR;
-                }
-                else {
-                    this->error = FileError::FAILED_TO_READ;
-                }
-            }
-            else {
-                this->error = FileError::FAILED_TO_GET_POS;
-            }
+        rewind(file);
+        const size_t bytes = fread(this->buf.data(), 1, size, file);
+        if (bytes == static_cast<size_t>(size)) {
+          this->buf[size] = 0; // ensure null termination
+          this->error = FileError::NO_ERROR;
         }
         else {
-            this->error = FileError::FAILED_TO_SEEK;
+          this->error = FileError::FAILED_TO_READ;
         }
+      }
+      else {
+        this->error = FileError::FAILED_TO_GET_POS;
+      }
     }
     else {
-        this->error = FileError::CANNOT_OPEN_PATH;
+      this->error = FileError::FAILED_TO_SEEK;
     }
+  }
+  else {
+    this->error = FileError::CANNOT_OPEN_PATH;
+  }
 
-    if (file) {
-        fclose(file);
-    }
+  if (file) {
+    fclose(file);
+  }
 }
 
 std::string File::error_to_string() const
 {
-    switch (this->error)
-    {
+  switch (this->error)
+  {
     case FileError::NO_ERROR: {
-        return "NO_ERROR";
+      return "NO_ERROR";
     }
     case FileError::CANNOT_OPEN_PATH: {
-        return "CANNOT_OPEN_PATH";
+      return "CANNOT_OPEN_PATH";
     }
     case FileError::FAILED_TO_SEEK: {
-        return "FAILED_TO_SEEK";
+      return "FAILED_TO_SEEK";
     }
     case FileError::FAILED_TO_READ: {
-        return "FAILED_TO_READ";
+      return "FAILED_TO_READ";
     }
     case FileError::FAILED_TO_GET_POS: {
-        return "FAILED_TO_GET_POS";
+      return "FAILED_TO_GET_POS";
     }
     case FileError::UNKNOWN_ERROR: {
-        return "UNKNOWN_ERROR";
+      return "UNKNOWN_ERROR";
     }
-    }
+  }
 
-    return "UNKNOWN_ERROR"; // have to repeat myself
+  return "UNKNOWN_ERROR"; // have to repeat myself
 }
 
 void File::die_if_error(const std::string& path) const
 {
-    if (this->has_error()) {
-        std::cerr << "failed to read file [" << path << "] with error ["
-                  << this->error_to_string() << "].\n";
-        std::exit(1);
-    }
+  if (this->has_error()) {
+    std::cerr << "failed to read file [" << path << "] with error ["
+              << this->error_to_string() << "].\n";
+    std::exit(1);
+  }
 }
 
 bool File::file_exists(const std::string& path)
 {
-    FILE* file = fopen(path.c_str(), "rb");
-    bool exists = file;
-    if (file) { fclose(file); }
-    return exists;
+  FILE* file = fopen(path.c_str(), "rb");
+  bool exists = file;
+  if (file) { fclose(file); }
+  return exists;
 }
 
 }

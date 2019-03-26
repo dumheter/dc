@@ -31,12 +31,12 @@ namespace dutil
 {
 enum class FileError
 {
-    UNKNOWN_ERROR = 0,
-    NO_ERROR,
-    CANNOT_OPEN_PATH,
-    FAILED_TO_SEEK,
-    FAILED_TO_READ,
-    FAILED_TO_GET_POS
+  UNKNOWN_ERROR = 0,
+  NO_ERROR,
+  CANNOT_OPEN_PATH,
+  FAILED_TO_SEEK,
+  FAILED_TO_READ,
+  FAILED_TO_GET_POS
 };
 
 /**
@@ -49,25 +49,27 @@ enum class FileError
  */
 class File
 {
-public:
-    explicit File(const std::string& path);
+ public:
+  explicit File(const std::string& path);
 
-    // error related
-    bool has_error() const { return this->error != FileError::NO_ERROR; }
-    std::string error_to_string() const;
-    void die_if_error(const std::string& path) const;
+  // error related
+  bool has_error() const { return this->error != FileError::NO_ERROR; }
+  std::string error_to_string() const;
+  void die_if_error(const std::string& path) const;
 
-    // access
-    std::string& get() { return this->buf; }
+  // access
+  std::string& get() { return this->buf; }
 
-    // lookup
-    size_t get_size() const { return this->buf.size(); }
-    const std::string& get() const { return this->buf; }
-    static bool file_exists(const std::string& path);
+  // lookup
+  size_t get_size() const { return this->buf.size(); }
+  const std::string& get() const { return this->buf; }
+  static bool file_exists(const std::string& path);
+  const std::string& path() { return path_; }
 
-private:
-    FileError error = FileError::UNKNOWN_ERROR;
-    std::string buf{};
+ private:
+  FileError error = FileError::UNKNOWN_ERROR;
+  std::string path_;
+  std::string buf{};
 };
 
 }
