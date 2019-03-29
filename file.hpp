@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,10 +27,9 @@
 
 #include <string>
 
-namespace dutil
-{
-enum class FileError
-{
+namespace dutil {
+
+enum class FileError {
   UNKNOWN_ERROR = 0,
   NO_ERROR,
   CANNOT_OPEN_PATH,
@@ -47,23 +46,21 @@ enum class FileError
  * 2. Check that it does not has_error() or die_if_error().
  * 3. Read from the buffer with get().
  */
-class File
-{
+class File {
  public:
   explicit File(const std::string& path);
 
   // error related
-  bool has_error() const { return this->error != FileError::NO_ERROR; }
-  std::string error_to_string() const;
-  void die_if_error(const std::string& path) const;
+  bool HasError() const { return this->error != FileError::NO_ERROR; }
+  std::string ErrorToString() const;
 
   // access
-  std::string& get() { return this->buf; }
+  std::string& Get() { return this->buf; }
+  const std::string& Get() const { return this->buf; }
 
   // lookup
-  size_t get_size() const { return this->buf.size(); }
-  const std::string& get() const { return this->buf; }
-  static bool file_exists(const std::string& path);
+  size_t GetSize() const { return this->buf.size(); }
+  static bool FileExists(const std::string& path);
   const std::string& path() { return path_; }
 
  private:
@@ -72,6 +69,6 @@ class File
   std::string buf{};
 };
 
-}
+}  // namespace dutil
 
-#endif//FILE_HPP__
+#endif  // FILE_HPP__

@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,40 +24,36 @@
 
 #include "mac.hpp"
 
-namespace dutil
-{
-  struct byte_to_nibble
-  {
-    u8 first : 4, second : 4;
-  };
+namespace dutil {
 
-  char u8tohexc(u8 val, bool lsb)
-  {
-    constexpr char table[] = {
-      '0', '1', '2', '3', '4', '5', '6', '7',
-      '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
-    auto nibble = reinterpret_cast<byte_to_nibble*>(&val);
-    char hexc;
-    if (lsb) hexc = table[nibble->first];
-    else     hexc = table[nibble->second];
-    return hexc;
-  }
+struct byte_to_nibble {
+  u8 first : 4, second : 4;
+};
 
-  std::string mac_to_string(const u8* mac)
-  {
-    std::string str{};
-    for (int i=0; i<MAC_SIZE; i++) {
-      str += u8tohexc(mac[i], false);
-      str += u8tohexc(mac[i], true);
-      if (i != MAC_SIZE - 1) str += ":";
-    }
-    return str;
-  }
-
-  std::string mac_to_string(uint_mac mac)
-  {
-    u8* macptr = reinterpret_cast<u8*>(&mac);
-    return mac_to_string(macptr);
-  }
+char U8ToHexChar(u8 val, bool lsb) {
+  constexpr char table[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+  auto nibble = reinterpret_cast<byte_to_nibble*>(&val);
+  char hexc;
+  if (lsb)
+    hexc = table[nibble->first];
+  else
+    hexc = table[nibble->second];
+  return hexc;
 }
+
+std::string MacToString(const u8* mac) {
+  std::string str{};
+  for (int i = 0; i < MAC_SIZE; i++) {
+    str += U8ToHexChar(mac[i], false);
+    str += U8ToHexChar(mac[i], true);
+    if (i != MAC_SIZE - 1) str += ":";
+  }
+  return str;
+}
+
+std::string MacToString(uint_mac mac) {
+  u8* macptr = reinterpret_cast<u8*>(&mac);
+  return MacToString(macptr);
+}
+}  // namespace dutil

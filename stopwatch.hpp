@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef __STOPWATCH_HPP__
-#define __STOPWATCH_HPP__
+#ifndef STOPWATCH_HPP__
+#define STOPWATCH_HPP__
 
 // ============================================================ //
 // Headers
@@ -37,51 +37,47 @@ using namespace std::chrono;
 // Class
 // ============================================================ //
 
-namespace dutil
-{
-  using clock_type = high_resolution_clock;
+namespace dutil {
+using clock_type = high_resolution_clock;
 
-  class Stopwatch
-  {
+class Stopwatch {
+ public:
+  Stopwatch();
 
-  public:
-    Stopwatch();
+  void start();
 
-    void start();
+  void stop();
 
-    void stop();
+  /**
+   * Get time elapsed from start to stop.
+   */
+  long s() const;
+  long ms() const;
+  long us() const;
+  long ns() const;
 
-    /**
-     * Get time elapsed from start to stop.
-     */
-    long s() const;
-    long ms() const;
-    long us() const;
-    long ns() const;
+  double fs() const;
+  double fms() const;
+  double fus() const;
+  double fns() const;
 
-    double fs() const;
-    double fms() const;
-    double fus() const;
-    double fns() const;
+  /**
+   * Get elapsed time since start.
+   */
+  long now_s() const;
+  long now_ms() const;
+  long now_us() const;
+  long now_ns() const;
 
-    /**
-     * Get elapsed time since start.
-     */
-    long now_s() const;
-    long now_ms() const;
-    long now_us() const;
-    long now_ns() const;
+  double fnow_s() const;
+  double fnow_ms() const;
+  double fnow_us() const;
+  double fnow_ns() const;
 
-    double fnow_s() const;
-    double fnow_ms() const;
-    double fnow_us() const;
-    double fnow_ns() const;
+ private:
+  time_point<clock_type> m_start;
+  time_point<clock_type> m_end;
+};
+}  // namespace dutil
 
-  private:
-    time_point<clock_type> m_start;
-    time_point<clock_type> m_end;
-
-  };
-}
-
-#endif//__STOPWATCH_HPP__
+#endif  // STOPWATCH_HPP__

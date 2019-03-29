@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2018 Christoffer Gustafsson
+ * Copyright (c) 2019 Christoffer Gustafsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -9,9 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- *
+n *
  * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+all
+ * copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -22,31 +23,38 @@
  * SOFTWARE.
  */
 
-#ifndef MAC_HPP__
-#define MAC_HPP__
-
-#include <string>
-#include "types.hpp"
+#ifndef MISC_HPP__
+#define MISC_HPP__
 
 namespace dutil {
 
-constexpr std::size_t MAC_SIZE = 6;
-
-using uint_mac = u64;
+/**
+ * Clamp a value on the range [min-max].
+ *
+ * Examples
+ *   clamp (1, 1, 10) = 1
+ *   clamp (10, 1, 10) = 10
+ *   clamp (0, 1, 10) = 1
+ *   clamp (5, 1, 10) = 5
+ */
+template <typename T>
+inline T Clamp(T val, T min, T max) {
+  if (val >= min && val <= max)
+    return val;
+  else if (val < min)
+    return min;
+  else /*if (val > max)*/
+    return max;
+}
 
 /**
- * Convert a u8 to hex character
- * @param val
- * @param lsb convert the 4 lsb's or the 4 msb's
+ * Is the value on or inside the range?
  */
-char U8ToHexChar(u8 val, bool lsb = true);
+template <typename T>
+inline bool Inside(T val, T min, T max) {
+  return val >= min && val <= max;
+}
 
-/**
- * @pre mac must be 6 bytes wide
- */
-std::string MacToString(const u8* mac);
-
-std::string MacToString(uint_mac mac);
 }  // namespace dutil
 
-#endif  // MAC_HPP__
+#endif  // MISC_HPP__
