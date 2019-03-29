@@ -44,7 +44,7 @@ char U8ToHexChar(u8 val, bool lsb) {
 
 std::string MacToString(const u8* mac) {
   std::string str{};
-  for (int i = 0; i < MAC_SIZE; i++) {
+  for (std::size_t i = 0; i < MAC_SIZE; i++) {
     str += U8ToHexChar(mac[i], false);
     str += U8ToHexChar(mac[i], true);
     if (i != MAC_SIZE - 1) str += ":";
