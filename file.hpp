@@ -25,18 +25,13 @@
 #ifndef DUTIL_FILE_HPP_
 #define DUTIL_FILE_HPP_
 
+#include <cstdio>
 #include <string>
+#include <vector>
+#include <tuple>
+#include "types.hpp"
 
 namespace dutil {
-
-enum class FileError {
-  kUnknownError = 0,
-  kNoError,
-  kCannotOpenPath,
-  kFailedToSeek,
-  kFailedToRead,
-  kFailedToGetPos
-};
 
 /**
  * Read file from disk and store in buffer.
@@ -48,25 +43,55 @@ enum class FileError {
  */
 class File {
  public:
-  explicit File(const std::string& path);
 
-  // error related
-  bool HasError() const { return error_ != FileError::kNoError; }
-  std::string ErrorToString() const;
+  ~File();
 
-  // access
-  std::string& Get() { return buf_; }
-  const std::string& Get() const { return buf_; }
+  enum class Result {
+    kUnknownError = 0,
+    kSuccess,
+    kCannotOpenPath,
+    kFailedToSeek,
+    kFailedToRead,
+    kFailedToGetPos,
+    kFileNotOpen
+  };
 
-  // lookup
-  size_t GetSize() const { return buf_.size(); }
+  Result Open(const std::string& path);
+
+  /**
+   * Will be called by destructor.
+   */
+  void Close();
+
+  /**
+   * Read file to string.
+   */
+  std::tuple<Result, std::string> Read();
+  Result Read(std::string& string_out);
+
+  /**
+   * Load file to buffer.
+   */
+  std::tuple<Result, std::vector<u8>> Load();
+  Result Load(std::vector<u8>& buffer_out);
+
+  static std::string ResultToString(const Result result);
+
+  /**
+   * Size of file.
+   */
+  std::tuple<Result, long> GetSize() const;
+
   static bool FileExists(const std::string& path);
-  const std::string& path() { return path_; }
+
+  /**
+   * Get path of the latest opened file, as set by Open().
+   */
+  const std::string& path() const { return path_; }
 
  private:
-  FileError error_ = FileError::kUnknownError;
   std::string path_;
-  std::string buf_{};
+  FILE* file_;
 };
 
 }  // namespace dutil

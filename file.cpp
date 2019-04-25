@@ -32,63 +32,127 @@
 
 namespace dutil {
 
-File::File(const std::string& path) : path_(path) {
-  FILE* file = fopen(path.c_str(), "rb");
-  if (file) {
+File::~File() {
+  Close();
+}
+
+File::Result File::Open(const std::string& path_out) {
+  path_ = path_out;
+  file_ = fopen(path_out.c_str(), "rb");
+  return file_ != NULL ? File::Result::kSuccess : File::Result::kCannotOpenPath;
+}
+
+void File::Close() {
+  if (file_ && file_ != NULL) {
+    fclose(file_);
+  }
+}
+
+template <typename TBuffer>
+static File::Result ReadFile(FILE* file, TBuffer& buffer) {
+  File::Result result = File::Result::kSuccess;
+
+  if (file != NULL) {
     int res = fseek(file, 0, SEEK_END);
     constexpr int SEEK_SUCCESS = 0;
     if (res == SEEK_SUCCESS) {
       const long size = ftell(file);
       constexpr long FTELL_FAIL = -1L;
       if (size != FTELL_FAIL) {
-        buf_.resize(size);
-
         rewind(file);
-        const size_t bytes = fread(buf_.data(), 1, size, file);
+
+        buffer.resize(size + 1);  // extra for null termination
+        const size_t bytes = fread(buffer.data(), 1, size, file);
         if (bytes == static_cast<size_t>(size)) {
-          buf_[size] = 0;  // ensure null termination
-          error_ = FileError::kNoError;
+          buffer[size] = 0;  // ensure null termination
         } else {
-          error_ = FileError::kFailedToRead;
+          result = File::Result::kFailedToRead;
         }
       } else {
-        error_ = FileError::kFailedToGetPos;
+        result = File::Result::kFailedToGetPos;
       }
     } else {
-      error_ = FileError::kFailedToSeek;
+      result = File::Result::kFailedToSeek;
     }
   } else {
-    error_ = FileError::kCannotOpenPath;
+    result = File::Result::kFileNotOpen;
   }
 
-  if (file) {
-    fclose(file);
-  }
+  return result;
 }
 
-std::string File::ErrorToString() const {
-  switch (error_) {
-    case FileError::kNoError: {
-      return "no error";
+std::tuple<File::Result, std::string> File::Read() {
+  std::string string{};
+  File::Result result = Read(string);
+  return std::make_tuple<File::Result, std::string>(std::move(result), std::move(string));
+}
+
+File::Result File::Read(std::string& string_out) {
+  return ReadFile(file_, string_out);
+}
+
+std::tuple<File::Result, std::vector<u8>> File::Load() {
+  std::vector<u8> buffer;
+  File::Result result = Load(buffer);
+  return std::make_tuple<File::Result, std::vector<u8>>(std::move(result), std::move(buffer));
+}
+
+File::Result File::Load(std::vector<u8>& buffer) {
+  return ReadFile(file_, buffer);
+}
+
+std::string File::ResultToString(const Result result) {
+  std::string string;
+  switch (result) {
+    case Result::kSuccess: {
+      string = "success"; break;
     }
-    case FileError::kCannotOpenPath: {
-      return "cannot open path";
+    case Result::kCannotOpenPath: {
+      string = "cannot open path"; break;
     }
-    case FileError::kFailedToSeek: {
-      return "failed to seek";
+    case Result::kFailedToSeek: {
+      string = "failed to seek"; break;
     }
-    case FileError::kFailedToRead: {
-      return "failed to read";
+    case Result::kFailedToRead: {
+      string = "failed to read"; break;
     }
-    case FileError::kFailedToGetPos: {
-      return "failed to get pos";
+    case Result::kFailedToGetPos: {
+      string = "failed to get pos"; break;
     }
-    case FileError::kUnknownError: {
-      return "unknown error";
+    case Result::kUnknownError: {
+      string = "unknown error"; break;
+    }
+    case Result::kFileNotOpen: {
+      string = "file not open"; break;
     }
   }
 
-  return "unknown error";  // have to repeat myself
+  return string;
+}
+
+std::tuple<File::Result, long> File::GetSize() const {
+  long size = 0;
+  Result result = Result::kSuccess;
+
+  if (file_ && file_ != NULL) {
+    int res = fseek(file_, 0, SEEK_END);
+    constexpr int SEEK_SUCCESS = 0;
+    if (res == SEEK_SUCCESS) {
+      size = ftell(file_);
+      constexpr long FTELL_FAIL = -1L;
+      if (size != FTELL_FAIL) {
+        rewind(file_);
+      } else {
+        result = Result::kFailedToGetPos;
+      }
+    } else {
+      result = Result::kFailedToSeek;
+    }
+  } else {
+    result = Result::kFileNotOpen;
+  }
+
+  return std::make_tuple<File::Result, long>(std::move(result), std::move(size));
 }
 
 bool File::FileExists(const std::string& path) {
