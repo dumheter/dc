@@ -23,8 +23,8 @@ all
  * SOFTWARE.
  */
 
-#ifndef MISC_HPP__
-#define MISC_HPP__
+#ifndef DUTIL_MISC_HPP_
+#define DUTIL_MISC_HPP_
 
 namespace dutil {
 
@@ -48,7 +48,7 @@ inline T Clamp(T val, T min, T max) {
 }
 
 /**
- * Is the value on or inside the range?
+ * Is the value on or inside the range [min-max]?
  */
 template <typename T>
 inline bool Inside(T val, T min, T max) {
@@ -57,4 +57,4 @@ inline bool Inside(T val, T min, T max) {
 
 }  // namespace dutil
 
-#endif  // MISC_HPP__
+#endif  // DUTIL_MISC_HPP_

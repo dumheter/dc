@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2018 Christoffer Gustafsson
+ * Copyright (c) 2019 Christoffer Gustafsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef MAC_HPP__
-#define MAC_HPP__
+#ifndef DUTIL_MAC_HPP_
+#define DUTIL_MAC_HPP_
 
 #include <string>
 #include "types.hpp"
@@ -47,6 +47,7 @@ char U8ToHexChar(u8 val, bool lsb = true);
 std::string MacToString(const u8* mac);
 
 std::string MacToString(uint_mac mac);
+
 }  // namespace dutil
 
-#endif  // MAC_HPP__
+#endif  // DUTIL_MAC_HPP_

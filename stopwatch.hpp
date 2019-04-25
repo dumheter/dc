@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2018 Christoffer Gustafsson
+ * Copyright (c) 2019 Christoffer Gustafsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,39 +22,38 @@
  * SOFTWARE.
  */
 
-#ifndef STOPWATCH_HPP__
-#define STOPWATCH_HPP__
-
-// ============================================================ //
-// Headers
-// ============================================================ //
+#ifndef DUTIL_STOPWATCH_HPP_
+#define DUTIL_STOPWATCH_HPP_
 
 #include <chrono>
-
-using namespace std::chrono;
-
-// ============================================================ //
-// Class
-// ============================================================ //
+#include "types.hpp"
 
 namespace dutil {
+
+using namespace std::chrono;
 using clock_type = high_resolution_clock;
 
 class Stopwatch {
  public:
   Stopwatch();
 
-  void start();
+  /**
+   * Start tracking time.
+   */
+  void Start();
 
-  void stop();
+  /**
+   * Stop tracking time.
+   */
+  void Stop();
 
   /**
    * Get time elapsed from start to stop.
    */
-  long s() const;
-  long ms() const;
-  long us() const;
-  long ns() const;
+  s64 s() const;
+  s64 ms() const;
+  s64 us() const;
+  s64 ns() const;
 
   double fs() const;
   double fms() const;
@@ -64,10 +63,10 @@ class Stopwatch {
   /**
    * Get elapsed time since start.
    */
-  long now_s() const;
-  long now_ms() const;
-  long now_us() const;
-  long now_ns() const;
+  s64 now_s() const;
+  s64 now_ms() const;
+  s64 now_us() const;
+  s64 now_ns() const;
 
   double fnow_s() const;
   double fnow_ms() const;
@@ -75,9 +74,10 @@ class Stopwatch {
   double fnow_ns() const;
 
  private:
-  time_point<clock_type> m_start;
-  time_point<clock_type> m_end;
+  time_point<clock_type> start_;
+  time_point<clock_type> end_;
 };
+
 }  // namespace dutil
 
-#endif  // STOPWATCH_HPP__
+#endif  // DUTIL_STOPWATCH_HPP_

@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2018 Christoffer Gustafsson
+ * Copyright (c) 2019 Christoffer Gustafsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,12 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PLATFORM_HPP__
-#define PLATFORM_HPP__
-
-// ============================================================ //
-// Platform Detection
-// ============================================================ //
+#ifndef DUTIL_PLATFORM_HPP_
+#define DUTIL_PLATFORM_HPP_
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__MINGW64)
 #define DUTIL_PLATFORM_WINDOWS
@@ -37,4 +33,4 @@
 #define DUTIL_PLATFORM_APPLE
 #endif
 
-#endif  // PLATFORM_HPP__
+#endif  // DUTIL_PLATFORM_HPP_

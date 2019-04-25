@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2018 Christoffer Gustafsson
+ * Copyright (c) 2019 Christoffer Gustafsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,8 @@ std::string MacToString(const u8* mac) {
 }
 
 std::string MacToString(uint_mac mac) {
-  u8* macptr = reinterpret_cast<u8*>(&mac);
+  const u8* macptr = reinterpret_cast<u8*>(&mac);
   return MacToString(macptr);
 }
+
 }  // namespace dutil

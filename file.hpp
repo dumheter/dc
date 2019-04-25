@@ -22,20 +22,20 @@
  * SOFTWARE.
  */
 
-#ifndef FILE_HPP__
-#define FILE_HPP__
+#ifndef DUTIL_FILE_HPP_
+#define DUTIL_FILE_HPP_
 
 #include <string>
 
 namespace dutil {
 
 enum class FileError {
-  UNKNOWN_ERROR = 0,
-  NO_ERROR,
-  CANNOT_OPEN_PATH,
-  FAILED_TO_SEEK,
-  FAILED_TO_READ,
-  FAILED_TO_GET_POS
+  kUnknownError = 0,
+  kNoError,
+  kCannotOpenPath,
+  kFailedToSeek,
+  kFailedToRead,
+  kFailedToGetPos
 };
 
 /**
@@ -51,24 +51,24 @@ class File {
   explicit File(const std::string& path);
 
   // error related
-  bool HasError() const { return this->error != FileError::NO_ERROR; }
+  bool HasError() const { return error_ != FileError::kNoError; }
   std::string ErrorToString() const;
 
   // access
-  std::string& Get() { return this->buf; }
-  const std::string& Get() const { return this->buf; }
+  std::string& Get() { return buf_; }
+  const std::string& Get() const { return buf_; }
 
   // lookup
-  size_t GetSize() const { return this->buf.size(); }
+  size_t GetSize() const { return buf_.size(); }
   static bool FileExists(const std::string& path);
   const std::string& path() { return path_; }
 
  private:
-  FileError error = FileError::UNKNOWN_ERROR;
+  FileError error_ = FileError::kUnknownError;
   std::string path_;
-  std::string buf{};
+  std::string buf_{};
 };
 
 }  // namespace dutil
 
-#endif  // FILE_HPP__
+#endif  // DUTIL_FILE_HPP_

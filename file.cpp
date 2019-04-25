@@ -23,11 +23,10 @@
  */
 
 #include "file.hpp"
-
 #include <cstdlib>
 
 #if defined(_MSC_VER)
-// allow us to use fopen on windows
+// allow us to use fopen on windows without warning
 #pragma warning(disable : 4996)
 #endif
 
@@ -42,24 +41,24 @@ File::File(const std::string& path) : path_(path) {
       const long size = ftell(file);
       constexpr long FTELL_FAIL = -1L;
       if (size != FTELL_FAIL) {
-        this->buf.resize(size);
+        buf_.resize(size);
 
         rewind(file);
-        const size_t bytes = fread(this->buf.data(), 1, size, file);
+        const size_t bytes = fread(buf_.data(), 1, size, file);
         if (bytes == static_cast<size_t>(size)) {
-          this->buf[size] = 0;  // ensure null termination
-          this->error = FileError::NO_ERROR;
+          buf_[size] = 0;  // ensure null termination
+          error_ = FileError::kNoError;
         } else {
-          this->error = FileError::FAILED_TO_READ;
+          error_ = FileError::kFailedToRead;
         }
       } else {
-        this->error = FileError::FAILED_TO_GET_POS;
+        error_ = FileError::kFailedToGetPos;
       }
     } else {
-      this->error = FileError::FAILED_TO_SEEK;
+      error_ = FileError::kFailedToSeek;
     }
   } else {
-    this->error = FileError::CANNOT_OPEN_PATH;
+    error_ = FileError::kCannotOpenPath;
   }
 
   if (file) {
@@ -68,28 +67,28 @@ File::File(const std::string& path) : path_(path) {
 }
 
 std::string File::ErrorToString() const {
-  switch (this->error) {
-    case FileError::NO_ERROR: {
-      return "NO_ERROR";
+  switch (error_) {
+    case FileError::kNoError: {
+      return "no error";
     }
-    case FileError::CANNOT_OPEN_PATH: {
-      return "CANNOT_OPEN_PATH";
+    case FileError::kCannotOpenPath: {
+      return "cannot open path";
     }
-    case FileError::FAILED_TO_SEEK: {
-      return "FAILED_TO_SEEK";
+    case FileError::kFailedToSeek: {
+      return "failed to seek";
     }
-    case FileError::FAILED_TO_READ: {
-      return "FAILED_TO_READ";
+    case FileError::kFailedToRead: {
+      return "failed to read";
     }
-    case FileError::FAILED_TO_GET_POS: {
-      return "FAILED_TO_GET_POS";
+    case FileError::kFailedToGetPos: {
+      return "failed to get pos";
     }
-    case FileError::UNKNOWN_ERROR: {
-      return "UNKNOWN_ERROR";
+    case FileError::kUnknownError: {
+      return "unknown error";
     }
   }
 
-  return "UNKNOWN_ERROR";  // have to repeat myself
+  return "unknown error";  // have to repeat myself
 }
 
 bool File::FileExists(const std::string& path) {
