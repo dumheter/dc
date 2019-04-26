@@ -33,18 +33,21 @@
 
 namespace dutil {
 
-/**
- * Read file from disk and store in buffer.
- *
- * Usage:
- * 1. Create the object with a valid path.
- * 2. Check that it does not has_error() or die_if_error().
- * 3. Read from the buffer with get().
- */
 class File {
  public:
 
   ~File();
+
+  enum class Mode {
+    //explanation,             if file exists,       if file not exists
+    //-----------------------------------------------------------------
+    //open file for reading,   read from start,      failure to open
+    Read,
+    //create file for writing, destroy old file,     create new
+    Write,
+    //append to file,          write to end,         create new
+    Append,
+  };
 
   enum class Result {
     kUnknownError = 0,
@@ -53,10 +56,12 @@ class File {
     kFailedToSeek,
     kFailedToRead,
     kFailedToGetPos,
-    kFileNotOpen
+    kFileNotOpen,
+    kWriteFailed,
+    kFailedRename
   };
 
-  Result Open(const std::string& path);
+  Result Open(const std::string& path, const Mode mode);
 
   /**
    * Will be called by destructor.
@@ -75,12 +80,21 @@ class File {
   std::tuple<Result, std::vector<u8>> Load();
   Result Load(std::vector<u8>& buffer_out);
 
-  static std::string ResultToString(const Result result);
+  Result Write(const std::string& string);
+  Result Write(const std::vector<u8>& buffer);
+
+  static Result Remove(const std::string& path);
+
+  static Result Rename(const std::string& old_path,
+                       const std::string& new_path);
+
+  static std::string
+  ResultToString(const Result result);
 
   /**
    * Size of file.
    */
-  std::tuple<Result, long> GetSize() const;
+  std::tuple<Result, long> GetSize();
 
   static bool FileExists(const std::string& path);
 
@@ -91,7 +105,7 @@ class File {
 
  private:
   std::string path_;
-  FILE* file_;
+  std::FILE* file_;
 };
 
 }  // namespace dutil

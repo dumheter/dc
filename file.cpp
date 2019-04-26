@@ -24,6 +24,7 @@
 
 #include "file.hpp"
 #include <cstdlib>
+#include "platform.hpp"
 
 #if defined(_MSC_VER)
 // allow us to use fopen on windows without warning
@@ -36,9 +37,37 @@ File::~File() {
   Close();
 }
 
-File::Result File::Open(const std::string& path_out) {
+static const char* ModeToCString(const File::Mode mode) {
+  switch (mode) {
+    case File::Mode::Read: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "rb";
+#endif
+      return "r";
+    }
+    case File::Mode::Write: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "wb";
+#endif
+      return "w";
+    }
+    case File::Mode::Append: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "ab";
+#endif
+      return "a";
+    }
+  }
+
+#ifdef DUTIL_PLATFORM_WINDOWS
+  return "rb";
+#endif
+  return "r";
+}
+
+File::Result File::Open(const std::string& path_out, const Mode mode) {
   path_ = path_out;
-  file_ = fopen(path_out.c_str(), "rb");
+  file_ = fopen(path_out.c_str(), ModeToCString(mode));
   return file_ != NULL ? File::Result::kSuccess : File::Result::kCannotOpenPath;
 }
 
@@ -49,7 +78,7 @@ void File::Close() {
 }
 
 template <typename TBuffer>
-static File::Result ReadFile(FILE* file, TBuffer& buffer) {
+static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
 
   if (file != NULL) {
@@ -88,7 +117,7 @@ std::tuple<File::Result, std::string> File::Read() {
 }
 
 File::Result File::Read(std::string& string_out) {
-  return ReadFile(file_, string_out);
+  return ReadFromFile(file_, string_out);
 }
 
 std::tuple<File::Result, std::vector<u8>> File::Load() {
@@ -98,7 +127,44 @@ std::tuple<File::Result, std::vector<u8>> File::Load() {
 }
 
 File::Result File::Load(std::vector<u8>& buffer) {
-  return ReadFile(file_, buffer);
+  return ReadFromFile(file_, buffer);
+}
+
+template <typename TBuffer>
+static File::Result WriteToFile(std::FILE* file, const TBuffer& buffer) {
+  File::Result result = File::Result::kSuccess;
+  if (file != NULL) {
+    const size_t written =
+        std::fwrite(buffer.data(), sizeof(typename TBuffer::value_type), buffer.size(), file);
+    if (written != buffer.size()) {
+      result = File::Result::kWriteFailed;
+    }
+  } else {
+    result = File::Result::kFileNotOpen;
+  }
+
+  return result;
+}
+
+File::Result File::Write(const std::string& string) {
+  return WriteToFile(file_, string);
+}
+
+File::Result File::Write(const std::vector<u8>& buffer) {
+  return WriteToFile(file_, buffer);
+}
+
+File::Result File::Remove(const std::string& path) {
+  const int res = std::remove(path.c_str());
+  constexpr int kSuccess = 0;
+  return res == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+}
+
+File::Result File::Rename(const std::string& old_path,
+                          const std::string& new_path) {
+  const int res = std::rename(old_path.c_str(), new_path.c_str());
+  constexpr int kSuccess = 0;
+  return res == kSuccess ? Result::kSuccess : Result::kFailedRename;
 }
 
 std::string File::ResultToString(const Result result) {
@@ -125,12 +191,19 @@ std::string File::ResultToString(const Result result) {
     case Result::kFileNotOpen: {
       string = "file not open"; break;
     }
+    case Result::kWriteFailed: {
+      string = "write failed"; break;
+    }
+    case Result::kFailedRename: {
+      string = "failed rename";
+      break;
+    }
   }
 
   return string;
 }
 
-std::tuple<File::Result, long> File::GetSize() const {
+std::tuple<File::Result, long> File::GetSize() {
   long size = 0;
   Result result = Result::kSuccess;
 
@@ -156,7 +229,7 @@ std::tuple<File::Result, long> File::GetSize() const {
 }
 
 bool File::FileExists(const std::string& path) {
-  FILE* file = fopen(path.c_str(), "rb");
+  FILE* file = fopen(path.c_str(), ModeToCString(Mode::Read));
   bool exists = file;
   if (file) {
     fclose(file);
