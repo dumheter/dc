@@ -27,25 +27,24 @@
 
 #include <cstdio>
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 #include "types.hpp"
 
 namespace dutil {
 
 class File {
  public:
-
   ~File();
 
   enum class Mode {
-    //explanation,             if file exists,       if file not exists
+    // explanation,             if file exists,       if file not exists
     //-----------------------------------------------------------------
-    //open file for reading,   read from start,      failure to open
+    // open file for reading,   read from start,      failure to open
     Read,
-    //create file for writing, destroy old file,     create new
+    // create file for writing, destroy old file,     create new
     Write,
-    //append to file,          write to end,         create new
+    // append to file,          write to end,         create new
     Append,
   };
 
@@ -88,8 +87,7 @@ class File {
   static Result Rename(const std::string& old_path,
                        const std::string& new_path);
 
-  static std::string
-  ResultToString(const Result result);
+  static std::string ResultToString(const Result result);
 
   /**
    * Size of file.

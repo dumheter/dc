@@ -33,9 +33,7 @@
 
 namespace dutil {
 
-File::~File() {
-  Close();
-}
+File::~File() { Close(); }
 
 static const char* ModeToCString(const File::Mode mode) {
   switch (mode) {
@@ -113,7 +111,8 @@ static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
 std::tuple<File::Result, std::string> File::Read() {
   std::string string{};
   File::Result result = Read(string);
-  return std::make_tuple<File::Result, std::string>(std::move(result), std::move(string));
+  return std::make_tuple<File::Result, std::string>(std::move(result),
+                                                    std::move(string));
 }
 
 File::Result File::Read(std::string& string_out) {
@@ -123,7 +122,8 @@ File::Result File::Read(std::string& string_out) {
 std::tuple<File::Result, std::vector<u8>> File::Load() {
   std::vector<u8> buffer;
   File::Result result = Load(buffer);
-  return std::make_tuple<File::Result, std::vector<u8>>(std::move(result), std::move(buffer));
+  return std::make_tuple<File::Result, std::vector<u8>>(std::move(result),
+                                                        std::move(buffer));
 }
 
 File::Result File::Load(std::vector<u8>& buffer) {
@@ -135,7 +135,8 @@ static File::Result WriteToFile(std::FILE* file, const TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
   if (file != NULL) {
     const size_t written =
-        std::fwrite(buffer.data(), sizeof(typename TBuffer::value_type), buffer.size(), file);
+        std::fwrite(buffer.data(), sizeof(typename TBuffer::value_type),
+                    buffer.size(), file);
     if (written != buffer.size()) {
       result = File::Result::kWriteFailed;
     }
@@ -171,28 +172,36 @@ std::string File::ResultToString(const Result result) {
   std::string string;
   switch (result) {
     case Result::kSuccess: {
-      string = "success"; break;
+      string = "success";
+      break;
     }
     case Result::kCannotOpenPath: {
-      string = "cannot open path"; break;
+      string = "cannot open path";
+      break;
     }
     case Result::kFailedToSeek: {
-      string = "failed to seek"; break;
+      string = "failed to seek";
+      break;
     }
     case Result::kFailedToRead: {
-      string = "failed to read"; break;
+      string = "failed to read";
+      break;
     }
     case Result::kFailedToGetPos: {
-      string = "failed to get pos"; break;
+      string = "failed to get pos";
+      break;
     }
     case Result::kUnknownError: {
-      string = "unknown error"; break;
+      string = "unknown error";
+      break;
     }
     case Result::kFileNotOpen: {
-      string = "file not open"; break;
+      string = "file not open";
+      break;
     }
     case Result::kWriteFailed: {
-      string = "write failed"; break;
+      string = "write failed";
+      break;
     }
     case Result::kFailedRename: {
       string = "failed rename";
@@ -225,7 +234,8 @@ std::tuple<File::Result, long> File::GetSize() {
     result = Result::kFileNotOpen;
   }
 
-  return std::make_tuple<File::Result, long>(std::move(result), std::move(size));
+  return std::make_tuple<File::Result, long>(std::move(result),
+                                             std::move(size));
 }
 
 bool File::FileExists(const std::string& path) {
