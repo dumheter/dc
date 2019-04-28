@@ -101,6 +101,12 @@ class File {
    */
   const std::string& path() const { return path_; }
 
+  /**
+   * Check if we think the file is open, though it can only reliably be
+   * tested by making a operation, such as read.
+   */
+  bool IsOpen() const { return file_ != NULL; }
+
  private:
   std::string path_;
   std::FILE* file_;
