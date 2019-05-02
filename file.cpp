@@ -26,11 +26,6 @@
 #include <cstdlib>
 #include "platform.hpp"
 
-#if defined(_MSC_VER)
-// allow us to use fopen on windows without warning
-#pragma warning(disable : 4996)
-#endif
-
 namespace dutil {
 
 File::~File() { Close(); }
@@ -65,8 +60,16 @@ static const char* ModeToCString(const File::Mode mode) {
 
 File::Result File::Open(const std::string& path_out, const Mode mode) {
   path_ = path_out;
+  // attempt to use fopen_s over fopen
+#ifdef __STDC_LIB_EXT1__
+#define __STDC_WANT_LIB_EXT1__ 1
+  const errno_t = fopen_s(&file_, path_out.c_str(), ModeToCString(mode));
+  constexpr errno_t kSuccess = 0;
+  return errno_t == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+#else
   file_ = fopen(path_out.c_str(), ModeToCString(mode));
-  return file_ != NULL ? File::Result::kSuccess : File::Result::kCannotOpenPath;
+  return file_ != NULL ? Result::kSuccess : Result::kCannotOpenPath;
+#endif
 }
 
 void File::Close() {
