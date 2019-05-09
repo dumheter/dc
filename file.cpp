@@ -24,75 +24,225 @@
 
 #include "file.hpp"
 #include <cstdlib>
-
-#if defined(_MSC_VER)
-// allow us to use fopen on windows without warning
-#pragma warning(disable : 4996)
-#endif
+#include "platform.hpp"
 
 namespace dutil {
 
-File::File(const std::string& path) : path_(path) {
-  FILE* file = fopen(path.c_str(), "rb");
-  if (file) {
+File::~File() { Close(); }
+
+static const char* ModeToCString(const File::Mode mode) {
+  switch (mode) {
+    case File::Mode::Read: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "rb";
+#endif
+      return "r";
+    }
+    case File::Mode::Write: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "wb";
+#endif
+      return "w";
+    }
+    case File::Mode::Append: {
+#ifdef DUTIL_PLATFORM_WINDOWS
+      return "ab";
+#endif
+      return "a";
+    }
+  }
+
+#ifdef DUTIL_PLATFORM_WINDOWS
+  return "rb";
+#endif
+  return "r";
+}
+
+File::Result File::Open(const std::string& path_out, const Mode mode) {
+  path_ = path_out;
+  // attempt to use fopen_s over fopen
+#ifdef __STDC_LIB_EXT1__
+#define __STDC_WANT_LIB_EXT1__ 1
+  const errno_t = fopen_s(&file_, path_out.c_str(), ModeToCString(mode));
+  constexpr errno_t kSuccess = 0;
+  return errno_t == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+#else
+  file_ = fopen(path_out.c_str(), ModeToCString(mode));
+  return file_ != NULL ? Result::kSuccess : Result::kCannotOpenPath;
+#endif
+}
+
+void File::Close() {
+  if (file_ && file_ != NULL) {
+    fclose(file_);
+  }
+}
+
+template <typename TBuffer>
+static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
+  File::Result result = File::Result::kSuccess;
+
+  if (file != NULL) {
     int res = fseek(file, 0, SEEK_END);
     constexpr int SEEK_SUCCESS = 0;
     if (res == SEEK_SUCCESS) {
       const long size = ftell(file);
       constexpr long FTELL_FAIL = -1L;
       if (size != FTELL_FAIL) {
-        buf_.resize(size);
-
         rewind(file);
-        const size_t bytes = fread(buf_.data(), 1, size, file);
+
+        buffer.resize(size + 1);  // extra for null termination
+        const size_t bytes = fread(buffer.data(), 1, size, file);
         if (bytes == static_cast<size_t>(size)) {
-          buf_[size] = 0;  // ensure null termination
-          error_ = FileError::kNoError;
+          buffer[size] = 0;  // ensure null termination
         } else {
-          error_ = FileError::kFailedToRead;
+          result = File::Result::kFailedToRead;
         }
       } else {
-        error_ = FileError::kFailedToGetPos;
+        result = File::Result::kFailedToGetPos;
       }
     } else {
-      error_ = FileError::kFailedToSeek;
+      result = File::Result::kFailedToSeek;
     }
   } else {
-    error_ = FileError::kCannotOpenPath;
+    result = File::Result::kFileNotOpen;
   }
 
-  if (file) {
-    fclose(file);
-  }
+  return result;
 }
 
-std::string File::ErrorToString() const {
-  switch (error_) {
-    case FileError::kNoError: {
-      return "no error";
+std::tuple<File::Result, std::string> File::Read() {
+  std::string string{};
+  File::Result result = Read(string);
+  return std::make_tuple<File::Result, std::string>(std::move(result),
+                                                    std::move(string));
+}
+
+File::Result File::Read(std::string& string_out) {
+  return ReadFromFile(file_, string_out);
+}
+
+std::tuple<File::Result, std::vector<u8>> File::Load() {
+  std::vector<u8> buffer;
+  File::Result result = Load(buffer);
+  return std::make_tuple<File::Result, std::vector<u8>>(std::move(result),
+                                                        std::move(buffer));
+}
+
+File::Result File::Load(std::vector<u8>& buffer) {
+  return ReadFromFile(file_, buffer);
+}
+
+template <typename TBuffer>
+static File::Result WriteToFile(std::FILE* file, const TBuffer& buffer) {
+  File::Result result = File::Result::kSuccess;
+  if (file != NULL) {
+    const size_t written =
+        std::fwrite(buffer.data(), sizeof(typename TBuffer::value_type),
+                    buffer.size(), file);
+    if (written != buffer.size()) {
+      result = File::Result::kWriteFailed;
     }
-    case FileError::kCannotOpenPath: {
-      return "cannot open path";
+  } else {
+    result = File::Result::kFileNotOpen;
+  }
+
+  return result;
+}
+
+File::Result File::Write(const std::string& string) {
+  return WriteToFile(file_, string);
+}
+
+File::Result File::Write(const std::vector<u8>& buffer) {
+  return WriteToFile(file_, buffer);
+}
+
+File::Result File::Remove(const std::string& path) {
+  const int res = std::remove(path.c_str());
+  constexpr int kSuccess = 0;
+  return res == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+}
+
+File::Result File::Rename(const std::string& old_path,
+                          const std::string& new_path) {
+  const int res = std::rename(old_path.c_str(), new_path.c_str());
+  constexpr int kSuccess = 0;
+  return res == kSuccess ? Result::kSuccess : Result::kFailedRename;
+}
+
+std::string File::ResultToString(const Result result) {
+  std::string string;
+  switch (result) {
+    case Result::kSuccess: {
+      string = "success";
+      break;
     }
-    case FileError::kFailedToSeek: {
-      return "failed to seek";
+    case Result::kCannotOpenPath: {
+      string = "cannot open path";
+      break;
     }
-    case FileError::kFailedToRead: {
-      return "failed to read";
+    case Result::kFailedToSeek: {
+      string = "failed to seek";
+      break;
     }
-    case FileError::kFailedToGetPos: {
-      return "failed to get pos";
+    case Result::kFailedToRead: {
+      string = "failed to read";
+      break;
     }
-    case FileError::kUnknownError: {
-      return "unknown error";
+    case Result::kFailedToGetPos: {
+      string = "failed to get pos";
+      break;
+    }
+    case Result::kUnknownError: {
+      string = "unknown error";
+      break;
+    }
+    case Result::kFileNotOpen: {
+      string = "file not open";
+      break;
+    }
+    case Result::kWriteFailed: {
+      string = "write failed";
+      break;
+    }
+    case Result::kFailedRename: {
+      string = "failed rename";
+      break;
     }
   }
 
-  return "unknown error";  // have to repeat myself
+  return string;
+}
+
+std::tuple<File::Result, long> File::GetSize() {
+  long size = 0;
+  Result result = Result::kSuccess;
+
+  if (file_ && file_ != NULL) {
+    int res = fseek(file_, 0, SEEK_END);
+    constexpr int SEEK_SUCCESS = 0;
+    if (res == SEEK_SUCCESS) {
+      size = ftell(file_);
+      constexpr long FTELL_FAIL = -1L;
+      if (size != FTELL_FAIL) {
+        rewind(file_);
+      } else {
+        result = Result::kFailedToGetPos;
+      }
+    } else {
+      result = Result::kFailedToSeek;
+    }
+  } else {
+    result = Result::kFileNotOpen;
+  }
+
+  return std::make_tuple<File::Result, long>(std::move(result),
+                                             std::move(size));
 }
 
 bool File::FileExists(const std::string& path) {
-  FILE* file = fopen(path.c_str(), "rb");
+  FILE* file = fopen(path.c_str(), ModeToCString(Mode::Read));
   bool exists = file;
   if (file) {
     fclose(file);

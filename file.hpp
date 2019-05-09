@@ -25,48 +25,91 @@
 #ifndef DUTIL_FILE_HPP_
 #define DUTIL_FILE_HPP_
 
+#include <cstdio>
 #include <string>
+#include <tuple>
+#include <vector>
+#include "types.hpp"
 
 namespace dutil {
 
-enum class FileError {
-  kUnknownError = 0,
-  kNoError,
-  kCannotOpenPath,
-  kFailedToSeek,
-  kFailedToRead,
-  kFailedToGetPos
-};
-
-/**
- * Read file from disk and store in buffer.
- *
- * Usage:
- * 1. Create the object with a valid path.
- * 2. Check that it does not has_error() or die_if_error().
- * 3. Read from the buffer with get().
- */
 class File {
  public:
-  explicit File(const std::string& path);
+  ~File();
 
-  // error related
-  bool HasError() const { return error_ != FileError::kNoError; }
-  std::string ErrorToString() const;
+  enum class Mode {
+    // explanation,             if file exists,       if file not exists
+    //-----------------------------------------------------------------
+    // open file for reading,   read from start,      failure to open
+    Read,
+    // create file for writing, destroy old file,     create new
+    Write,
+    // append to file,          write to end,         create new
+    Append,
+  };
 
-  // access
-  std::string& Get() { return buf_; }
-  const std::string& Get() const { return buf_; }
+  enum class Result {
+    kUnknownError = 0,
+    kSuccess,
+    kCannotOpenPath,
+    kFailedToSeek,
+    kFailedToRead,
+    kFailedToGetPos,
+    kFileNotOpen,
+    kWriteFailed,
+    kFailedRename
+  };
 
-  // lookup
-  size_t GetSize() const { return buf_.size(); }
+  Result Open(const std::string& path, const Mode mode);
+
+  /**
+   * Will be called by destructor.
+   */
+  void Close();
+
+  /**
+   * Read file to string.
+   */
+  std::tuple<Result, std::string> Read();
+  Result Read(std::string& string_out);
+
+  /**
+   * Load file to buffer.
+   */
+  std::tuple<Result, std::vector<u8>> Load();
+  Result Load(std::vector<u8>& buffer_out);
+
+  Result Write(const std::string& string);
+  Result Write(const std::vector<u8>& buffer);
+
+  static Result Remove(const std::string& path);
+
+  static Result Rename(const std::string& old_path,
+                       const std::string& new_path);
+
+  static std::string ResultToString(const Result result);
+
+  /**
+   * Size of file.
+   */
+  std::tuple<Result, long> GetSize();
+
   static bool FileExists(const std::string& path);
-  const std::string& path() { return path_; }
+
+  /**
+   * Get path of the latest opened file, as set by Open().
+   */
+  const std::string& path() const { return path_; }
+
+  /**
+   * Check if we think the file is open, though it can only reliably be
+   * tested by making a operation, such as read.
+   */
+  bool IsOpen() const { return file_ != NULL; }
 
  private:
-  FileError error_ = FileError::kUnknownError;
   std::string path_;
-  std::string buf_{};
+  std::FILE* file_;
 };
 
 }  // namespace dutil
