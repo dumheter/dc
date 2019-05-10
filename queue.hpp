@@ -50,7 +50,13 @@ class Queue {
   /**
    * @param size Note, with a size of 256 you can store 255 elements.
    */
-  explicit Queue(const size_t size = 256);
+  Queue(const size_t size = 256);
+
+  Queue(const Queue& other);
+  Queue& operator=(const Queue& other);
+
+  Queue(Queue&& other) noexcept;
+  Queue& operator=(Queue&& other) noexcept;
 
   /**
    * Insert @elem at the end of the queue.
@@ -69,9 +75,9 @@ class Queue {
   bool Empty() {
     if constexpr (TUseMutex) {
       std::lock_guard<std::mutex> lock(mutex_);
-      return queue_position_.empty();
+      return queue_position_.Empty();
     } else {
-      return queue_position_.empty();
+      return queue_position_.Empty();
     }
   }
 
@@ -87,21 +93,17 @@ class Queue {
     }
   }
 
- private:
-  std::vector<T> vector_;
-  std::mutex mutex_{};
-
   class QueuePosition {
    public:
     /**
-     * As of now, when setting totalSize, you can store totalSize-1 elements.
+     * As of now, when setting total_size, you can store total_size-1 elements.
      */
-    QueuePosition(size_t totalSize)
-        : front_(0), back_(0), totalSize_(totalSize) {}
+    QueuePosition(size_t total_size = 256)
+        : front_(0), back_(0), total_size_(total_size) {}
 
     inline QueueResult AddBack() {
       const size_t tmp = back_;
-      back_ = back_ + 1 < totalSize_ ? back_ + 1 : 0;
+      back_ = back_ + 1 < total_size_ ? back_ + 1 : 0;
       QueueResult res;
       if (back_ != front_) {
         res = QueueResult::kSuccess;
@@ -115,7 +117,7 @@ class Queue {
     inline QueueResult RemoveFront() {
       QueueResult res;
       if (front_ != back_) {
-        front_ = front_ + 1 < totalSize_ ? front_ + 1 : 0;
+        front_ = front_ + 1 < total_size_ ? front_ + 1 : 0;
         res = QueueResult::kSuccess;
       } else {
         res = QueueResult::kEmpty;
@@ -133,14 +135,21 @@ class Queue {
       if (back_ >= front_)
         return back_ - front_;
       else
-        return totalSize_ - front_ + back_;
+        return total_size_ - front_ + back_;
     }
+
+    inline size_t total_size() const { return total_size_; }
 
    private:
     size_t front_;
     size_t back_;
-    size_t totalSize_;
-  } queue_position_;
+    size_t total_size_;
+  };
+
+ private:
+  std::vector<T> vector_;
+  std::mutex mutex_{};
+  QueuePosition queue_position_;
 };
 
 // ============================================================ //
@@ -150,6 +159,41 @@ class Queue {
 template <typename T, bool TUseMutex>
 Queue<T, TUseMutex>::Queue(size_t size)
     : vector_(size), queue_position_(size) {}
+
+template <typename T, bool TUseMutex>
+Queue<T, TUseMutex>::Queue(const Queue& other) : vector_(), queue_position_() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  vector_ = other.vector_;
+  queue_position_ = other.queue_position_;
+}
+
+template <typename T, bool TUseMutex>
+Queue<T, TUseMutex>& Queue<T, TUseMutex>::operator=(const Queue& other) {
+  if (this != &other) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    vector_ = other.vector_;
+    queue_position_ = other.queue_position_;
+  }
+  return *this;
+}
+
+template <typename T, bool TUseMutex>
+Queue<T, TUseMutex>::Queue(Queue&& other) noexcept
+    : vector_(), queue_position_(0) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  vector_ = std::move(other.vector_);
+  queue_position_ = std::move(other.queue_position_);
+}
+
+template <typename T, bool TUseMutex>
+Queue<T, TUseMutex>& Queue<T, TUseMutex>::operator=(Queue&& other) noexcept {
+  if (this != &other) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    vector_ = std::move(other.vector_);
+    queue_position_ = std::move(other.queue_position_);
+  }
+  return *this;
+}
 
 template <typename T, bool TUseMutex>
 QueueResult Queue<T, TUseMutex>::Push(const T& elem) {

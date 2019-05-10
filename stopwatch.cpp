@@ -26,6 +26,23 @@
 
 namespace dutil {
 
+#ifndef DUTIL_DISSABLE_FUNCTIONAL
+bool TimedCheck(std::function<bool()> fn, s64 timeout_ms) {
+  dutil::Stopwatch stopwatch{};
+  stopwatch.Start();
+  bool did_timeout = false;
+  bool result = false;
+  while (!result) {
+    result = fn();
+    if (stopwatch.now_ms() > timeout_ms) {
+      did_timeout = true;
+      break;
+    }
+  }
+  return !did_timeout;
+}
+#endif
+
 Stopwatch::Stopwatch() : start_{}, end_{} {}
 
 void Stopwatch::Start() { start_ = clock_type::now(); }

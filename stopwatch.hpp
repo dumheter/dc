@@ -27,11 +27,32 @@
 
 #include <chrono>
 #include "types.hpp"
+/**
+ * Simply including functional increases compile time considerably.
+ * Define the flag to dissable the function TimedCheck and to not
+ * include functional.
+ */
+#ifndef DUTIL_DISSABLE_FUNCTIONAL
+#include <functional>
+#endif
 
 namespace dutil {
 
 using namespace std::chrono;
 using clock_type = high_resolution_clock;
+
+/**
+ * Will run your @fn continuously, until it returns true, or
+ * the stopwatch shows more than @timeout_ms.
+ *
+ * @param fn The function that will be called continuously.
+ * @param timeout_ms How long it will attempt to get a true from @fn.
+ * @retval true fn did return true within the time limit.
+ * @retval false fn did not return true within the time limit.
+ */
+#ifndef DUTIL_DISSABLE_FUNCTIONAL
+bool TimedCheck(std::function<bool()> fn, s64 timeout_ms);
+#endif
 
 class Stopwatch {
  public:
