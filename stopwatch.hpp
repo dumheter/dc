@@ -27,14 +27,6 @@
 
 #include <chrono>
 #include "types.hpp"
-/**
- * Simply including functional increases compile time considerably.
- * Define the flag to dissable the function TimedCheck and to not
- * include functional.
- */
-#ifndef DUTIL_DISSABLE_FUNCTIONAL
-#include <functional>
-#endif
 
 namespace dutil {
 
@@ -45,14 +37,16 @@ using clock_type = high_resolution_clock;
  * Will run your @fn continuously, until it returns true, or
  * the stopwatch shows more than @timeout_ms.
  *
+ * @tparam TFn Function with signature 'bool fn()'. Example of a class
+ * method being called from a bound object:
+ *    auto fn = std::bind(&ClassName::MethodName, &BoundObject);
  * @param fn The function that will be called continuously.
  * @param timeout_ms How long it will attempt to get a true from @fn.
  * @retval true fn did return true within the time limit.
  * @retval false fn did not return true within the time limit.
  */
-#ifndef DUTIL_DISSABLE_FUNCTIONAL
-bool TimedCheck(std::function<bool()> fn, s64 timeout_ms);
-#endif
+template <typename TFn>
+bool TimedCheck(TFn fn, s64 timeout_ms);
 
 class Stopwatch {
  public:
@@ -98,6 +92,26 @@ class Stopwatch {
   time_point<clock_type> start_;
   time_point<clock_type> end_;
 };
+
+// ============================================================ //
+// Template definition
+// ============================================================ //
+
+template <typename TFn>
+bool TimedCheck(TFn fn, s64 timeout_ms) {
+  dutil::Stopwatch stopwatch{};
+  stopwatch.Start();
+  bool did_timeout = false;
+  bool result = false;
+  while (!result) {
+    result = fn();
+    if (stopwatch.now_ms() > timeout_ms) {
+      did_timeout = true;
+      break;
+    }
+  }
+  return !did_timeout;
+}
 
 }  // namespace dutil
 
