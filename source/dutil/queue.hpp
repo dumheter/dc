@@ -36,6 +36,32 @@ enum class QueueResult : u8 { kSuccess = 0, kFull, kEmpty };
 constexpr bool kNoMutex = false;
 constexpr bool kUseMutex = true;
 
+// forward declaration for the iterator
+template <typename T, bool TUseMutex>
+class Queue;
+
+/**
+ * Iterator class to enable for range loops.
+ */
+template <typename T, bool TUseMutex>
+class QueueIterator {
+ public:
+  QueueIterator(const Queue<T, TUseMutex>* queue, size_t pos)
+      : pos_(pos), queue_(queue) {}
+
+  bool operator!=(const QueueIterator& other) const;
+
+  T operator*() const;
+
+  const QueueIterator& operator++();
+
+  const QueueIterator& operator--();
+
+ private:
+  size_t pos_;
+  const Queue<T, TUseMutex>* queue_;
+};
+
 /**
  * Queue implemented with a ring buffer using std::vector as container.
  *
@@ -93,6 +119,50 @@ class Queue {
     }
   }
 
+  /**
+   * How many elements can fit in the queue.
+   */
+  size_t Capacity() const {
+    return queue_position_.total_size();
+  }
+
+  /**
+   * Raw access to the underlying container, used by iterator.
+   */
+  T UnsafeGet(const size_t pos) const { return vector_[pos]; }
+
+  /**
+   * Iterator pointing to beginning / front of the queue.
+   */
+  QueueIterator<T, TUseMutex> begin() const {
+    const size_t front = queue_position_.front() + 1 < Capacity()
+                             ? queue_position_.front() + 1
+                             : 0;
+    return QueueIterator<T, TUseMutex>(this, front);
+  }
+
+  /**
+   * Iterator pointing to one step beyond the end / back of the queue.
+   */
+  QueueIterator<T, TUseMutex> end() const {
+    const size_t back = queue_position_.back() + 1 < Capacity()
+                      ? queue_position_.back() + 1
+                      : 0;
+    return QueueIterator<T, TUseMutex>(this, back);
+  }
+
+  /**
+   * Get the item in the front of the queue.
+   */
+  T Front() const { return *begin(); }
+
+  /**
+   * Get the item in back of queue.
+   * @pre Must not be empty queue.
+   */
+  T Back() const { return *--end(); }
+
+ private:
   class QueuePosition {
    public:
     /**
@@ -101,7 +171,7 @@ class Queue {
     QueuePosition(size_t total_size = 256)
         : front_(0), back_(0), total_size_(total_size) {}
 
-    inline QueueResult AddBack() {
+    QueueResult AddBack() {
       const size_t tmp = back_;
       back_ = back_ + 1 < total_size_ ? back_ + 1 : 0;
       QueueResult res;
@@ -114,7 +184,7 @@ class Queue {
       return res;
     }
 
-    inline QueueResult RemoveFront() {
+    QueueResult RemoveFront() {
       QueueResult res;
       if (front_ != back_) {
         front_ = front_ + 1 < total_size_ ? front_ + 1 : 0;
@@ -125,20 +195,20 @@ class Queue {
       return res;
     }
 
-    inline size_t back() const { return back_; }
+    size_t back() const { return back_; }
 
-    inline size_t front() const { return front_; }
+    size_t front() const { return front_; }
 
-    inline bool Empty() const { return front_ == back_; }
+    bool Empty() const { return front_ == back_; }
 
-    inline size_t GetSize() const {
+    size_t GetSize() const {
       if (back_ >= front_)
         return back_ - front_;
       else
         return total_size_ - front_ + back_;
     }
 
-    inline size_t total_size() const { return total_size_; }
+    size_t total_size() const { return total_size_; }
 
    private:
     size_t front_;
@@ -251,6 +321,32 @@ QueueResult Queue<T, TUseMutex>::Pop(T& dataOut) {
     }
   }
   return res;
+}
+
+// ============================================================ //
+// Template definition for QueueIterator
+// ============================================================ //
+
+template <typename T, bool TUseMutex>
+bool QueueIterator<T, TUseMutex>::operator!=(const QueueIterator& other) const {
+  return pos_ != other.pos_;
+}
+
+template <typename T, bool TUseMutex>
+T QueueIterator<T, TUseMutex>::operator*() const {
+  return queue_->UnsafeGet(pos_);
+}
+
+template <typename T, bool TUseMutex>
+const QueueIterator<T, TUseMutex>& QueueIterator<T, TUseMutex>::operator++() {
+  pos_ = pos_ + 1 < queue_->Capacity() ? pos_ + 1 : 0;
+  return *this;
+}
+
+template <typename T, bool TUseMutex>
+const QueueIterator<T, TUseMutex>& QueueIterator<T, TUseMutex>::operator--() {
+  pos_ = pos_ - 1 >= 0 ? pos_ - 1 : queue_->Capacity();
+  return *this;
 }
 
 }  // namespace dutil
