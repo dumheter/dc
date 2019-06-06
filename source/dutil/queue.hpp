@@ -113,9 +113,9 @@ class Queue {
   size_t Size() {
     if constexpr (TUseMutex) {
       std::lock_guard<std::mutex> lock(mutex_);
-      return queue_position_.getSize();
+      return queue_position_.GetSize();
     } else {
-      return queue_position_.getSize();
+      return queue_position_.GetSize();
     }
   }
 
