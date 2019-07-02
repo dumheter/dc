@@ -26,7 +26,7 @@
 
 namespace dutil {
 
-Stopwatch::Stopwatch() : start_{}, end_{} {}
+Stopwatch::Stopwatch() : start_{}, end_{} { Start(); }
 
 void Stopwatch::Start() { start_ = clock_type::now(); }
 

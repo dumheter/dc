@@ -50,6 +50,11 @@ bool TimedCheck(TFn fn, s64 timeout_ms);
 
 class Stopwatch {
  public:
+
+  /**
+   * Will call Start, but it's recommended to do it yourself, just int time,
+   * for accurate time measurements.
+   */
   Stopwatch();
 
   /**
