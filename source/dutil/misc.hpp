@@ -32,13 +32,14 @@ namespace dutil {
  * Clamp a value on the range [min-max].
  *
  * Examples
- *   clamp (1, 1, 10) = 1
- *   clamp (10, 1, 10) = 10
- *   clamp (0, 1, 10) = 1
- *   clamp (5, 1, 10) = 5
+ *   Clamp(1, 1, 10)   -> 1
+ *   Clamp(10, 1, 10)  -> 10
+ *   Clamp(0, 1, 10)   -> 1
+ *   Clamp(99, 1, 10)  -> 10
+ *   Clamp(5, 1, 10)   -> 5
  */
 template <typename T>
-inline T Clamp(T val, T min, T max) {
+inline T Clamp(const T val, const T min, const T max) {
   if (val >= min && val <= max)
     return val;
   else if (val < min)
@@ -49,10 +50,31 @@ inline T Clamp(T val, T min, T max) {
 
 /**
  * Is the value on or inside the range [min-max]?
+ *
+ * Example:
+ *   Inside(5, 0, 10) -> true
+ *   Inside(11, 0, 10) -> false
  */
 template <typename T>
-inline bool Inside(T val, T min, T max) {
+inline bool Inside(const T val, const T min, const T max) {
   return val >= min && val <= max;
+}
+
+/**
+ * Map val from a range [from_min, from_max], to another range
+ * [to_min, to_max].
+ *
+ * @pre val must be in range [from_min, from_max].
+ *
+ * Example:
+ *   Map(5, 0, 10, 0, 100)  -> 50
+ *   Map(10, 0, 10, 0, 100) -> 100
+ *   Map(0, 0, 10, 0, 100)  -> 0
+ */
+template <typename T>
+inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
+  return (val - from_min) * (to_max - to_min) /
+      (from_max - from_min) + to_min;
 }
 
 }  // namespace dutil
