@@ -48,17 +48,29 @@ using clock_type = high_resolution_clock;
 template <typename TFn>
 bool TimedCheck(TFn fn, s64 timeout_ms);
 
+// ============================================================ //
+// Stopwatch
+// ============================================================ //
+
+/**
+ * Works like a physical stopwatch. Use Start() and Stop() to track time.
+ * Then use the getters in the unit you want. You can also Resume() tracking
+ * time after calling Stop().
+ *
+ * After calling Start(), you can use the now* getters to get the current
+ * reading on the stopwatch.
+ */
 class Stopwatch {
  public:
 
   /**
-   * Will call Start, but it's recommended to do it yourself, just int time,
-   * for accurate time measurements.
+   * Will call Start.
    */
   Stopwatch();
 
   /**
-   * Start tracking time.
+   * Start tracking time. A second call to Start will overwrite the current
+   * start time point.
    */
   void Start();
 
@@ -66,6 +78,12 @@ class Stopwatch {
    * Stop tracking time.
    */
   void Stop();
+
+  /**
+   * Resume tracking time.
+   * @pre Must have called Stop() previously.
+   */
+  void Resume();
 
   /**
    * Get time elapsed from start to stop.
@@ -95,7 +113,7 @@ class Stopwatch {
 
  private:
   time_point<clock_type> start_;
-  time_point<clock_type> end_;
+  time_point<clock_type> stop_;
 };
 
 // ============================================================ //
