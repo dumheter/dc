@@ -26,12 +26,40 @@
 #define DUTIL_STOPWATCH_HPP_
 
 #include <chrono>
+#include <utility>  // for std::forward
 #include "types.hpp"
 
 namespace dutil {
 
-using namespace std::chrono;
-using clock_type = high_resolution_clock;
+// ============================================================ //
+// Time Related Functions
+// ============================================================ //
+
+/**
+ * Calls the function @fn at @ticks_per_s times a second. It will catch up if
+ * it falls behind. Internally it counts in nano seconds, combined with a
+ * std::chrono::high_resolution_clock, so expect a resolution of that.
+ *
+ * Note: This function must be called continuously to allow it to update
+ * its internal state.
+ *
+ * @param ticks_per_s How many times the @fn will be called each second.
+ * @param fn The function to be called each tick.
+ * @return If fn was called.
+ *
+ * Example:
+ *   FixedTimeUpdate(30, [](){ std::cout << "tick!\n"; });
+ *
+ * Example, class method as callback function:
+ *   const auto fn =
+ *     std::bind(&Class::Method, &instance);
+ *  FixedTimeUpdate(32, fn);
+ *
+ */
+template <typename TFunction>
+bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn);
+
+// ============================================================ //
 
 /**
  * Will run your @fn continuously, until it returns true, or
@@ -52,6 +80,9 @@ bool TimedCheck(TFn fn, s64 timeout_ms);
 // Stopwatch
 // ============================================================ //
 
+using namespace std::chrono;
+using clock_type = high_resolution_clock;
+
 /**
  * Works like a physical stopwatch. Use Start() and Stop() to track time.
  * Then use the getters in the unit you want. You can also Resume() tracking
@@ -62,7 +93,6 @@ bool TimedCheck(TFn fn, s64 timeout_ms);
  */
 class Stopwatch {
  public:
-
   /**
    * Will call Start.
    */
@@ -118,6 +148,21 @@ class Stopwatch {
 
 // ============================================================ //
 // Template definition
+// ============================================================ //
+
+template <typename TFunction>
+bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn) {
+  static dutil::Stopwatch sw{};
+  static f64 timer_ns{sw.fnow_ns()};
+  const f64 ticks_per_ns = 1000.0 * 1000.0 * 1000.0 / ticks_per_s;
+  if (sw.fnow_ns() - timer_ns > ticks_per_ns) {
+    timer_ns += ticks_per_ns;
+    std::forward<TFunction>(fn)();
+    return true;
+  }
+  return false;
+}
+
 // ============================================================ //
 
 template <typename TFn>

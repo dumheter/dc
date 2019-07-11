@@ -50,7 +50,9 @@ s64 Stopwatch::ns() const {
   return duration_cast<nanoseconds>(stop_ - start_).count();
 }
 
-double Stopwatch::fs() const { return duration<double>{stop_ - start_}.count(); }
+double Stopwatch::fs() const {
+  return duration<double>{stop_ - start_}.count();
+}
 
 double Stopwatch::fms() const {
   return duration<double, std::milli>{stop_ - start_}.count();

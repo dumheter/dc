@@ -122,9 +122,7 @@ class Queue {
   /**
    * How many elements can fit in the queue.
    */
-  size_t Capacity() const {
-    return queue_position_.total_size();
-  }
+  size_t Capacity() const { return queue_position_.total_size(); }
 
   /**
    * Raw access to the underlying container, used by iterator.
@@ -146,8 +144,8 @@ class Queue {
    */
   QueueIterator<T, TUseMutex> end() const {
     const size_t back = queue_position_.back() + 1 < Capacity()
-                      ? queue_position_.back() + 1
-                      : 0;
+                            ? queue_position_.back() + 1
+                            : 0;
     return QueueIterator<T, TUseMutex>(this, back);
   }
 

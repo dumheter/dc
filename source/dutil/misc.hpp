@@ -73,8 +73,7 @@ inline bool Inside(const T val, const T min, const T max) {
  */
 template <typename T>
 inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
-  return (val - from_min) * (to_max - to_min) /
-      (from_max - from_min) + to_min;
+  return (val - from_min) * (to_max - to_min) / (from_max - from_min) + to_min;
 }
 
 }  // namespace dutil
