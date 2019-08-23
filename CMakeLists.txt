@@ -23,6 +23,6 @@ set(COMMON_SOURCES
 
 add_library(${PROJECT_NAME} STATIC ${COMMON_SOURCES})
 
-target_include_directories(${PROJECT_NAME} INTERFACE
+target_include_directories(${PROJECT_NAME} PUBLIC
   source
   )

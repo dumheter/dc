@@ -32,19 +32,19 @@ File::~File() { Close(); }
 
 static const char* ModeToCString(const File::Mode mode) {
   switch (mode) {
-    case File::Mode::Read: {
+    case File::Mode::kRead: {
 #ifdef DUTIL_PLATFORM_WINDOWS
       return "rb";
 #endif
       return "r";
     }
-    case File::Mode::Write: {
+    case File::Mode::kWrite: {
 #ifdef DUTIL_PLATFORM_WINDOWS
       return "wb";
 #endif
       return "w";
     }
-    case File::Mode::Append: {
+    case File::Mode::kAppend: {
 #ifdef DUTIL_PLATFORM_WINDOWS
       return "ab";
 #endif
@@ -60,12 +60,11 @@ static const char* ModeToCString(const File::Mode mode) {
 
 File::Result File::Open(const std::string& path_out, const Mode mode) {
   path_ = path_out;
-  // attempt to use fopen_s over fopen
-#ifdef __STDC_LIB_EXT1__
-#define __STDC_WANT_LIB_EXT1__ 1
-  const errno_t = fopen_s(&file_, path_out.c_str(), ModeToCString(mode));
+
+#if defined(__STDC_LIB_EXT1__) || defined(WIN32)
+  const errno_t err = fopen_s(&file_, path_out.c_str(), ModeToCString(mode));
   constexpr errno_t kSuccess = 0;
-  return errno_t == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+  return err == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
 #else
   file_ = fopen(path_out.c_str(), ModeToCString(mode));
   return file_ != NULL ? Result::kSuccess : Result::kCannotOpenPath;
@@ -242,12 +241,21 @@ std::tuple<File::Result, long> File::GetSize() {
 }
 
 bool File::FileExists(const std::string& path) {
-  FILE* file = fopen(path.c_str(), ModeToCString(Mode::Read));
-  bool exists = file;
+  std::FILE* file;
+
+#if defined(__STDC_LIB_EXT1__) || defined(WIN32)
+  const errno_t err = fopen_s(&file, path.c_str(), ModeToCString(Mode::kRead));
+  constexpr errno_t kSuccess = 0;
+  const Result res =  err == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+#else
+  file = fopen(path.c_str(), ModeToCString(Mode::kRead));
+  const Result res file != NULL ? Result::kSuccess : Result::kCannotOpenPath;
+#endif
+  
   if (file) {
     fclose(file);
   }
-  return exists;
+  return res == Result::kSuccess;
 }
 
 }  // namespace dutil

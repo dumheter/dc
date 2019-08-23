@@ -25,6 +25,7 @@
 #ifndef DUTIL_FILE_HPP_
 #define DUTIL_FILE_HPP_
 
+#define __STDC_WANT_LIB_EXT1__ 1
 #include <cstdio>
 #include <string>
 #include <tuple>
@@ -41,11 +42,11 @@ class File {
     // explanation,             if file exists,       if file not exists
     //-----------------------------------------------------------------
     // open file for reading,   read from start,      failure to open
-    Read,
+    kRead,
     // create file for writing, destroy old file,     create new
-    Write,
+    kWrite,
     // append to file,          write to end,         create new
-    Append,
+    kAppend,
   };
 
   enum class Result {
