@@ -19,6 +19,8 @@ set(COMMON_SOURCES
   source/dutil/stopwatch.cpp
   source/dutil/stopwatch.hpp
   source/dutil/types.hpp
+  source/dutil/assert.hpp
+  source/dutil/assert.cpp
   )
 
 add_library(${PROJECT_NAME} STATIC ${COMMON_SOURCES})
