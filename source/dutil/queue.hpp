@@ -64,20 +64,21 @@ class QueueIterator {
 
 /**
  * Queue implemented with a ring buffer using std::vector as container.
+ * Will not resize when full.
  *
  * @tparam T The type the queue will hold
  * @tparam TUseMutex will decide if the class will be thread safe.
- *
- * TODO replace some mutex locks with atomic CAS operations for better perf.
  */
 template <typename T, bool TUseMutex = kUseMutex>
 class Queue {
  public:
   /**
+   * TODO implementation detail leaking out to user below!
    * @param size Note, with a size of 256 you can store 255 elements.
    */
   Queue(const size_t size = 256);
 
+  // TODO remove copy assign and construct, and force user to call copy method
   Queue(const Queue& other);
   Queue& operator=(const Queue& other);
 
@@ -104,6 +105,19 @@ class Queue {
       return queue_position_.Empty();
     } else {
       return queue_position_.Empty();
+    }
+  }
+
+  /**
+   * Wait for queue to not be empty.
+   * @note Noop if you don't set TUseMutex to kUseMutex.
+   */
+  void Wait() {
+    if constexpr (TUseMutex == kUseMutex) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        cv_.wait(lock, []{return !Empty();});
+      } else {
+      // noop if you don't use mutex
     }
   }
 
@@ -217,6 +231,7 @@ class Queue {
  private:
   std::vector<T> vector_;
   std::mutex mutex_{};
+  std::condition_variable cv_{};
   QueuePosition queue_position_;
 };
 
@@ -270,6 +285,7 @@ QueueResult Queue<T, TUseMutex>::Push(const T& elem) {
     const QueueResult res = this->queue_position_.AddBack();
     if (res == QueueResult::kSuccess) {
       vector_[this->queue_position_.back()] = elem;
+      cv_.notify_one();
     }
     return res;
   } else {
@@ -288,6 +304,7 @@ QueueResult Queue<T, TUseMutex>::Push(T&& elem) {
     const QueueResult res = this->queue_position_.AddBack();
     if (res == QueueResult::kSuccess) {
       vector_[this->queue_position_.back()] = std::move(elem);
+      cv_.notify_one();
     }
     return res;
   } else {
