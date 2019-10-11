@@ -246,12 +246,12 @@ bool File::FileExists(const std::string& path) {
 #if defined(__STDC_LIB_EXT1__) || defined(WIN32)
   const errno_t err = fopen_s(&file, path.c_str(), ModeToCString(Mode::kRead));
   constexpr errno_t kSuccess = 0;
-  const Result res =  err == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
+  const Result res = err == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
 #else
   file = fopen(path.c_str(), ModeToCString(Mode::kRead));
-  const Result res file != NULL ? Result::kSuccess : Result::kCannotOpenPath;
+  const Result res = file != NULL ? Result::kSuccess : Result::kCannotOpenPath;
 #endif
-  
+
   if (file) {
     fclose(file);
   }
