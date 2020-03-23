@@ -9,22 +9,22 @@ else ()
 endif ()
 
 set(COMMON_SOURCES
-  source/dutil/file.cpp
-  source/dutil/file.hpp
-  source/dutil/mac.cpp
-  source/dutil/mac.hpp
-  source/dutil/misc.hpp
-  source/dutil/platform.hpp
-  source/dutil/queue.hpp
-  source/dutil/stopwatch.cpp
-  source/dutil/stopwatch.hpp
-  source/dutil/types.hpp
-  source/dutil/assert.hpp
-  source/dutil/assert.cpp
+  include/dutil/file.cpp
+  include/dutil/file.hpp
+  include/dutil/mac.cpp
+  include/dutil/mac.hpp
+  include/dutil/misc.hpp
+  include/dutil/platform.hpp
+  include/dutil/queue.hpp
+  include/dutil/stopwatch.cpp
+  include/dutil/stopwatch.hpp
+  include/dutil/types.hpp
+  include/dutil/assert.hpp
+  include/dutil/assert.cpp
   )
 
 add_library(${PROJECT_NAME} STATIC ${COMMON_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-  source
+  include
   )
