@@ -25,9 +25,9 @@
 #ifndef QUEUE_HPP_
 #define QUEUE_HPP_
 
+#include <condition_variable>
 #include <mutex>
 #include <vector>
-#include <condition_variable>
 #include "types.hpp"
 
 namespace dutil {
@@ -115,9 +115,9 @@ class Queue {
    */
   void Wait() {
     if constexpr (TUseMutex == kUseMutex) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        cv_.wait(lock, [this]{return !Empty();});
-      } else {
+      std::lock_guard<std::mutex> lock(mutex_);
+      cv_.wait(lock, [this] { return !Empty(); });
+    } else {
       // noop if you don't use mutex
     }
   }

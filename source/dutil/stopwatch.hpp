@@ -57,7 +57,7 @@ namespace dutil {
  *
  */
 template <typename TFunction, typename... ARGS>
-bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&& ... args);
+bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args);
 
 // ============================================================ //
 
@@ -73,8 +73,8 @@ bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&& ... args);
  * @retval true fn did return true within the time limit.
  * @retval false fn did not return true within the time limit.
  */
-template <typename TFn, typename ... ARGS>
-bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&& ... args);
+template <typename TFn, typename... ARGS>
+bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args);
 
 // ============================================================ //
 // Stopwatch
@@ -150,14 +150,14 @@ class Stopwatch {
 // Template definition
 // ============================================================ //
 
-template <typename TFunction, typename ... ARGS>
-bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&& ... args) {
+template <typename TFunction, typename... ARGS>
+bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
   static dutil::Stopwatch sw{};
   static f64 timer_ns{sw.fnow_ns()};
   const f64 ticks_per_ns = 1000.0 * 1000.0 * 1000.0 / ticks_per_s;
   if (sw.fnow_ns() - timer_ns > ticks_per_ns) {
     timer_ns += ticks_per_ns;
-    fn(std::forward<ARGS>(args) ...);
+    fn(std::forward<ARGS>(args)...);
     return true;
   }
   return false;
@@ -166,7 +166,7 @@ bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&& ... args) {
 // ============================================================ //
 
 template <typename TFn, typename... ARGS>
-bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&& ... args) {
+bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
   dutil::Stopwatch stopwatch{};
   stopwatch.Start();
   bool did_timeout = false;

@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -28,14 +28,14 @@
 #define DUTIL_ASSERT(condition, msg) \
   dutil::Assert(!!(condition), msg, __FILE__, __func__, __LINE__)
 
-namespace dutil
-{
+namespace dutil {
 
 /**
  * Call by using the macro DUTIL_ASSERT
  */
-void Assert(bool condition, const char* msg, const char* file, const char* func, int line);
+void Assert(bool condition, const char* msg, const char* file, const char* func,
+            int line);
 
-}
+}  // namespace dutil
 
-#endif//ASSERT_HPP_
+#endif  // ASSERT_HPP_

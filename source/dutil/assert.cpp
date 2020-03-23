@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MIT License
  *
  * Copyright (c) 2019 Christoffer Gustafsson
@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,47 +34,45 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #elif defined(DUTIL_PLATFORM_LINUX)
-#include <gtk/gtk.h> 
+#include <gtk/gtk.h>
 #endif
 #endif
 
-namespace dutil
-{
+namespace dutil {
 
-void Assert(bool condition, const char* msg, const char* file, const char* func, int line) {
+void Assert(bool condition, const char *msg, const char *file, const char *func,
+            int line) {
   if (condition) {
     return;
   }
 
-  printf("assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg, file, line, func);
+  printf("assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg,
+         file, line, func);
 
 #if defined(DUTIL_ASSERT_DIALOG)
   constexpr size_t strlen = 2048;
   char str[strlen];
-  snprintf(str, strlen, "assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg, file, line, func);
+  snprintf(str, strlen,
+           "assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg,
+           file, line, func);
 #if defined(DUTIL_PLATFORM_WINDOWS)
   wchar_t wstr[strlen];
   memset(wstr, 0, strlen * 2);
-  char* p = reinterpret_cast<char*>(wstr);
-  for (int i=0; i<strlen; i++) {
-    *(p+i*2) = str[i];
+  char *p = reinterpret_cast<char *>(wstr);
+  for (int i = 0; i < strlen; i++) {
+    *(p + i * 2) = str[i];
   }
-  MessageBoxW(nullptr,
-              (LPCWSTR)wstr,
-              (LPCWSTR)L"Assertion Failed",
+  MessageBoxW(nullptr, (LPCWSTR)wstr, (LPCWSTR)L"Assertion Failed",
               MB_OK | MB_APPLMODAL | MB_ICONERROR);
 #elif defined(DUTIL_PLATFORM_LINUX)
   if (!gtk_init_check(0, nullptr)) {
     return;
   }
 
-  GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  GtkWidget* dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                             GTK_DIALOG_MODAL,
-                                             GTK_MESSAGE_ERROR,
-                                             GTK_BUTTONS_CANCEL,
-                                             "%s",
-                                             str);
+  GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  GtkWidget *dialog =
+      gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
+                             GTK_MESSAGE_ERROR, GTK_BUTTONS_CANCEL, "%s", str);
   gtk_window_set_title(GTK_WINDOW(dialog), "Assertion Failed");
   gtk_dialog_run(GTK_DIALOG(dialog));
 
@@ -86,8 +84,8 @@ void Assert(bool condition, const char* msg, const char* file, const char* func,
   }
 #endif
 #endif
-  
-  exit(-1337);
+
+  abort();
 }
 
-}
+}  // namespace dutil
