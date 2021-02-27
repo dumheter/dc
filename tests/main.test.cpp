@@ -1,28 +1,22 @@
-#include "main.test.hpp"
 #include "dtest.hpp"
-#include <cstdio>
 
-
-/// @param fn Just type the function name of the test.
-/// The fn should have signature: bool (*fn)()
-// #define DUTIL_TEST(fn) \
-// 	do {\
-// printf("\n=== Running test %s...\n", #fn);\
-// const bool res = fn();\
-// printf("=== Test %s %s\n", #fn, res ? "passed" : "failed");\
-// } while (0)
-
-DTEST(intTest)
+DTEST(firstTest)
 {
 	int x = 5;
+	DTEST_ASSERT(x == 5);
+
+	DTEST_ASSERT(x != 10);
+}
+
+DTEST(badTest) 
+{
+	int y = 2;
+  DTEST_ASSERT(y == 3);
 }
 
 int main(int, char**)
 {
-	dtest::run();
-	//DUTIL_TEST(resultTest);
-
-	printf("%s %s %d %s\n", __FILE__, __FUNCTION__, __LINE__, __func__);
-
+	DTEST_RUN();
+	
 	return 0;
 }

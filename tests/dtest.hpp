@@ -24,75 +24,108 @@
 
 #pragma once
 
-#include <cstring>
-#include <vector>
 #include "dtest.hpp"
 
-/// # D T E S T
+#include <dutil/types.hpp>
+#include <dutil/misc.hpp>
+
+#include <functional>
+
+// ========================================================================== //
+// DTEST
+// ========================================================================== //
+
+/// Add a test.
 ///
-/// ## HOW TO USE DTEST
-///
-/// Call `dtest::run()` in your main function.
-///
-/// Then, to write your tests. Use the DTEST macro to declare tests, like so:
-///   DTEST(yourTestName)
+/// Example
+///   DTEST(ExampleTest)
 ///   {
-///     int x = 5;
-///     DTEST_ASSERT_EQ(x, 5);
+///      ...
 ///   }
+#define DTEST(testName) DTEST_REGISTER(testName, DUTIL_FILENAME, __FILE__)
 
-namespace dtest
-{
+/// Run all registered tests.
+#define DTEST_RUN() dtest::details::runTests()
 
-/// Put this in your main function.
-void run();
-
-}
-
-#define DTEST(testName)													\
-	void dtest_##testName();											\
-	struct DTestRegistrar_##testName									\
-	{																	\
-		DTestRegistrar_##testName()										\
-		{																\
-			dtest::details::registerTest(dtest_##testName, #testName);			\
-		}																\
-	};																	\
-	DTestRegistrar_##testName dtestRegistrar_##testName{};				\
-	void dtest_##testName()
+#define DTEST_ASSERT(expr)								\
+	do													\
+	{													\
+		if (!!(expr))									\
+		{												\
+			++dtest_details_testBodyState.pass;			\
+			printf("\t\t+ Assert " #expr " passed\n");	\
+		}												\
+		else											\
+		{												\
+			++dtest_details_testBodyState.fail;			\
+			printf("\t\t- Assert " #expr " failed\n");	\
+		}												\
+	} while(0)
 
 // ========================================================================== //
-// IMPLEMENTATION DETAILS BELOW
+// INTERNAL DETAILS
 // ========================================================================== //
-
-#if defined(_WIN32)
-#define DTEST_FILENAME													\
-	(strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
-#else
-#define DTEST_FILENAME													\
-	(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#endif
-
-#define DTEST_RUN_TESTS()
 
 namespace dtest::details
 {
 
-struct TestInfo
+struct TestBodyState
 {
-	void (*testFn)();
-	const char* name;
+	const char* name = nullptr;
+	int pass = 0;
+	int fail = 0;
 };
 
-struct TestRegister
+using TestFunction = std::function<void(TestBodyState&)>;
+
+struct TestCase
 {
-	std::vector<TestInfo> tests;
+	TestBodyState state;
+	TestFunction fn;
 };
 
+struct TestCategory
+{
+	const char* name = nullptr;
+	std::vector<TestCase> tests;
+	int pass = 0;
+	int fail = 0;
+};
 
+class Register
+{
+  public:
+	Register() = default;
+	DUTIL_DELETE_COPY(Register);
 
-TestRegister& getTestRegister();
+	void addTest(TestFunction fn, const char* testName, const char* fileName, u64 filePathHash);
 
-void registerTest(void (*testFn)(), const char* name);
+	const std::unordered_map<u64, TestCategory>& getTestCategories() const { return m_testCategories; }
+	std::unordered_map<u64, TestCategory>& getTestCategories() { return m_testCategories; }
+	
+  private:
+	std::unordered_map<u64, TestCategory> m_testCategories;
+};
+
+/// Returnes a static instantitation of Register.
+Register& getRegister();
+
+void runTests();
+
+template <typename Fn>
+void dtestAdd(Fn&& fn, const char* testName, const char* fileName, u64 filePathHash)
+{
+	getRegister().addTest(std::forward<Fn>(fn), testName, fileName, filePathHash);
+}
 
 }
+
+#define DTEST_REGISTER(testName, fileName, filePath)					\
+	struct DTest_Reg_##testName											\
+	{																	\
+		void testBody(dtest::details::TestBodyState& dtest_details_testBodyState); \
+		DTest_Reg_##testName() { dtest::details::dtestAdd([this](dtest::details::TestBodyState& dtest_details_testBodyState){ testBody(dtest_details_testBodyState); }, #testName, fileName, dutil::hash64fnv1a(filePath)); } \
+	};																	\
+	DTest_Reg_##testName dtest_Reg_##testName{};						\
+	void DTest_Reg_##testName##::testBody(dtest::details::TestBodyState& dtest_details_testBodyState)
+
