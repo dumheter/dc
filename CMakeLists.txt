@@ -28,3 +28,9 @@ add_library(${PROJECT_NAME} STATIC ${COMMON_SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC
   include
   )
+
+option(DUTIL_TEST "Add test compile target." off)
+
+if (DUTIL_TEST)
+  add_subdirectory(tests)
+endif ()
