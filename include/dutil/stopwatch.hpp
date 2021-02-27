@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef DUTIL_STOPWATCH_HPP_
-#define DUTIL_STOPWATCH_HPP_
+#pragma once
 
 #include <chrono>
 #include <utility>  // for std::forward
@@ -182,5 +181,3 @@ bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
 }
 
 }  // namespace dutil
-
-#endif  // DUTIL_STOPWATCH_HPP_

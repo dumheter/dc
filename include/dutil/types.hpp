@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef DUTIL_TYPES_HPP_
-#define DUTIL_TYPES_HPP_
+#pragma once
 
 #include <cstdint>
 
@@ -73,5 +72,32 @@ static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
 	ClassName(ClassName&& other) = default;					\
 	ClassName& operator=(ClassName&& other) = default
 
+// ========================================================================== //
+// MACROS
+// ========================================================================== //
 
-#endif  // DUTIL_TYPES_HPP_
+namespace dutil
+{
+
+/// Returns pointer to past the last slash in the path string.
+constexpr const char* filenameFromPath(const char* path)
+{
+	const char* filename = path;
+
+	while(*path)
+	{
+#if !defined(WIN32)
+		if (*path++ == '/')
+#else
+		if (*path++ == '\\')
+#endif
+			filename = path;
+		
+	}
+	
+	return filename;
+}
+
+}
+
+#define DUTIL_FILENAME dutil::filenameFromPath(__FILE__)

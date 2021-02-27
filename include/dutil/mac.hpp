@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef DUTIL_MAC_HPP_
-#define DUTIL_MAC_HPP_
+#pragma once
 
 #include <string>
 #include "types.hpp"
@@ -49,5 +48,3 @@ std::string MacToString(const u8* mac);
 std::string MacToString(uint_mac mac);
 
 }  // namespace dutil
-
-#endif  // DUTIL_MAC_HPP_

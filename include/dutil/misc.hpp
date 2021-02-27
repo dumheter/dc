@@ -23,8 +23,9 @@ all
  * SOFTWARE.
  */
 
-#ifndef DUTIL_MISC_HPP_
-#define DUTIL_MISC_HPP_
+#pragma once
+
+#include <dutil/types.hpp>
 
 namespace dutil {
 
@@ -76,6 +77,27 @@ inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
   return (val - from_min) * (to_max - to_min) / (from_max - from_min) + to_min;
 }
 
-}  // namespace dutil
+// FNV1a c++11 constexpr compile time hash functions, 32 and 64 bit
+// str should be a null terminated string literal, value should be left out 
+// e.g hash_32_fnv1a_const("example")
+// code license: public domain or equivalent
+// post: https://notes.underscorediscovery.com/constexpr-fnv1a/
 
-#endif  // DUTIL_MISC_HPP_
+// ========================================================================== //
+// hash
+// ========================================================================== //
+
+constexpr u32 val_32_const = 0x811c9dc5;
+constexpr u32 prime_32_const = 0x1000193;
+constexpr u64 val_64_const = 0xcbf29ce484222325;
+constexpr u64 prime_64_const = 0x100000001b3;
+
+inline constexpr u32 hash32fnv1a(const char* const str, const u32 value = val_32_const) noexcept {
+	return (str[0] == '\0') ? value : hash32fnv1a(&str[1], (value ^ u32(str[0])) * prime_32_const);
+}
+
+inline constexpr u64 hash64fnv1a(const char* const str, const u64 value = val_64_const) noexcept {
+	return (str[0] == '\0') ? value : hash64fnv1a(&str[1], (value ^ u64(str[0])) * prime_64_const);
+}
+
+}  // namespace dutil

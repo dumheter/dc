@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef DUTIL_FILE_HPP_
-#define DUTIL_FILE_HPP_
+#pragma once
 
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <cstdio>
@@ -114,5 +113,3 @@ class File {
 };
 
 }  // namespace dutil
-
-#endif  // DUTIL_FILE_HPP_

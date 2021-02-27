@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef DUTIL_PLATFORM_HPP_
-#define DUTIL_PLATFORM_HPP_
+#pragma once
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__MINGW64)
 #define DUTIL_PLATFORM_WINDOWS
@@ -32,5 +31,3 @@
 #elif defined(__APPLE__)
 #define DUTIL_PLATFORM_APPLE
 #endif
-
-#endif  // DUTIL_PLATFORM_HPP_

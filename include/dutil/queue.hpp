@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef QUEUE_HPP_
-#define QUEUE_HPP_
+#pragma once
 
 #include <condition_variable>
 #include <mutex>
@@ -366,5 +365,3 @@ const QueueIterator<T, TUseMutex>& QueueIterator<T, TUseMutex>::operator--() {
 }
 
 }  // namespace dutil
-
-#endif  // QUEUE_HPP_

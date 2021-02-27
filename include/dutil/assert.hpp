@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef ASSERT_HPP_
-#define ASSERT_HPP_
+#pragma once
 
 #define DUTIL_ASSERT(condition, msg) \
   dutil::Assert(!!(condition), msg, __FILE__, __func__, __LINE__)
@@ -37,5 +36,3 @@ void Assert(bool condition, const char* msg, const char* file, const char* func,
             int line);
 
 }  // namespace dutil
-
-#endif  // ASSERT_HPP_
