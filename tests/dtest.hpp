@@ -53,12 +53,12 @@
 		if (!!(expr))									\
 		{												\
 			++dtest_details_testBodyState.pass;			\
-			printf("\t\t+ Assert " #expr " passed\n");	\
+			printf("\t\t+ Assert " #expr " %s\n", dtest::details::Paint("passed", dtest::details::Color::Green).c_str()); \
 		}												\
 		else											\
 		{												\
 			++dtest_details_testBodyState.fail;			\
-			printf("\t\t- Assert " #expr " failed\n");	\
+			printf("\t\t- Assert " #expr " %s\n", dtest::details::Paint("failed", dtest::details::Color::Red).c_str()); \
 		}												\
 	} while(0)
 
@@ -117,6 +117,44 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName, u64 filePathH
 {
 	getRegister().addTest(std::forward<Fn>(fn), testName, fileName, filePathHash);
 }
+
+/**
+ * Note, it's common to "theme" the terminal, changing the presented color of
+ * these following colors. Thus, the color "kYellow" might appear as some
+ * other color, for some users.
+ */
+using ColorType = int;
+enum class Color : ColorType {
+	Gray = 90,
+	BrightRed = 91,
+	BrightGreen = 92,
+	BrightYellow = 93,
+	BrightBlue = 94,
+	Magenta = 95,
+	Teal = 96,
+	White = 97,
+
+	Black = 30,
+	Red = 31,
+	Green = 32,
+	Yellow = 33,
+	DarkBlue = 34,
+	Purple = 35,
+	Blue = 36,
+	BrightGray = 37,
+};
+
+class Paint
+{
+  public:
+	Paint(const char* str, Color color);
+	const char* c_str() const;
+	DUTIL_DELETE_COPY(Paint);
+
+  private:
+	static constexpr uint kStrLen = 100;
+	char m_str[kStrLen];
+};
 
 }
 

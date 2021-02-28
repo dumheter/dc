@@ -11,12 +11,12 @@ DTEST(firstTest)
 DTEST(badTest) 
 {
 	int y = 2;
-  DTEST_ASSERT(y == 3);
+	DTEST_ASSERT(y == 3);
 }
 
 int main(int, char**)
 {
 	DTEST_RUN();
-	
+
 	return 0;
 }

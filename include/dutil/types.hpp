@@ -42,6 +42,8 @@ using u32 = uint32_t;
 using s64 = int64_t;
 using u64 = uint64_t;
 
+using uint = unsigned int;
+
 using u8_fast = uint_fast8_t;
 using u16_fast = uint_fast16_t;
 using u32_fast = uint_fast32_t;
@@ -89,9 +91,9 @@ constexpr const char* filenameFromPath(const char* path)
 #if !defined(WIN32)
 		if (*path++ == '/')
 #else
-		if (*path++ == '\\')
+			if (*path++ == '\\')
 #endif
-			filename = path;
+				filename = path;
 		
 	}
 	
@@ -101,3 +103,5 @@ constexpr const char* filenameFromPath(const char* path)
 }
 
 #define DUTIL_FILENAME dutil::filenameFromPath(__FILE__)
+
+#define DUTIL_UNUSED(variable) (void)variable

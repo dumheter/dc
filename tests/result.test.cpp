@@ -1,8 +1,10 @@
 #include <dutil/result.hpp>
+#include "dtest.hpp"
 
-bool resultTest()
+
+DTEST(happyPath)
 {
-	
-
-	return true;
+	int a = 0;
+	DTEST_ASSERT(a == 0);
 }
+

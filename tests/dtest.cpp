@@ -25,7 +25,19 @@
 
 #include "dtest.hpp"
 
+#include <dutil/assert.hpp>
+
 #include <cstdio>
+
+#if defined(_MSC_VER)
+#if !defined(MEAN_AND_LEAN)
+#define MEAN_AND_LEAN
+#endif
+#if !defined(NO_MIN_MAX)
+#define NO_MIN_MAX
+#endif
+#include <Windows.h>
+#endif
 
 namespace dtest::details
 {
@@ -43,43 +55,68 @@ Register& getRegister()
 	return r;
 }
 
+static inline void FixConsole() {
+#if defined(_MSC_VER)
+	// Set console encoding
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+
+	// Enable virtual terminal processing
+	const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD mode;
+	GetConsoleMode(out, &mode);
+	SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#endif
+}
+
 void runTests()
 {
+	FixConsole();
 	Register& r = getRegister();
 
-	printf("There are %d test categories to run.\n", static_cast<int>(r.getTestCategories().size()));
-
-	int failedCategories = 0;
+	printf("___|_ D T E S T _|___\nRunning %d test categories.\n", static_cast<int>(r.getTestCategories().size()));
 	
 	for (auto& [_, category] : r.getTestCategories())
 	{
-		printf("### %s, Running %d tests.\n", category.name, static_cast<int>(category.tests.size()));
+		printf("----------------------------------------------------------------------\n=== %s, running %d tests.\n", category.name, static_cast<int>(category.tests.size()));
 
+		int i=0;
 		for (TestCase& test : category.tests)
 		{
-			printf("\t=== %s, \n", test.state.name);
+			printf("\t=%d= %s, \n", i, test.state.name);
 			test.fn(test.state);
-			printf("\t=== %s, %s\n", test.state.name, !test.state.fail ? "PASSED" : "FAILED");
+			category.fail += (test.state.fail > 0);
+			printf("\t=%d= %s, %s\n", i++, test.state.name, !test.state.fail ? Paint("PASSED", Color::Green).c_str() : Paint("FAILED", Color::Red).c_str());
 		}
-
-		failedCategories += category.fail;
 		
-		printf("### %s, %s\n", category.name, !category.fail ? "PASSED" : "FAILED");
+		printf("### %s, %s\n", category.name, !category.fail ? Paint("PASSED", Color::Green).c_str() : Paint("FAILED", Color::Red).c_str());
 	}
 
 	printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nSUMMARY:\n");
 
-	if (failedCategories)
+	int failedCategories = 0;
+	for (const auto& [_, category] : r.getTestCategories())
 	{
-		for (const auto& [_, category] : r.getTestCategories())
+		if (category.fail)
 		{
-			printf("FAILED: %s with %d/%d failed tests.\n", category.name, category.fail, category.fail + category.pass);
-					}
+			failedCategories += category.fail;
+			printf("%s: %s with %d/%d failed tests.\n", Paint("FAILED", Color::Red).c_str(), category.name, category.fail, category.fail + category.pass);
+		}
 	}
-	else
-	{
-		printf("ALL PASSED\n");
-	}
+	if (failedCategories == 0)
+		printf("ALL %s!\n", Paint("PASSED", Color::Green).c_str());
+}
+
+Paint::Paint(const char* str, Color color)
+{
+	DUTIL_ASSERT(strlen(str) < Paint::kStrLen, "Trying to paint a too large string.");
+	const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m", static_cast<ColorType>(color), str);
+	DUTIL_ASSERT(res >= 0, "Failed to copy string");
+}
+
+const char* Paint::c_str() const
+{
+	return m_str;
 }
 
 }
