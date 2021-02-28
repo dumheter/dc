@@ -78,7 +78,7 @@ inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
 }
 
 // FNV1a c++11 constexpr compile time hash functions, 32 and 64 bit
-// str should be a null terminated string literal, value should be left out 
+// str should be a null terminated string literal, value should be left out
 // e.g hash_32_fnv1a_const("example")
 // code license: public domain or equivalent
 // post: https://notes.underscorediscovery.com/constexpr-fnv1a/
@@ -87,22 +87,27 @@ inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
 // hash
 // ========================================================================== //
 
-namespace details::hash
-{
+namespace details::hash {
 
 constexpr u32 val32 = 0x811c9dc5;
 constexpr u32 prime32 = 0x1000193;
 constexpr u64 val64 = 0xcbf29ce484222325;
 constexpr u64 prime64 = 0x100000001b3;
 
+}  // namespace details::hash
+
+inline constexpr u32 hash32fnv1a(
+    const char* const str, const u32 value = details::hash::val32) noexcept {
+  return (str[0] == '\0') ? value
+                          : hash32fnv1a(&str[1], (value ^ u32(str[0])) *
+                                                     details::hash::prime32);
 }
 
-inline constexpr u32 hash32fnv1a(const char* const str, const u32 value = details::hash::val32) noexcept {
-	return (str[0] == '\0') ? value : hash32fnv1a(&str[1], (value ^ u32(str[0])) * details::hash::prime32);
-}
-
-inline constexpr u64 hash64fnv1a(const char* const str, const u64 value = details::hash::val64) noexcept {
-	return (str[0] == '\0') ? value : hash64fnv1a(&str[1], (value ^ u64(str[0])) * details::hash::prime64);
+inline constexpr u64 hash64fnv1a(
+    const char* const str, const u64 value = details::hash::val64) noexcept {
+  return (str[0] == '\0') ? value
+                          : hash64fnv1a(&str[1], (value ^ u64(str[0])) *
+                                                     details::hash::prime64);
 }
 
 }  // namespace dutil

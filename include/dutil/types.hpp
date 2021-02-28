@@ -58,49 +58,45 @@ static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
 // CTOR & DTOR
 // ========================================================================== //
 
-#define DUTIL_DELETE_COPY(ClassName)						\
-	ClassName(const ClassName& other) = delete;				\
-	ClassName& operator=(const ClassName& other) = delete
+#define DUTIL_DELETE_COPY(ClassName)          \
+  ClassName(const ClassName& other) = delete; \
+  ClassName& operator=(const ClassName& other) = delete
 
-#define DUTIL_DEFAULT_COPY(ClassName)						\
-	ClassName(const ClassName& other) = default;			\
-	ClassName& operator=(const ClassName& other) = default
+#define DUTIL_DEFAULT_COPY(ClassName)          \
+  ClassName(const ClassName& other) = default; \
+  ClassName& operator=(const ClassName& other) = default
 
-#define DUTIL_DELETE_MOVE(ClassName)						\
-	ClassName(ClassName&& other) = delete;					\
-	ClassName& operator=(ClassName&& other) = delete
+#define DUTIL_DELETE_MOVE(ClassName)     \
+  ClassName(ClassName&& other) = delete; \
+  ClassName& operator=(ClassName&& other) = delete
 
-#define DUTIL_DEFAULT_MOVE(ClassName)						\
-	ClassName(ClassName&& other) = default;					\
-	ClassName& operator=(ClassName&& other) = default
+#define DUTIL_DEFAULT_MOVE(ClassName)     \
+  ClassName(ClassName&& other) = default; \
+  ClassName& operator=(ClassName&& other) = default
 
 // ========================================================================== //
 // MACROS
 // ========================================================================== //
 
-namespace dutil
-{
+namespace dutil {
 
 /// Returns pointer to past the last slash in the path string.
-constexpr const char* filenameFromPath(const char* path)
-{
-	const char* filename = path;
+constexpr const char* filenameFromPath(const char* path) {
+  const char* filename = path;
 
-	while(*path)
-	{
+  while (*path) {
 #if !defined(WIN32)
-		if (*path++ == '/')
+    if (*path++ == '/')
 #else
-			if (*path++ == '\\')
+    if (*path++ == '\\')
 #endif
-				filename = path;
-		
-	}
-	
-	return filename;
+      filename = path;
+  }
+
+  return filename;
 }
 
-}
+}  // namespace dutil
 
 #define DUTIL_FILENAME dutil::filenameFromPath(__FILE__)
 

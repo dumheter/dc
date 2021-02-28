@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,8 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace dutil
-{
+namespace dutil {
 
 // ========================================================================== //
 // Traits
@@ -36,10 +35,8 @@ namespace dutil
 
 template <typename T>
 constexpr bool isMovable =
-		std::is_object<T>::value &&
-		std::is_move_constructible<T>::value &&
-		std::is_assignable<T&, T>::value &&
-		std::is_swappable<T>::value;
+    std::is_object<T>::value&& std::is_move_constructible<T>::value&&
+        std::is_assignable<T&, T>::value&& std::is_swappable<T>::value;
 
 template <typename T>
 constexpr bool isReference = std::is_reference<T>::value;
@@ -52,18 +49,14 @@ struct equalityComparable : std::false_type {};
 
 template <typename T, typename Other>
 struct equalityComparable<
-	T, Other,
-	typename std::enable_if_t<
-		true,
-		decltype(
-			(
-				std::declval<std::remove_reference_t<T> const&>() ==
-				std::declval<std::remove_reference_t<Other> const&>()
-			 ) && (
-				 std::declval<std::remove_reference_t<T> const&>() !=
-				 std::declval<std::remove_reference_t<Other> const&>()
-				   ),
-			(void)0)>> : std::true_type {};
+    T, Other,
+    typename std::enable_if_t<
+        true,
+        decltype((std::declval<std::remove_reference_t<T> const&>() ==
+                  std::declval<std::remove_reference_t<Other> const&>()) &&
+                     (std::declval<std::remove_reference_t<T> const&>() !=
+                      std::declval<std::remove_reference_t<Other> const&>()),
+                 (void)0)>> : std::true_type {};
 
 /// Does T and Other have compatible operator== and operator!=?
 template <typename T, typename Other>
@@ -82,14 +75,14 @@ using Ref = std::reference_wrapper<T>;
 
 template <typename T>
 using ConstRef =
-		std::reference_wrapper<std::add_const_t<std::remove_reference_t<T>>>;
+    std::reference_wrapper<std::add_const_t<std::remove_reference_t<T>>>;
 
 template <typename T>
 using MutRef =
-		std::reference_wrapper<std::remove_const_t<std::remove_reference_t<T>>>;
+    std::reference_wrapper<std::remove_const_t<std::remove_reference_t<T>>>;
 
 /// Result type of a function call, with the given args.
 template <typename Fn, typename... Args>
 using InvokeResult = typename std::invoke_result<Fn, Args...>::type;
 
-}
+}  // namespace dutil

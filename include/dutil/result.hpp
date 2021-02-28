@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,13 +27,11 @@
 
 #pragma once
 
-#include <dutil/types.hpp>
 #include <dutil/traits.hpp>
-
+#include <dutil/types.hpp>
 #include <utility>
 
-namespace dutil
-{
+namespace dutil {
 
 template <typename V>
 struct Ok;
@@ -44,110 +42,112 @@ struct Err;
 // ========================================================================== //
 
 template <typename V>
-struct [[nodiscard]] Ok
-{
-	static_assert(isMovable<V>, "Value type 'V' in 'Ok<V>' must be movable.");
-	static_assert(!isReference<V>, "Value type 'V' in 'Ok<V>' cannot be a reference."
-				  " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
-				  " be used for this case.");
+struct [[nodiscard]] Ok {
+  static_assert(isMovable<V>, "Value type 'V' in 'Ok<V>' must be movable.");
+  static_assert(
+      !isReference<V>,
+      "Value type 'V' in 'Ok<V>' cannot be a reference."
+      " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
+      " be used for this case.");
 
-	using value_type = V;
-	
-	/// Can only be constructed with an r-value.
-	explicit constexpr Ok(V&& value) : m_value(std::forward<V&&>(value)) {}
+  using value_type = V;
 
-	constexpr Ok(const Ok&) = default;
-	constexpr Ok& operator=(const Ok&) = default;
-	constexpr Ok(Ok&&) = default;
-	constexpr Ok& operator=(Ok&&) = default;
+  /// Can only be constructed with an r-value.
+  explicit constexpr Ok(V&& value) : m_value(std::forward<V&&>(value)) {}
 
-	[[nodiscard]] constexpr V const& value() const& noexcept { return m_value; }
-	[[nodiscard]] constexpr V& value() & noexcept { return m_value; }
-	[[nodiscard]] constexpr V const value() const&& { return std::move(m_value); }
-	[[nodiscard]] constexpr V value() && { return std::move(m_value); }
+  constexpr Ok(const Ok&) = default;
+  constexpr Ok& operator=(const Ok&) = default;
+  constexpr Ok(Ok&&) = default;
+  constexpr Ok& operator=(Ok&&) = default;
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(Ok<U> const& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "Value type 'V' in 'Ok<V>' is not equality comparable (operator== and operator!= defined) with 'U'");
-		return value() == other.value();
-	}
+  [[nodiscard]] constexpr V const& value() const& noexcept { return m_value; }
+  [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
+  [[nodiscard]] constexpr V const value() const&& { return std::move(m_value); }
+  [[nodiscard]] constexpr V value() && { return std::move(m_value); }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "Value type 'V' in 'Ok<V>' is not equality comparable (operator== and operator!= defined) with 'U'");
-		return value() != other.value();
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const {
+    static_assert(isEqualityComparable<V, U>,
+                  "Value type 'V' in 'Ok<V>' is not equality comparable "
+                  "(operator== and operator!= defined) with 'U'");
+    return value() == other.value();
+  }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(Err<U> const& other) const noexcept
-	{
-		return false;
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const {
+    static_assert(isEqualityComparable<V, U>,
+                  "Value type 'V' in 'Ok<V>' is not equality comparable "
+                  "(operator== and operator!= defined) with 'U'");
+    return value() != other.value();
+  }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(Err<U> const& other) const noexcept
-	{
-		return true;
-	}
-	
-  private:
-	V m_value;
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(Err<U> const& other) const noexcept {
+    return false;
+  }
+
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(Err<U> const& other) const noexcept {
+    return true;
+  }
+
+ private:
+  V m_value;
 };
 
 // ========================================================================== //
 
 template <typename E>
-struct Err
-{
-	static_assert(isMovable<E>, "Error type 'E' in 'Err<E>' must be movable.");
-	static_assert(!isReference<E>, "Error type 'E' in 'Err<E>' cannot be a reference."
-				  " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
-				  " used for this case.");
+struct Err {
+  static_assert(isMovable<E>, "Error type 'E' in 'Err<E>' must be movable.");
+  static_assert(
+      !isReference<E>,
+      "Error type 'E' in 'Err<E>' cannot be a reference."
+      " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
+      " used for this case.");
 
-	using value_type = E;
-	
-	Err(E&& value) : m_value(std::move(value)) {}
+  using value_type = E;
 
-	constexpr Err(const Err&) = default;
-	constexpr Err& operator=(const Err&) = default;
-	constexpr Err(Err&&) = default;
-	constexpr Err& operator=(Err&&) = default;
+  Err(E&& value) : m_value(std::move(value)) {}
 
-	[[nodiscard]] constexpr E const& value() const& noexcept { return m_value; }
-	[[nodiscard]] constexpr E& value() & noexcept { return m_value; }
-	[[nodiscard]] constexpr E const value() const&& { return std::move(m_value); }
-	[[nodiscard]] constexpr E value() && { return std::move(m_value); }
+  constexpr Err(const Err&) = default;
+  constexpr Err& operator=(const Err&) = default;
+  constexpr Err(Err&&) = default;
+  constexpr Err& operator=(Err&&) = default;
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(Err<U> const& other) const
-	{
-		static_assert(isEqualityComparable<E, U>, "Error type 'E' in 'Err<E>' is not equality comparable (operator== and operator!= defined) with 'U'");
-		return value() == other.value();
-	}
+  [[nodiscard]] constexpr E const& value() const& noexcept { return m_value; }
+  [[nodiscard]] constexpr E& value() & noexcept { return m_value; }
+  [[nodiscard]] constexpr E const value() const&& { return std::move(m_value); }
+  [[nodiscard]] constexpr E value() && { return std::move(m_value); }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(Err<U> const& other) const
-	{
-		static_assert(isEqualityComparable<E, U>, "Error type 'E' in 'Err<E>' is not equality comparable (operator== and operator!= defined) with 'U'");
-		return value() != other.value();
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(Err<U> const& other) const {
+    static_assert(isEqualityComparable<E, U>,
+                  "Error type 'E' in 'Err<E>' is not equality comparable "
+                  "(operator== and operator!= defined) with 'U'");
+    return value() == other.value();
+  }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(Ok<U> const& other) const noexcept
-	{
-		return false;
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(Err<U> const& other) const {
+    static_assert(isEqualityComparable<E, U>,
+                  "Error type 'E' in 'Err<E>' is not equality comparable "
+                  "(operator== and operator!= defined) with 'U'");
+    return value() != other.value();
+  }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const noexcept
-	{
-		return true;
-	}
-	
-  private:
-	E m_value;
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const noexcept {
+    return false;
+  }
+
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const noexcept {
+    return true;
+  }
+
+ private:
+  E m_value;
 };
 
 // ========================================================================== //
@@ -155,134 +155,130 @@ struct Err
 /// @tparam V Value type.
 /// @tparam E Error type.
 template <typename V, typename E>
-class [[nodiscard]] Result
-{
-  public:
-	static_assert(isMovable<V>, "Value type 'V' in 'Result<V, E>' must be movable.");
-	static_assert(!isReference<V>, "Value type 'V' in 'Result<V, E>' cannot be a reference."
-				  " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
-				  " be used for this case.");
-	static_assert(isMovable<E>, "Error type 'E' in 'Result<V, E>' must be movable.");
-	static_assert(!isReference<E>, "Error type 'E' in 'Result<V, E>' cannot be a reference."
-				  " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
-				  " used for this case.");
+class [[nodiscard]] Result {
+ public:
+  static_assert(isMovable<V>,
+                "Value type 'V' in 'Result<V, E>' must be movable.");
+  static_assert(
+      !isReference<V>,
+      "Value type 'V' in 'Result<V, E>' cannot be a reference."
+      " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
+      " be used for this case.");
+  static_assert(isMovable<E>,
+                "Error type 'E' in 'Result<V, E>' must be movable.");
+  static_assert(
+      !isReference<E>,
+      "Error type 'E' in 'Result<V, E>' cannot be a reference."
+      " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
+      " used for this case.");
 
-	using value_type = V;
-	using error_type = E;
-	
-	Result(Ok<V>&& ok)
-			: m_value(std::forward<V>(ok.value()))
-			, m_isOk(true)
-	{}
-	Result(Err<E>&& err)
-			: m_err(std::forward<E>(err.value()))
-			, m_isOk(false)
-	{}
+  using value_type = V;
+  using error_type = E;
 
-	Result(Result&& other)
-			: m_isOk(other.m_isOk)
-	{
-		if (other.isOk())
-			new (&m_value) V(std::move(other.m_value));
-		else
-			new (&m_err) E(std::move(other.m_err));
-	}
+  Result(Ok<V>&& ok) : m_value(std::forward<V>(ok.value())), m_isOk(true) {}
+  Result(Err<E>&& err) : m_err(std::forward<E>(err.value())), m_isOk(false) {}
 
-	Result& operator=(Result&& other) noexcept
-	{
-		if (isOk() && other.isOk())
-		{
-			std::swap(valueRef(), other.valueRef());
-		}
-		else if (isOk() && other.isErr())
-		{
-			m_value.~V();
-			new (&m_err) E(std::move(other.m_err));
-			m_isOk = false;
-		}
-		else if (isErr() && other.isOk())
-		{
-			m_err.~V();
-			new (&m_value) V(std::move(other.m_value));
-			m_isOk = true;
-		}
-		else
-		{
-			std::swap(errRef(), other.errRef());
-		}
-		return *this;
-	}
+  Result(Result&& other) : m_isOk(other.m_isOk) {
+    if (other.isOk())
+      new (&m_value) V(std::move(other.m_value));
+    else
+      new (&m_err) E(std::move(other.m_err));
+  }
 
-	Result() = delete;
-	DUTIL_DELETE_COPY(Result);
+  Result& operator=(Result&& other) noexcept {
+    if (isOk() && other.isOk()) {
+      std::swap(valueRef(), other.valueRef());
+    } else if (isOk() && other.isErr()) {
+      m_value.~V();
+      new (&m_err) E(std::move(other.m_err));
+      m_isOk = false;
+    } else if (isErr() && other.isOk()) {
+      m_err.~V();
+      new (&m_value) V(std::move(other.m_value));
+      m_isOk = true;
+    } else {
+      std::swap(errRef(), other.errRef());
+    }
+    return *this;
+  }
 
-	~Result() noexcept
-	{
-		if (isOk())
-			m_value.~V();
-		else
-			m_err.~E();
-	}
+  Result() = delete;
+  DUTIL_DELETE_COPY(Result);
 
-	// TODO cgustafsson: getters with fatal assert
+  ~Result() noexcept {
+    if (isOk())
+      m_value.~V();
+    else
+      m_err.~E();
+  }
 
-	// TODO cgustafsson: equality
+  // TODO cgustafsson: getters with fatal assert
 
-	[[nodiscard]] constexpr bool isOk() const noexcept { return m_isOk; }
-	[[nodiscard]] constexpr bool isErr() const noexcept { return !isOk(); }
-	[[nodiscard]] constexpr operator bool() const noexcept { return isOk(); }
+  // TODO cgustafsson: equality
 
-	template <typename OkFn, typename ErrFn>
-	[[nodiscard]] constexpr auto match(OkFn&& okFn, ErrFn&& errFn) && -> InvokeResult<OkFn&&, V&&>
-	{
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'OkFn', is it a function?");
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'ErrFn', is it a function?");
+  [[nodiscard]] constexpr bool isOk() const noexcept { return m_isOk; }
+  [[nodiscard]] constexpr bool isErr() const noexcept { return !isOk(); }
+  [[nodiscard]] constexpr operator bool() const noexcept { return isOk(); }
 
-		if (isOk())
-			std::forward<OkFn&&>(okFn)(std::move(valueRef()));
-		else
-			std::forward<ErrFn&&>(errFn)(std::move(errRef()));
-	}
+  template <typename OkFn, typename ErrFn>
+  [[nodiscard]] constexpr auto match(
+      OkFn&& okFn, ErrFn&& errFn) && -> InvokeResult<OkFn&&, V&&> {
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'OkFn', is it a function?");
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'ErrFn', is it a function?");
 
-	template <typename OkFn, typename ErrFn>
-	[[nodiscard]] constexpr auto match(OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&&>
-	{
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'OkFn', is it a function?");
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'ErrFn', is it a function?");
+    if (isOk())
+      std::forward<OkFn&&>(okFn)(std::move(valueRef()));
+    else
+      std::forward<ErrFn&&>(errFn)(std::move(errRef()));
+  }
 
-		if (isOk())
-			std::forward<OkFn&&>(okFn)(valueRef());
-		else
-			std::forward<ErrFn&&>(errFn)(errRef());
-	}
+  template <typename OkFn, typename ErrFn>
+  [[nodiscard]] constexpr auto match(
+      OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&&> {
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'OkFn', is it a function?");
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'ErrFn', is it a function?");
 
-	template <typename OkFn, typename ErrFn>
-	[[nodiscard]] constexpr auto match(OkFn&& okFn, ErrFn&& errFn) const & -> InvokeResult<OkFn&&, V&&>
-	{
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'OkFn', is it a function?");
-		static_assert(isInvocable<OkFn&&, V&&>, "Cannot call 'ErrFn', is it a function?");
+    if (isOk())
+      std::forward<OkFn&&>(okFn)(valueRef());
+    else
+      std::forward<ErrFn&&>(errFn)(errRef());
+  }
 
-		if (isOk())
-			std::forward<OkFn&&>(okFn)(valueCRef());
-		else
-			std::forward<ErrFn&&>(errFn)(errCRef());
-	}
+  template <typename OkFn, typename ErrFn>
+  [[nodiscard]] constexpr auto match(
+      OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResult<OkFn&&, V&&> {
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'OkFn', is it a function?");
+    static_assert(isInvocable<OkFn&&, V&&>,
+                  "Cannot call 'ErrFn', is it a function?");
 
-	// TODO cgustafsson: clone
+    if (isOk())
+      std::forward<OkFn&&>(okFn)(valueCRef());
+    else
+      std::forward<ErrFn&&>(errFn)(errCRef());
+  }
 
-  private:
-	[[nodiscard]] constexpr V& valueRef() noexcept { return m_value; }
-	[[nodiscard]] constexpr const V& valueCRef() const noexcept { return m_value; }
+  // TODO cgustafsson: clone
 
-	[[nodiscard]] constexpr E& errRef() noexcept { return m_err; }
-	[[nodiscard]] constexpr const E& errCRef() const noexcept { return m_err; }
+ private:
+  [[nodiscard]] constexpr V& valueRef() noexcept { return m_value; }
+  [[nodiscard]] constexpr const V& valueCRef() const noexcept {
+    return m_value;
+  }
 
-  private:
-	union {
-		V m_value;
-		E m_err;
-	};
-	bool m_isOk;
+  [[nodiscard]] constexpr E& errRef() noexcept { return m_err; }
+  [[nodiscard]] constexpr const E& errCRef() const noexcept { return m_err; }
+
+ private:
+  union {
+    V m_value;
+    E m_err;
+  };
+  bool m_isOk;
 };
 
 // ========================================================================== //
@@ -295,4 +291,4 @@ class [[nodiscard]] Result
 
 // TODO cgustafsson: make_err -> Result<V, E>
 
-}
+}  // namespace dutil

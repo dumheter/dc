@@ -23,14 +23,16 @@
  */
 
 #include "file.hpp"
+
 #include <cstdlib>
+
 #include "platform.hpp"
 
 namespace dutil {
 
 File::~File() { Close(); }
 
-static const char *ModeToCString(const File::Mode mode) {
+static const char* ModeToCString(const File::Mode mode) {
   switch (mode) {
     case File::Mode::kRead: {
 #ifdef DUTIL_PLATFORM_WINDOWS
@@ -58,7 +60,7 @@ static const char *ModeToCString(const File::Mode mode) {
   return "r";
 }
 
-File::Result File::Open(const std::string &path_out, const Mode mode) {
+File::Result File::Open(const std::string& path_out, const Mode mode) {
   path_ = path_out;
 
 #if defined(__STDC_LIB_EXT1__) || defined(_WIN32)
@@ -78,7 +80,7 @@ void File::Close() {
 }
 
 template <typename TBuffer>
-static File::Result ReadFromFile(std::FILE *file, TBuffer &buffer) {
+static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
 
   if (file != NULL) {
@@ -117,7 +119,7 @@ std::tuple<File::Result, std::string> File::Read() {
                                                     std::move(string));
 }
 
-File::Result File::Read(std::string &string_out) {
+File::Result File::Read(std::string& string_out) {
   return ReadFromFile(file_, string_out);
 }
 
@@ -128,12 +130,12 @@ std::tuple<File::Result, std::vector<u8>> File::Load() {
                                                         std::move(buffer));
 }
 
-File::Result File::Load(std::vector<u8> &buffer) {
+File::Result File::Load(std::vector<u8>& buffer) {
   return ReadFromFile(file_, buffer);
 }
 
 template <typename TBuffer>
-static File::Result WriteToFile(std::FILE *file, const TBuffer &buffer) {
+static File::Result WriteToFile(std::FILE* file, const TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
   if (file != NULL) {
     const size_t written =
@@ -149,22 +151,22 @@ static File::Result WriteToFile(std::FILE *file, const TBuffer &buffer) {
   return result;
 }
 
-File::Result File::Write(const std::string &string) {
+File::Result File::Write(const std::string& string) {
   return WriteToFile(file_, string);
 }
 
-File::Result File::Write(const std::vector<u8> &buffer) {
+File::Result File::Write(const std::vector<u8>& buffer) {
   return WriteToFile(file_, buffer);
 }
 
-File::Result File::Remove(const std::string &path) {
+File::Result File::Remove(const std::string& path) {
   const int res = std::remove(path.c_str());
   constexpr int kSuccess = 0;
   return res == kSuccess ? Result::kSuccess : Result::kCannotOpenPath;
 }
 
-File::Result File::Rename(const std::string &old_path,
-                          const std::string &new_path) {
+File::Result File::Rename(const std::string& old_path,
+                          const std::string& new_path) {
   const int res = std::rename(old_path.c_str(), new_path.c_str());
   constexpr int kSuccess = 0;
   return res == kSuccess ? Result::kSuccess : Result::kFailedRename;
@@ -240,8 +242,8 @@ std::tuple<File::Result, long> File::GetSize() {
                                              std::move(size));
 }
 
-bool File::FileExists(const std::string &path) {
-  std::FILE *file;
+bool File::FileExists(const std::string& path) {
+  std::FILE* file;
 
 #if defined(__STDC_LIB_EXT1__) || defined(_WIN32)
   const errno_t err = fopen_s(&file, path.c_str(), ModeToCString(Mode::kRead));

@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <cwchar>
 #include <string>
+
 #include "platform.hpp"
 
 #if defined(DUTIL_ASSERT_DIALOG)
@@ -40,7 +41,7 @@
 
 namespace dutil {
 
-void Assert(bool condition, const char *msg, const char *file, const char *func,
+void Assert(bool condition, const char* msg, const char* file, const char* func,
             int line) {
   if (condition) {
     return;
@@ -58,7 +59,7 @@ void Assert(bool condition, const char *msg, const char *file, const char *func,
 #if defined(DUTIL_PLATFORM_WINDOWS)
   wchar_t wstr[strlen];
   memset(wstr, 0, strlen * 2);
-  char *p = reinterpret_cast<char *>(wstr);
+  char* p = reinterpret_cast<char*>(wstr);
   for (int i = 0; i < strlen; i++) {
     *(p + i * 2) = str[i];
   }
@@ -69,8 +70,8 @@ void Assert(bool condition, const char *msg, const char *file, const char *func,
     return;
   }
 
-  GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  GtkWidget *dialog =
+  GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  GtkWidget* dialog =
       gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
                              GTK_MESSAGE_ERROR, GTK_BUTTONS_CANCEL, "%s", str);
   gtk_window_set_title(GTK_WINDOW(dialog), "Assertion Failed");

@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -22,12 +22,10 @@
  * SOFTWARE.
  */
 
-
 #include "dtest.hpp"
 
-#include <dutil/assert.hpp>
-
 #include <cstdio>
+#include <dutil/assert.hpp>
 
 #if defined(_MSC_VER)
 #if !defined(MEAN_AND_LEAN)
@@ -39,84 +37,85 @@
 #include <Windows.h>
 #endif
 
-namespace dtest::details
-{
+namespace dtest::details {
 
-void Register::addTest(TestFunction fn, const char* testName, const char* fileName, u64 filePathHash)
-{
-	TestCategory& category = m_testCategories[filePathHash];
-	category.name = fileName;
-	category.tests.push_back({{testName, 0, 0}, std::move(fn)});
+void Register::addTest(TestFunction fn, const char* testName,
+                       const char* fileName, u64 filePathHash) {
+  TestCategory& category = m_testCategories[filePathHash];
+  category.name = fileName;
+  category.tests.push_back({{testName, 0, 0}, std::move(fn)});
 }
 
-Register& getRegister()
-{
-	static Register r{};
-	return r;
+Register& getRegister() {
+  static Register r{};
+  return r;
 }
 
 static inline void FixConsole() {
 #if defined(_MSC_VER)
-	// Set console encoding
-	SetConsoleOutputCP(CP_UTF8);
-	SetConsoleCP(CP_UTF8);
+  // Set console encoding
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
 
-	// Enable virtual terminal processing
-	const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-	DWORD mode;
-	GetConsoleMode(out, &mode);
-	SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  // Enable virtual terminal processing
+  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode;
+  GetConsoleMode(out, &mode);
+  SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #endif
 }
 
-void runTests()
-{
-	FixConsole();
-	Register& r = getRegister();
+void runTests() {
+  FixConsole();
+  Register& r = getRegister();
 
-	printf("___|_ D T E S T _|___\nRunning %d test categories.\n", static_cast<int>(r.getTestCategories().size()));
-	
-	for (auto& [_, category] : r.getTestCategories())
-	{
-		printf("----------------------------------------------------------------------\n=== %s, running %d tests.\n", category.name, static_cast<int>(category.tests.size()));
+  printf("___|_ D T E S T _|___\nRunning %d test categories.\n",
+         static_cast<int>(r.getTestCategories().size()));
 
-		int i=0;
-		for (TestCase& test : category.tests)
-		{
-			printf("\t=%d= %s, \n", i, test.state.name);
-			test.fn(test.state);
-			category.fail += (test.state.fail > 0);
-			printf("\t=%d= %s, %s\n", i++, test.state.name, !test.state.fail ? Paint("PASSED", Color::Green).c_str() : Paint("FAILED", Color::Red).c_str());
-		}
-		
-		printf("### %s, %s\n", category.name, !category.fail ? Paint("PASSED", Color::Green).c_str() : Paint("FAILED", Color::Red).c_str());
-	}
+  for (auto& [_, category] : r.getTestCategories()) {
+    printf(
+        "----------------------------------------------------------------------"
+        "\n=== %s, running %d tests.\n",
+        category.name, static_cast<int>(category.tests.size()));
 
-	printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nSUMMARY:\n");
+    int i = 0;
+    for (TestCase& test : category.tests) {
+      printf("\t=%d= %s, \n", i, test.state.name);
+      test.fn(test.state);
+      category.fail += (test.state.fail > 0);
+      printf("\t=%d= %s, %s\n", i++, test.state.name,
+             !test.state.fail ? Paint("PASSED", Color::Green).c_str()
+                              : Paint("FAILED", Color::Red).c_str());
+    }
 
-	int failedCategories = 0;
-	for (const auto& [_, category] : r.getTestCategories())
-	{
-		if (category.fail)
-		{
-			failedCategories += category.fail;
-			printf("%s: %s with %d/%d failed tests.\n", Paint("FAILED", Color::Red).c_str(), category.name, category.fail, category.fail + category.pass);
-		}
-	}
-	if (failedCategories == 0)
-		printf("ALL %s!\n", Paint("PASSED", Color::Green).c_str());
+    printf("### %s, %s\n", category.name,
+           !category.fail ? Paint("PASSED", Color::Green).c_str()
+                          : Paint("FAILED", Color::Red).c_str());
+  }
+
+  printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nSUMMARY:\n");
+
+  int failedCategories = 0;
+  for (const auto& [_, category] : r.getTestCategories()) {
+    if (category.fail) {
+      failedCategories += category.fail;
+      printf("%s: %s with %d/%d failed tests.\n",
+             Paint("FAILED", Color::Red).c_str(), category.name, category.fail,
+             category.fail + category.pass);
+    }
+  }
+  if (failedCategories == 0)
+    printf("ALL %s!\n", Paint("PASSED", Color::Green).c_str());
 }
 
-Paint::Paint(const char* str, Color color)
-{
-	DUTIL_ASSERT(strlen(str) < Paint::kStrLen, "Trying to paint a too large string.");
-	const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m", static_cast<ColorType>(color), str);
-	DUTIL_ASSERT(res >= 0, "Failed to copy string");
+Paint::Paint(const char* str, Color color) {
+  DUTIL_ASSERT(strlen(str) < Paint::kStrLen,
+               "Trying to paint a too large string.");
+  const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
+                            static_cast<ColorType>(color), str);
+  DUTIL_ASSERT(res >= 0, "Failed to copy string");
 }
 
-const char* Paint::c_str() const
-{
-	return m_str;
-}
+const char* Paint::c_str() const { return m_str; }
 
-}
+}  // namespace dtest::details
