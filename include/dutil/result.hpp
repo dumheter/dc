@@ -52,7 +52,8 @@ struct [[nodiscard]] Ok {
 
   using value_type = V;
 
-  /// Can only be constructed with an r-value.
+  /// Can only be constructed with an r-value. Use dutil::Ref, dutil::CRef and
+  /// dutil::MutRef to capture references to non owned objects.
   explicit constexpr Ok(V&& value) : m_value(std::forward<V&&>(value)) {}
 
   constexpr Ok(const Ok&) = default;
@@ -268,7 +269,16 @@ class [[nodiscard]] Result {
       return std::forward<ErrFn&&>(errFn)(errCRef());
   }
 
-  // TODO cgustafsson: clone
+	[[nodiscard]] constexpr Result<V, E> clone() const
+	{
+		static_assert(isCopyConstructible<V>, "Cannot copy 'V' in 'Result<V, E>'.");
+		static_assert(isCopyConstructible<E>, "Cannot copy 'E' in 'Result<V, E>'.");
+
+		if (isOk())
+			return Ok<V>(std::move(V(valueCRef())));
+		else
+			return Err<E>(std::move(E(errCRef())));
+	}
 
  private:
   [[nodiscard]] constexpr V& valueRef() noexcept { return m_value; }

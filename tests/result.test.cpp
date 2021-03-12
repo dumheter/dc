@@ -4,17 +4,11 @@
 
 #include <string>
 
-DTEST(happyPath) {
-  int a = 0;
-  DTEST_ASSERT(a == 0);
-}
-
 DTEST(ResultOk)
 {
 	dutil::Result<int, const char*> result = dutil::Ok(1337);
 	DTEST_ASSERT(result.isOk());
 	DTEST_ASSERT(!result.isErr());
-	//DTEST_ASSERT_EQ(result, 1337);
 }
 
 // ========================================================================== //
@@ -103,6 +97,22 @@ DTEST(match_const_lvalue_err)
 								  );
 	DTEST_ASSERT(value < 0.f);
 	DTEST_ASSERT_EQ(parent.getCopies(), 0);
+}
+
+// ========================================================================== //
+// CLONE
+// ========================================================================== //
+
+DTEST(clone)
+{
+	using TrackedInt = dtest::TrackLifetime<int>;
+	TrackedInt original = 77;
+
+	dutil::Result<TrackedInt, float> okResult = dutil::Ok(std::move(original));
+	auto clone = okResult.clone();
+	auto cloneOfClone = clone.clone();
+
+	DTEST_ASSERT_EQ(original.getCopies(), 2);
 }
 
 // ========================================================================== //

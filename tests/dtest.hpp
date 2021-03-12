@@ -106,8 +106,13 @@ class TrackLifetime
 {
   public:
 	TrackLifetime(T object) : m_object(object) {}
-	int getMoves() const { return m_moves; }
+
+	/// Amount of times this object has been copied.
 	int getCopies() const { return m_copies; }
+
+	/// Amount of times this object has been moved.
+	int getMoves() const { return m_moves; }
+
 	T getObject() const { return m_object; }
 	
 	TrackLifetime(const TrackLifetime& other)

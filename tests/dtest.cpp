@@ -93,7 +93,7 @@ void runTests() {
                               : Paint("FAILED", Color::Red).c_str());
     }
 
-    printf("### %s, %s\n", category.name,
+    printf("=== %s, %s\n", category.name,
            !category.fail ? Paint("PASSED", Color::Green).c_str()
                           : Paint("FAILED", Color::Red).c_str());
   }
