@@ -77,7 +77,7 @@ void runTests() {
 
   size_t testCount = 0;
   for (auto& [_, category] : r.getTestCategories()) {
-	  testCount += category.tests.size();
+    testCount += category.tests.size();
     printf(
         "----------------------------------------------------------------------"
         "\n=== %s, running %d tests.\n",
@@ -99,9 +99,12 @@ void runTests() {
   }
 
   stopwatch.Stop();
-  
-  printf("\n\n----------------------------------------------------------------------"
-		 "\nSUMMARY:\t(ran %zu tests in %.3fs )\n", testCount, stopwatch.fs());
+
+  printf(
+      "\n\n--------------------------------------------------------------------"
+      "--"
+      "\nSUMMARY:\t(ran %zu tests in %.3fs )\n",
+      testCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

@@ -228,8 +228,9 @@ class [[nodiscard]] Result {
                   "Cannot call 'OkFn', is it a function?");
     static_assert(isInvocable<ErrFn&&, E&&>,
                   "Cannot call 'ErrFn', is it a function?");
-    static_assert(isSame<InvokeResult<OkFn&&, V&&>, InvokeResult<ErrFn&&, E&&>>,
-				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
+    static_assert(
+        isSame<InvokeResult<OkFn&&, V&&>, InvokeResult<ErrFn&&, E&&>>,
+        "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
       return std::forward<OkFn&&>(okFn)(std::move(valueRef()));
@@ -244,8 +245,9 @@ class [[nodiscard]] Result {
                   "Cannot call 'OkFn', is it a function?");
     static_assert(isInvocable<ErrFn&&, E&>,
                   "Cannot call 'ErrFn', is it a function?");
-	static_assert(isSame<InvokeResult<OkFn&&, V&>, InvokeResult<ErrFn&&, E&>>,
-				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
+    static_assert(
+        isSame<InvokeResult<OkFn&&, V&>, InvokeResult<ErrFn&&, E&>>,
+        "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
       return std::forward<OkFn&&>(okFn)(valueRef());
@@ -260,8 +262,9 @@ class [[nodiscard]] Result {
                   "Cannot call 'OkFn', is it a function?");
     static_assert(isInvocable<ErrFn&&, const E&>,
                   "Cannot call 'ErrFn', is it a function?");
-	static_assert(isSame<InvokeResult<OkFn&&, const V&>, InvokeResult<ErrFn&&, const E&>>,
-				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
+    static_assert(
+        isSame<InvokeResult<OkFn&&, const V&>, InvokeResult<ErrFn&&, const E&>>,
+        "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
       return std::forward<OkFn&&>(okFn)(valueCRef());
@@ -269,16 +272,15 @@ class [[nodiscard]] Result {
       return std::forward<ErrFn&&>(errFn)(errCRef());
   }
 
-	[[nodiscard]] constexpr Result<V, E> clone() const
-	{
-		static_assert(isCopyConstructible<V>, "Cannot copy 'V' in 'Result<V, E>'.");
-		static_assert(isCopyConstructible<E>, "Cannot copy 'E' in 'Result<V, E>'.");
+  [[nodiscard]] constexpr Result<V, E> clone() const {
+    static_assert(isCopyConstructible<V>, "Cannot copy 'V' in 'Result<V, E>'.");
+    static_assert(isCopyConstructible<E>, "Cannot copy 'E' in 'Result<V, E>'.");
 
-		if (isOk())
-			return Ok<V>(std::move(V(valueCRef())));
-		else
-			return Err<E>(std::move(E(errCRef())));
-	}
+    if (isOk())
+      return Ok<V>(std::move(V(valueCRef())));
+    else
+      return Err<E>(std::move(E(errCRef())));
+  }
 
  private:
   [[nodiscard]] constexpr V& valueRef() noexcept { return m_value; }
@@ -300,39 +302,37 @@ class [[nodiscard]] Result {
 // ========================================================================== //
 
 template <typename U, typename V, typename E>
-[[nodiscard]] constexpr bool operator==(const Ok<U>& ok, const Result<V, E>& result)
-{
-	return result == ok;
+[[nodiscard]] constexpr bool operator==(const Ok<U>& ok,
+                                        const Result<V, E>& result) {
+  return result == ok;
 }
 
 template <typename U, typename V, typename E>
-[[nodiscard]] constexpr bool operator!=(const Ok<U>& ok, const Result<V, E>& result)
-{
-	return result != ok;
+[[nodiscard]] constexpr bool operator!=(const Ok<U>& ok,
+                                        const Result<V, E>& result) {
+  return result != ok;
 }
 
 template <typename F, typename V, typename E>
-[[nodiscard]] constexpr bool operator==(const Err<F>& err, const Result<V, E>& result)
-{
-	return result == err;
+[[nodiscard]] constexpr bool operator==(const Err<F>& err,
+                                        const Result<V, E>& result) {
+  return result == err;
 }
 
 template <typename F, typename V, typename E>
-[[nodiscard]] constexpr bool operator!=(const Err<F>& err, const Result<V, E>& result)
-{
-	return result == err;
+[[nodiscard]] constexpr bool operator!=(const Err<F>& err,
+                                        const Result<V, E>& result) {
+  return result == err;
 }
 
 template <typename V, typename E>
-[[nodiscard]] constexpr auto make_ok(V value) -> Result<V, E>
-{
-	return Ok<V>(std::forward<V>(value));
+[[nodiscard]] constexpr auto make_ok(V value) -> Result<V, E> {
+  return Ok<V>(std::forward<V>(value));
 }
 
 template <typename V, typename E>
-[[nodiscard]] constexpr auto make_err(E err) -> Result<V, E>
-{
-	return Err<E>(std::forward<E>(err));
+[[nodiscard]] constexpr auto make_err(E err) -> Result<V, E> {
+  return Err<E>(std::forward<E>(err));
 }
 
 }  // namespace dutil
