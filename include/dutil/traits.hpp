@@ -66,6 +66,9 @@ constexpr bool isEqualityComparable = equalityComparable<T, Other>::value;
 template <typename Fn, typename... Args>
 constexpr bool isInvocable = std::is_invocable<Fn, Args...>::value;
 
+template <typename T, typename U>
+constexpr bool isSame = std::is_same<T, U>::value;
+
 // ========================================================================== //
 // Type Aliases
 // ========================================================================== //

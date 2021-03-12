@@ -26,6 +26,7 @@
 
 #include <cstdio>
 #include <dutil/assert.hpp>
+#include <dutil/stopwatch.hpp>
 
 #if defined(_MSC_VER)
 #if !defined(MEAN_AND_LEAN)
@@ -72,7 +73,11 @@ void runTests() {
   printf("___|_ D T E S T _|___\nRunning %d test categories.\n",
          static_cast<int>(r.getTestCategories().size()));
 
+  dutil::Stopwatch stopwatch;
+
+  size_t testCount = 0;
   for (auto& [_, category] : r.getTestCategories()) {
+	  testCount += category.tests.size();
     printf(
         "----------------------------------------------------------------------"
         "\n=== %s, running %d tests.\n",
@@ -93,7 +98,10 @@ void runTests() {
                           : Paint("FAILED", Color::Red).c_str());
   }
 
-  printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nSUMMARY:\n");
+  stopwatch.Stop();
+  
+  printf("\n\n----------------------------------------------------------------------"
+		 "\nSUMMARY:\t(ran %zu tests in %.3fs )\n", testCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

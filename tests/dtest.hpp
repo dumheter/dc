@@ -61,6 +61,99 @@
     }                                                                      \
   } while (0)
 
+#define DTEST_ASSERT_EQ(a, b)                                                 \
+  do {                                                                     \
+    if ((a) == (b)) {                                                        \
+      ++dtest_details_testBodyState.pass;                                  \
+      printf("\t\t+ Assert " #a " = " #b" %s\n",                                \
+             dtest::details::Paint("passed", dtest::details::Color::Green) \
+                 .c_str());                                                \
+    } else {                                                               \
+      ++dtest_details_testBodyState.fail;                                  \
+      printf("\t\t- Assert " #a " = " #b " %s\n",                                \
+             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+                 .c_str());                                                \
+    }                                                                      \
+  } while (0)
+
+// ========================================================================== //
+// HELPERS
+// ========================================================================== //
+
+namespace dtest
+{
+
+/// Track the lifetime of any object, with lifetime meaning:
+///    - track COPIES made of the original.
+///    - track MOVES  made of the original. 
+/// 
+/// For lifetime tracking to work properly, the parent object may not leave
+/// scope before the last child is done.
+///
+/// Examples
+///  dtest::TrackLifetime<int> parent = 13;
+///  dtest::TrackLifetime<int> child1 = parent;
+///  dtest::TrackLifetime<int> child2 = child1;
+///  ASSERT(parent.getCopies() == 2);
+///
+///  dtest::TrackLifetime<int> parent = 13;
+///  dtest::TrackLifetime<int> child1 = std::move(parent);
+///  dtest::TrackLifetime<int> child2 = std::move(child1);
+///  ASSERT(parent.getMoves() == 2);
+///
+template <typename T>
+class TrackLifetime
+{
+  public:
+	TrackLifetime(T object) : m_object(object) {}
+	int getMoves() const { return m_moves; }
+	int getCopies() const { return m_copies; }
+	T getObject() const { return m_object; }
+	
+	TrackLifetime(const TrackLifetime& other)
+	: m_object(other.m_object)
+	, m_parent(other.m_parent)
+	{
+		getParent()->m_copies++;
+	}
+	TrackLifetime& operator=(const TrackLifetime& other)
+	{
+		m_object = other.m_object;
+		getParent()->m_copies++;
+		return *this;
+	}
+
+	TrackLifetime(TrackLifetime&& other)
+	: m_object(other.m_object)
+	, m_parent(other.getParent())
+	{
+		getParent()->m_moves++;
+	}
+
+	TrackLifetime& operator=(TrackLifetime&& other) noexcept
+	{
+		m_object = other.m_object;
+		getParent()->m_moves++;
+		return *this;
+	}
+
+  private:
+	TrackLifetime<T>* getParent()
+	{
+		if (m_parent)
+			return m_parent;
+		return &(*this);
+	}
+	
+  private:
+	T m_object;
+	TrackLifetime<T>* m_parent = this;
+	mutable int m_copies = 0;
+	int m_moves = 0;
+};
+
+}
+
 // ========================================================================== //
 // INTERNAL DETAILS
 // ========================================================================== //

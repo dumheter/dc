@@ -225,41 +225,47 @@ class [[nodiscard]] Result {
       OkFn&& okFn, ErrFn&& errFn) && -> InvokeResult<OkFn&&, V&&> {
     static_assert(isInvocable<OkFn&&, V&&>,
                   "Cannot call 'OkFn', is it a function?");
-    static_assert(isInvocable<OkFn&&, V&&>,
+    static_assert(isInvocable<ErrFn&&, E&&>,
                   "Cannot call 'ErrFn', is it a function?");
+    static_assert(isSame<InvokeResult<OkFn&&, V&&>, InvokeResult<ErrFn&&, E&&>>,
+				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      std::forward<OkFn&&>(okFn)(std::move(valueRef()));
+      return std::forward<OkFn&&>(okFn)(std::move(valueRef()));
     else
-      std::forward<ErrFn&&>(errFn)(std::move(errRef()));
+      return std::forward<ErrFn&&>(errFn)(std::move(errRef()));
   }
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
-      OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&&> {
-    static_assert(isInvocable<OkFn&&, V&&>,
+      OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&> {
+    static_assert(isInvocable<OkFn&&, V&>,
                   "Cannot call 'OkFn', is it a function?");
-    static_assert(isInvocable<OkFn&&, V&&>,
+    static_assert(isInvocable<ErrFn&&, E&>,
                   "Cannot call 'ErrFn', is it a function?");
+	static_assert(isSame<InvokeResult<OkFn&&, V&>, InvokeResult<ErrFn&&, E&>>,
+				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      std::forward<OkFn&&>(okFn)(valueRef());
+      return std::forward<OkFn&&>(okFn)(valueRef());
     else
-      std::forward<ErrFn&&>(errFn)(errRef());
+      return std::forward<ErrFn&&>(errFn)(errRef());
   }
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
-      OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResult<OkFn&&, V&&> {
-    static_assert(isInvocable<OkFn&&, V&&>,
+      OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResult<OkFn&&, const V&> {
+    static_assert(isInvocable<OkFn&&, const V&>,
                   "Cannot call 'OkFn', is it a function?");
-    static_assert(isInvocable<OkFn&&, V&&>,
+    static_assert(isInvocable<ErrFn&&, const E&>,
                   "Cannot call 'ErrFn', is it a function?");
+	static_assert(isSame<InvokeResult<OkFn&&, const V&>, InvokeResult<ErrFn&&, const E&>>,
+				  "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      std::forward<OkFn&&>(okFn)(valueCRef());
+      return std::forward<OkFn&&>(okFn)(valueCRef());
     else
-      std::forward<ErrFn&&>(errFn)(errCRef());
+      return std::forward<ErrFn&&>(errFn)(errCRef());
   }
 
   // TODO cgustafsson: clone
@@ -283,12 +289,40 @@ class [[nodiscard]] Result {
 
 // ========================================================================== //
 
-// TODO cgustafsson: compare Ok<U> == Result<V, E>
+template <typename U, typename V, typename E>
+[[nodiscard]] constexpr bool operator==(const Ok<U>& ok, const Result<V, E>& result)
+{
+	return result == ok;
+}
 
-// TODO cgustafsson: compare Err<F> == Result<V, E>
+template <typename U, typename V, typename E>
+[[nodiscard]] constexpr bool operator!=(const Ok<U>& ok, const Result<V, E>& result)
+{
+	return result != ok;
+}
 
-// TODO cgustafsson: make_ok -> Result<V, E>
+template <typename F, typename V, typename E>
+[[nodiscard]] constexpr bool operator==(const Err<F>& err, const Result<V, E>& result)
+{
+	return result == err;
+}
 
-// TODO cgustafsson: make_err -> Result<V, E>
+template <typename F, typename V, typename E>
+[[nodiscard]] constexpr bool operator!=(const Err<F>& err, const Result<V, E>& result)
+{
+	return result == err;
+}
+
+template <typename V, typename E>
+[[nodiscard]] constexpr auto make_ok(V value) -> Result<V, E>
+{
+	return Ok<V>(std::forward<V>(value));
+}
+
+template <typename V, typename E>
+[[nodiscard]] constexpr auto make_err(E err) -> Result<V, E>
+{
+	return Err<E>(std::forward<E>(err));
+}
 
 }  // namespace dutil

@@ -13,6 +13,7 @@ set(TEST_SOURCES
   main.test.cpp
   result.test.cpp
   dtest.cpp
+  track_lifetime.test.cpp
   )
 
 add_executable (dutil_test ${TEST_SOURCES})
