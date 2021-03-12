@@ -88,6 +88,8 @@ void runTests() {
       printf("\t=%d= %s, \n", i, test.state.name);
       test.fn(test.state);
       category.fail += (test.state.fail > 0);
+	  if (test.state.pass + test.state.fail == 0)
+		  printf("\t\t%s\n", Paint("Warning, no asserts in test.", Color::BrightYellow).c_str());
       printf("\t=%d= %s, %s\n", i++, test.state.name,
              !test.state.fail ? Paint("PASSED", Color::Green).c_str()
                               : Paint("FAILED", Color::Red).c_str());
