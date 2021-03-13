@@ -234,89 +234,111 @@ class [[nodiscard]] Result {
       m_err.~E();
   }
 
-	// TODO cgustafsson: ok() -> Option<V>
+  // TODO cgustafsson: ok() -> Option<V>
 
-	// TODO cgustafsson: err() -> Option<E> 
+  // TODO cgustafsson: err() -> Option<E>
 
-  // TODO cgustafsson: getters with fatal assert
-
-	template <typename T>
-	[[nodiscard]] constexpr bool contains(const T& other) const
-	{
-		static_assert(isEqualityComparable<V, T>, "Cannot compare 'T' with 'V' in 'Result<V, E>'.");
-		if (isOk())
-			return valueCRef() == other;
-		else
-			return false;
-	}
 	
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(const Ok<U>& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
-		if (isOk())
-			return valueCRef() == other.value();
-		else
-			return false;
-	}
+	
+  // TODO cgustafsson: getter that gives ownership / unwrap
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(const Ok<U>& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
-		if (isOk())
-			return valueCRef() != other.value();
-		else
-			return true;
-	}
+  template <typename T>
+  [[nodiscard]] constexpr bool contains(const T& other) const {
+    static_assert(isEqualityComparable<V, T>,
+                  "Cannot compare 'T' with 'V' in 'Result<V, E>::contain(T)'.");
+    if (isOk())
+      return valueCRef() == other;
+    else
+      return false;
+  }
 
 	template <typename F>
-	[[nodiscard]] constexpr bool operator==(const Err<F>& other) const
+	[[nodiscard]] constexpr bool containsErr(const F& other) const
 	{
-		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
+		static_assert(isEqualityComparable<E, F>, "Cannot compare 'F' with 'E' in 'Result<V, E>::containErr(F)'.");
 		if (isErr())
-			return errCRef() == other.value();
+			return errCRef() == other;
 		else
 			return false;
 	}
 
-	template <typename F>
-	[[nodiscard]] constexpr bool operator!=(const Err<F>& other) const
-	{
-		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
-		if (isErr())
-			return errCRef() != other.value();
-		else
-			return true;
-	}
-	
-	template <typename U, typename F>
-	[[nodiscard]] constexpr bool operator==(const Result<U, F>& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
-		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(const Ok<U>& other) const {
+    static_assert(
+        isEqualityComparable<V, U>,
+        "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
+    if (isOk())
+      return valueCRef() == other.value();
+    else
+      return false;
+  }
 
-		if (isOk() && other.isOk())
-			return valueCRef() == other.valueCRef();
-		else if (isErr() && other.isErr())
-			return errCRef() == other.errCRef();
-		else
-			return false;
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(const Ok<U>& other) const {
+    static_assert(
+        isEqualityComparable<V, U>,
+        "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
+    if (isOk())
+      return valueCRef() != other.value();
+    else
+      return true;
+  }
 
-	template <typename U, typename F>
-	[[nodiscard]] constexpr bool operator!=(const Result<U, F>& other) const
-	{
-		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
-		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
-		
-		if (isOk() && other.isOk())
-			return valueCRef() != other.valueCRef();
-		else if (isErr() && other.isErr())
-			return errCRef() != other.errCRef();
-		else
-			return true;
-	}
+  template <typename F>
+  [[nodiscard]] constexpr bool operator==(const Err<F>& other) const {
+    static_assert(
+        isEqualityComparable<E, F>,
+        "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
+    if (isErr())
+      return errCRef() == other.value();
+    else
+      return false;
+  }
+
+  template <typename F>
+  [[nodiscard]] constexpr bool operator!=(const Err<F>& other) const {
+    static_assert(
+        isEqualityComparable<E, F>,
+        "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
+    if (isErr())
+      return errCRef() != other.value();
+    else
+      return true;
+  }
+
+  template <typename U, typename F>
+  [[nodiscard]] constexpr bool operator==(const Result<U, F>& other) const {
+    static_assert(isEqualityComparable<V, U>,
+                  "'V' and 'U' cannot be compared, in 'Result<V, E>' and "
+                  "'Result<U, F>'.");
+    static_assert(isEqualityComparable<E, F>,
+                  "'E' and 'F' cannot be compared, in 'Result<V, E>' and "
+                  "'Result<U, F>'.");
+
+    if (isOk() && other.isOk())
+      return valueCRef() == other.valueCRef();
+    else if (isErr() && other.isErr())
+      return errCRef() == other.errCRef();
+    else
+      return false;
+  }
+
+  template <typename U, typename F>
+  [[nodiscard]] constexpr bool operator!=(const Result<U, F>& other) const {
+    static_assert(isEqualityComparable<V, U>,
+                  "'V' and 'U' cannot be compared, in 'Result<V, E>' and "
+                  "'Result<U, F>'.");
+    static_assert(isEqualityComparable<E, F>,
+                  "'E' and 'F' cannot be compared, in 'Result<V, E>' and "
+                  "'Result<U, F>'.");
+
+    if (isOk() && other.isOk())
+      return valueCRef() != other.valueCRef();
+    else if (isErr() && other.isErr())
+      return errCRef() != other.errCRef();
+    else
+      return true;
+  }
 
   [[nodiscard]] constexpr bool isOk() const noexcept { return m_isOk; }
   [[nodiscard]] constexpr bool isErr() const noexcept { return !isOk(); }
@@ -392,11 +414,11 @@ class [[nodiscard]] Result {
   [[nodiscard]] constexpr E& errRef() noexcept { return m_err; }
   [[nodiscard]] constexpr const E& errCRef() const noexcept { return m_err; }
 
-	// TODO cgustafsson: remove this
-	// template <typename Va, typename Er>
-	// friend Va&& internal::result::unsafeValueMove(Result<Va, Er>&);
-	// template <typename Va, typename Er>
-	// friend Er&& internal::result::unsafErrMove(Result<Va, Er>&);
+  // TODO cgustafsson: remove this
+  // template <typename Va, typename Er>
+  // friend Va&& internal::result::unsafeValueMove(Result<Va, Er>&);
+  // template <typename Va, typename Er>
+  // friend Er&& internal::result::unsafErrMove(Result<Va, Er>&);
 
  private:
   union {

@@ -46,65 +46,65 @@
 /// Run all registered tests.
 #define DTEST_RUN() dtest::details::runTests()
 
-#define DASSERT_TRUE(expr)													\
+#define DASSERT_TRUE(expr)                                                 \
   do {                                                                     \
     if (!!(expr)) {                                                        \
       ++dtest_details_testBodyState.pass;                                  \
-      printf("\t\t+ Assert true " #expr " %s\n",                                \
+      printf("\t\t+ Assert true " #expr " %s\n",                           \
              dtest::details::Paint("passed", dtest::details::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
       ++dtest_details_testBodyState.fail;                                  \
-      printf("\t\t- Assert true " #expr " %s\n",                                \
+      printf("\t\t- Assert true " #expr " %s\n",                           \
              dtest::details::Paint("failed", dtest::details::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)
 
-#define DASSERT_FALSE(expr)												\
-	do {																\
-		if (!(expr)) {													\
-			++dtest_details_testBodyState.pass;							\
-			printf("\t\t+ Assert false " #expr " %s\n",						\
-				   dtest::details::Paint("passed", dtest::details::Color::Green) \
-				   .c_str());											\
-		} else {														\
-			++dtest_details_testBodyState.fail;							\
-			printf("\t\t- Assert false " #expr " %s\n",						\
-				   dtest::details::Paint("failed", dtest::details::Color::Red) \
-				   .c_str());											\
-		}																\
-	} while (0)
+#define DASSERT_FALSE(expr)                                                \
+  do {                                                                     \
+    if (!(expr)) {                                                         \
+      ++dtest_details_testBodyState.pass;                                  \
+      printf("\t\t+ Assert false " #expr " %s\n",                          \
+             dtest::details::Paint("passed", dtest::details::Color::Green) \
+                 .c_str());                                                \
+    } else {                                                               \
+      ++dtest_details_testBodyState.fail;                                  \
+      printf("\t\t- Assert false " #expr " %s\n",                          \
+             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+                 .c_str());                                                \
+    }                                                                      \
+  } while (0)
 
-#define DASSERT_EQ(a, b)												\
+#define DASSERT_EQ(a, b)                                                   \
   do {                                                                     \
     if ((a) == (b)) {                                                      \
       ++dtest_details_testBodyState.pass;                                  \
-      printf("\t\t+ Assert " #a " == " #b " %s\n",                          \
+      printf("\t\t+ Assert " #a " == " #b " %s\n",                         \
              dtest::details::Paint("passed", dtest::details::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
       ++dtest_details_testBodyState.fail;                                  \
-      printf("\t\t- Assert " #a " == " #b " %s\n",                          \
+      printf("\t\t- Assert " #a " == " #b " %s\n",                         \
              dtest::details::Paint("failed", dtest::details::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)
 
-#define DASSERT_NE(a, b)												\
-	do {																\
-		if ((a) != (b)) {												\
-			++dtest_details_testBodyState.pass;							\
-			printf("\t\t+ Assert " #a " != " #b " %s\n",					\
-				   dtest::details::Paint("passed", dtest::details::Color::Green) \
-				   .c_str());											\
-		} else {														\
-			++dtest_details_testBodyState.fail;							\
-			printf("\t\t- Assert " #a " != " #b " %s\n",					\
-				   dtest::details::Paint("failed", dtest::details::Color::Red) \
-				   .c_str());											\
-		}																\
-	} while (0)
+#define DASSERT_NE(a, b)                                                   \
+  do {                                                                     \
+    if ((a) != (b)) {                                                      \
+      ++dtest_details_testBodyState.pass;                                  \
+      printf("\t\t+ Assert " #a " != " #b " %s\n",                         \
+             dtest::details::Paint("passed", dtest::details::Color::Green) \
+                 .c_str());                                                \
+    } else {                                                               \
+      ++dtest_details_testBodyState.fail;                                  \
+      printf("\t\t- Assert " #a " != " #b " %s\n",                         \
+             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+                 .c_str());                                                \
+    }                                                                      \
+  } while (0)
 
 // ========================================================================== //
 // HELPERS
@@ -287,5 +287,5 @@ class Paint {
     }                                                                          \
   };                                                                           \
   DTest_Reg_##testName dtest_Reg_##testName{};                                 \
-  void DTest_Reg_##testName##::testBody(								\
+  void DTest_Reg_##testName## ::testBody(                                      \
       dtest::details::TestBodyState& dtest_details_testBodyState)

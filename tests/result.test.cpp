@@ -13,46 +13,52 @@ DTEST(ResultOk) {
 // EQUALITY
 // ========================================================================== //
 
-DTEST(eq_ok_err)
+DTEST(contains)
 {
-	dutil::Result<int, float> result = dutil::Ok<int>(15);
-	auto ok = dutil::Ok<int>(15);
-	auto err = dutil::Err<float>(15.f);
-	DASSERT_TRUE(result == ok);
-	DASSERT_FALSE(result == err);
+	const auto resultOk = dutil::makeOk<int, std::string>(-133);
+	const auto resultErr = dutil::makeErr<int, std::string>(std::string("wow"));
+	DASSERT_TRUE(resultOk.contains(-133));
+	DASSERT_TRUE(resultErr.containsErr(std::string("wow")));
+	DASSERT_FALSE(resultOk.containsErr(std::string("wow")));
+	DASSERT_FALSE(resultErr.contains(-133));
 }
 
-DTEST(neq_ok_err)
-{
-	dutil::Result<int, float> result = dutil::Ok<int>(15);
-	auto ok = dutil::Ok<int>(15);
-	auto err = dutil::Err<float>(15.f);
-	DASSERT_FALSE(result != ok);
-	DASSERT_TRUE(result != err);
+DTEST(eq_ok_err) {
+  dutil::Result<int, float> result = dutil::Ok<int>(15);
+  auto ok = dutil::Ok<int>(15);
+  auto err = dutil::Err<float>(15.f);
+  DASSERT_TRUE(result == ok);
+  DASSERT_FALSE(result == err);
 }
 
-DTEST(eq_result)
-{
-	const auto AOk = dutil::makeOk<int, char>(42);
-	const auto AErr = dutil::makeErr<int, char>('X');
-	const auto BOk = dutil::makeOk<int, char>(42);
-	const auto BErr = dutil::makeErr<int, char>('X');
-	DASSERT_TRUE(AOk == BOk);
-	DASSERT_FALSE(AOk == BErr);
-	DASSERT_FALSE(AErr == BOk);
-	DASSERT_TRUE(AErr == BErr);
+DTEST(neq_ok_err) {
+  dutil::Result<int, float> result = dutil::Ok<int>(15);
+  auto ok = dutil::Ok<int>(15);
+  auto err = dutil::Err<float>(15.f);
+  DASSERT_FALSE(result != ok);
+  DASSERT_TRUE(result != err);
 }
 
-DTEST(neq_result)
-{
-	const auto AOk = dutil::makeOk<int, char>(42);
-	const auto AErr = dutil::makeErr<int, char>('X');
-	const auto BOk = dutil::makeOk<int, char>(42);
-	const auto BErr = dutil::makeErr<int, char>('X');
-	DASSERT_FALSE(AOk != BOk);
-	DASSERT_TRUE(AOk != BErr);
-	DASSERT_TRUE(AErr != BOk);
-	DASSERT_FALSE(AErr != BErr);
+DTEST(eq_result) {
+  const auto AOk = dutil::makeOk<int, char>(42);
+  const auto AErr = dutil::makeErr<int, char>('X');
+  const auto BOk = dutil::makeOk<int, char>(42);
+  const auto BErr = dutil::makeErr<int, char>('X');
+  DASSERT_TRUE(AOk == BOk);
+  DASSERT_FALSE(AOk == BErr);
+  DASSERT_FALSE(AErr == BOk);
+  DASSERT_TRUE(AErr == BErr);
+}
+
+DTEST(neq_result) {
+  const auto AOk = dutil::makeOk<int, char>(42);
+  const auto AErr = dutil::makeErr<int, char>('X');
+  const auto BOk = dutil::makeOk<int, char>(42);
+  const auto BErr = dutil::makeErr<int, char>('X');
+  DASSERT_FALSE(AOk != BOk);
+  DASSERT_TRUE(AOk != BErr);
+  DASSERT_TRUE(AErr != BOk);
+  DASSERT_FALSE(AErr != BErr);
 }
 
 // ========================================================================== //
