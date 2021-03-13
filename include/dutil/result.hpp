@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 
-// NOTE: For a better and more complete result library, check out:
-// https://github.com/lamarrr/STX
+// NOTE: Inspired by https://github.com/lamarrr/STX, check it out!
 
 #pragma once
 
+#include <dutil/assert.hpp>
 #include <dutil/traits.hpp>
 #include <dutil/types.hpp>
 #include <utility>
@@ -238,49 +238,55 @@ class [[nodiscard]] Result {
 
   // TODO cgustafsson: err() -> Option<E>
 
-	[[nodiscard]] V& value() & noexcept
-	{
-		// TODO cgustafsson: crash on not ok
-		return valueRef();
-	}
+  [[nodiscard]] V& value() & noexcept {
+    // TODO cgustafsson: crash on not ok
+    return valueRef();
+  }
 
-	[[nodiscard]] const V& value() const& noexcept
-	{
-		// TODO cgustafsson: crash on not ok
-		return valueCRef();
-	}
+  [[nodiscard]] const V& value() const& noexcept {
+    // TODO cgustafsson: crash on not ok
+    return valueCRef();
+  }
 
-	[[nodiscard]] E& err() & noexcept
-	{
-		// TODO cgustafsson: crash on not err
-		return errRef();
-	}
+  [[nodiscard]] E& err() & noexcept {
+    // TODO cgustafsson: crash on not err
+    return errRef();
+  }
 
-	[[nodiscard]] const E& err() const& noexcept
-	{
-		// TODO cgustafsson: crash on not err
-		return errCRef();
-	}
-	
+  [[nodiscard]] const E& err() const& noexcept {
+    // TODO cgustafsson: crash on not err
+    return errCRef();
+  }
+
   // TODO cgustafsson: getter that gives ownership / unwrap
 
-	/// Create a non owning result, referencing the immutable data of the original.
-	[[nodiscard]] constexpr Result<ConstRef<V>, ConstRef<E>> asConstRef() const& noexcept
-	{
-		if (isOk())
-			return Ok<ConstRef<V>>(ConstRef<V>(valueCRef()));
-		else
-			return Err<ConstRef<E>>(ConstRef<E>(errCRef()));
-	}
+  [[nodiscard]] V unwrap() && {
+    DUTIL_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
+    return std::move(valueRef());
+  }
 
-	/// Create a non owning result, referencing the mutable data of the original.
-	[[nodiscard]] constexpr Result<MutRef<V>, MutRef<E>> asMutRef() & noexcept
-	{
-		if (isOk())
-			return Ok<MutRef<V>>(MutRef<V>(valueRef()));
-		else
-			return Err<MutRef<E>>(MutRef<E>(errRef()));
-	}
+  [[nodiscard]] E unwrapErr() && {
+    DUTIL_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
+    return std::move(errRef());
+  }
+
+  /// Create a non owning result, referencing the immutable data of the
+  /// original.
+  [[nodiscard]] constexpr Result<ConstRef<V>, ConstRef<E>> asConstRef()
+      const& noexcept {
+    if (isOk())
+      return Ok<ConstRef<V>>(ConstRef<V>(valueCRef()));
+    else
+      return Err<ConstRef<E>>(ConstRef<E>(errCRef()));
+  }
+
+  /// Create a non owning result, referencing the mutable data of the original.
+  [[nodiscard]] constexpr Result<MutRef<V>, MutRef<E>> asMutRef() & noexcept {
+    if (isOk())
+      return Ok<MutRef<V>>(MutRef<V>(valueRef()));
+    else
+      return Err<MutRef<E>>(MutRef<E>(errRef()));
+  }
 
   template <typename T>
   [[nodiscard]] constexpr bool contains(const T& other) const {
@@ -292,15 +298,16 @@ class [[nodiscard]] Result {
       return false;
   }
 
-	template <typename F>
-	[[nodiscard]] constexpr bool containsErr(const F& other) const
-	{
-		static_assert(isEqualityComparable<E, F>, "Cannot compare 'F' with 'E' in 'Result<V, E>::containErr(F)'.");
-		if (isErr())
-			return errCRef() == other;
-		else
-			return false;
-	}
+  template <typename F>
+  [[nodiscard]] constexpr bool containsErr(const F& other) const {
+    static_assert(
+        isEqualityComparable<E, F>,
+        "Cannot compare 'F' with 'E' in 'Result<V, E>::containErr(F)'.");
+    if (isErr())
+      return errCRef() == other;
+    else
+      return false;
+  }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(const Ok<U>& other) const {

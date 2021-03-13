@@ -134,7 +134,7 @@ namespace dtest {
 template <typename T>
 class TrackLifetime {
  public:
-	TrackLifetime(T object) : m_object(std::move(object)) {}
+  TrackLifetime(T object) : m_object(std::move(object)) {}
 
   /// Amount of times this object has been copied.
   [[nodiscard]] constexpr int getCopies() const noexcept { return m_copies; }
@@ -143,7 +143,7 @@ class TrackLifetime {
   [[nodiscard]] constexpr int getMoves() const noexcept { return m_moves; }
 
   [[nodiscard]] constexpr const T& getObject() const { return m_object; }
-	[[nodiscard]] constexpr T& getObject() { return m_object; }
+  [[nodiscard]] constexpr T& getObject() { return m_object; }
 
   TrackLifetime(const TrackLifetime& other)
       : m_object(other.m_object), m_parent(other.m_parent) {
@@ -167,19 +167,19 @@ class TrackLifetime {
     return *this;
   }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator==(const TrackLifetime<U>& other) const noexcept
-	{
-		static_assert(dutil::isEqualityComparable<T,U>);
-		return getObject() == other.getObject();
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(
+      const TrackLifetime<U>& other) const noexcept {
+    static_assert(dutil::isEqualityComparable<T, U>);
+    return getObject() == other.getObject();
+  }
 
-	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(const TrackLifetime<U>& other) const noexcept
-	{
-		static_assert(dutil::isEqualityComparable<T,U>);
-		return getObject() != other.getObject();
-	}
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(
+      const TrackLifetime<U>& other) const noexcept {
+    static_assert(dutil::isEqualityComparable<T, U>);
+    return getObject() != other.getObject();
+  }
 
  private:
   TrackLifetime<T>* getParent() {
@@ -293,9 +293,9 @@ class Paint {
 }  // namespace dtest::details
 
 #define DTEST_REGISTER(testName, fileName, filePath)                           \
-  struct DTest_Reg_##testName##_ {                                                \
+  struct DTest_Reg_##testName##_ {                                             \
     void testBody(dtest::details::TestBodyState& dtest_details_testBodyState); \
-    DTest_Reg_##testName##_() {                                                   \
+    DTest_Reg_##testName##_() {                                                \
       dtest::details::dtestAdd(                                                \
           [this](dtest::details::TestBodyState& dtest_details_testBodyState) { \
             testBody(dtest_details_testBodyState);                             \
@@ -303,6 +303,6 @@ class Paint {
           #testName, fileName, dutil::hash64fnv1a(filePath));                  \
     }                                                                          \
   };                                                                           \
-  DTest_Reg_##testName##_ dtest_Reg_##testName{};                                 \
+  DTest_Reg_##testName##_ dtest_Reg_##testName{};                              \
   void DTest_Reg_##testName##_::testBody(                                      \
       dtest::details::TestBodyState& dtest_details_testBodyState)

@@ -83,24 +83,30 @@ void runTests() {
     printf(
         "----------------------------------------------------------------------"
         "\n=== %s, running %d tests.\n",
-        Paint(category.name, Color::Magenta).c_str(), static_cast<int>(category.tests.size()));
+        Paint(category.name, Color::Magenta).c_str(),
+        static_cast<int>(category.tests.size()));
 
     int i = 0;
     for (TestCase& test : category.tests) {
-		printf("\t=%d= %s ...... \n", i, Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal).c_str());
+      printf("\t=%d= %s ...... \n", i,
+             Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                 .c_str());
       test.fn(test.state);
       category.fail += (test.state.fail > 0);
-	  assertCount += test.state.pass + test.state.fail;
+      if (test.state.fail == 0) category.pass++;
+      assertCount += test.state.pass + test.state.fail;
       if (test.state.pass + test.state.fail == 0) {
         printf(
             "\t\t%s\n",
             Paint("Warning, no asserts in test.", Color::BrightYellow).c_str());
         ++warnings;
       }
-      printf("\t=%d= %s %s\n", i, Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal).c_str(),
+      printf("\t=%d= %s %s\n", i,
+             Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                 .c_str(),
              !test.state.fail ? Paint("PASSED", Color::Green).c_str()
                               : Paint("FAILED", Color::Red).c_str());
-	  ++i;
+      ++i;
     }
 
     printf("=== %s, %s\n", Paint(category.name, Color::Magenta).c_str(),
