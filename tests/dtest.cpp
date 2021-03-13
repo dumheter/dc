@@ -98,7 +98,7 @@ void runTests() {
       if (test.state.pass + test.state.fail == 0) {
         printf(
             "\t\t%s\n",
-            Paint("Warning, no asserts in test.", Color::BrightYellow).c_str());
+            Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
       printf("\t=%d= %s %s\n", i,

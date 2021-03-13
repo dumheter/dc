@@ -29,9 +29,18 @@
 #include <dutil/assert.hpp>
 #include <dutil/traits.hpp>
 #include <dutil/types.hpp>
+
 #include <utility>
 
 namespace dutil {
+
+struct NoneType;
+
+template <typename V>
+struct Some;
+
+template <typename V>
+struct Option;
 
 template <typename V>
 struct Ok;
@@ -44,14 +53,252 @@ class Result;
 
 // ========================================================================== //
 
+struct [[nodiscard]] NoneType
+{
+	constexpr NoneType() noexcept = default;
+	constexpr NoneType(const NoneType&) noexcept = default;
+	constexpr NoneType& operator=(const NoneType&) noexcept = default;
+	constexpr NoneType(NoneType&&) noexcept = default;
+	constexpr NoneType& operator=(NoneType&&) noexcept = default;
+	
+	[[nodiscard]] constexpr bool operator==(const NoneType&) const noexcept
+	{
+		return false;
+	}
+
+	[[nodiscard]] constexpr bool operator!=(const NoneType&) const noexcept
+	{
+		return true;
+	}
+
+	template <typename V>
+	[[nodiscard]] constexpr bool operator==(const Some<V>&) const noexcept
+	{
+		return false;
+	}
+
+	template <typename V>
+	[[nodiscard]] constexpr bool operator!=(const Some<V>&) const noexcept
+	{
+		return true;
+	}
+};
+
+constexpr const NoneType None{};
+
+// ========================================================================== //
+
+template <typename V>
+struct [[nodiscard]] Some
+{
+	static_assert(isMovable<V>, "Value type 'V' in 'Some<V>' must be movable.");
+	static_assert(!isReference<V>,
+				  "Value type 'V' in 'Some<V>' cannot be a reference."
+				  " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
+
+	using value_type = V;
+	
+	explicit constexpr Some(V&& value) : m_value(std::forward<V&&>(value)) {}
+
+	constexpr Some(const Some<V>& other) = default;
+	constexpr Some& operator=(const Some<V>& other) = default;
+	constexpr Some(Some<V>&& other) = default;
+	constexpr Some& operator=(Some<V>&& other) = default;
+
+	[[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
+	[[nodiscard]] constexpr V& value() & noexcept { return m_value; }
+	[[nodiscard]] constexpr const V value() const&& noexcept { return std::move(m_value); }
+	[[nodiscard]] constexpr V value() && noexcept { return std::move(m_value); }
+
+	template <typename U>
+	[[nodiscard]] constexpr bool operator==(const Some<U> other) const noexcept
+	{
+		static_assert(isEqualityComparable<V, U>,
+					  "Value type 'V' in 'Some<V>' is not equality comparable "
+					  "(operator== and operator!= defined) with 'U' in 'Some<U>'.");
+		return value() == other.value();
+	}
+
+	template <typename U>
+	[[nodiscard]] constexpr bool operator!=(const Some<U> other) const noexcept
+	{
+		static_assert(isEqualityComparable<V, U>,
+					  "Value type 'V' in 'Some<V>' is not equality comparable "
+					  "(operator== and operator!= defined) with 'U' in 'Some<U>'.");
+		return value() != other.value();
+	}
+
+	[[nodiscard]] constexpr bool operator==(const NoneType other) const noexcept
+	{
+		return false;
+	}
+
+	[[nodiscard]] constexpr bool operator!=(const NoneType other) const noexcept
+	{
+		return true;
+	}
+	
+	Some() = delete;
+	
+  private:
+	V m_value;
+
+	template <typename Vu>
+	friend struct Option;
+};
+
+// ========================================================================== //
+
+template <typename V>
+struct [[nodiscard]] Option
+{
+  public:
+	static_assert(isMovable<V>, "Value type 'V' in 'Option<V>' must be movable.");
+	static_assert(!isReference<V>,
+				  "Value type 'V' in 'Option<V>' cannot be a reference."
+				  " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
+
+	using value_type = V;
+
+	constexpr Option() noexcept : m_isSome(false) {}
+
+	constexpr Option(Some<V>&& some)
+			: m_some(std::forward<V>(some.m_value))
+			, m_isSome(true) {}
+
+	constexpr Option(const NoneType&) noexcept : m_isSome(false) {}
+
+	Option(Option&& other)
+			: m_isSome(other.m_isSome)
+	{
+		if (other.isSome())
+			new (&m_some) V(std::move(other.m_some));
+	}
+
+	Option& operator=(Option&& other)
+	{
+		if (isSome() && other.isSome())
+			std::swap(m_some, other.m_some); // TODO cgustafsson: Revisit this swap, maybe should be removed.
+		else if (isNone() && other.isSome())
+		{
+			m_isSome = true;
+			new (&m_some) V(std::move(other.m_some));
+			other.m_isSome = false;
+		}
+		else if (isSome() && other.isNone())
+		{
+			m_isSome = false;
+			m_some.~V();
+		}
+		/* else // both are none, do nothing */
+
+		return *this;
+	}
+
+	~Option() noexcept
+	{
+		if (isSome())
+			m_some.~V();
+	}
+	
+	DUTIL_DELETE_COPY(Option);
+
+	[[nodiscard]] constexpr Option<V> clone() const
+	{
+		static_assert(isCopyConstructible<V>, "'V' in 'Some<V>' is not copy constructible.");
+
+		if (isSome())
+			return Some<V>(std::move(V(valueCRef())));
+		else
+			return None;
+	}
+
+	[[nodiscard]] constexpr auto asMutRef() & -> Option<MutRef<V>> {
+		DUTIL_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return Some<MutRef<V>>(MutRef<V>(valueRef()));
+	}
+
+	[[nodiscard]] constexpr auto asConstRef() const& -> Option<ConstRef<V>> {
+		DUTIL_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return Some<ConstRef<V>>(ConstRef<V>(valueCRef()));
+	}
+
+	[[nodiscard]] constexpr V& value() &
+	{
+		DUTIL_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return valueRef();
+	}
+
+	[[nodiscard]] constexpr const V& value() const&
+	{
+		DUTIL_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return valueCRef();
+	}
+
+	[[nodiscard]] constexpr V unwrap() &&
+	{
+		DUTIL_ASSERT(isSome(), "Tried to unwrap value 'Some' when Option is 'None'.");
+		return std::move(valueRef());
+	}
+
+	[[nodiscard]] constexpr bool isSome() const { return m_isSome; }
+	[[nodiscard]] constexpr bool isNone() const { return !m_isSome; }
+	[[nodiscard]] constexpr operator bool() const noexcept { return isSome(); }
+
+	template <typename U>
+	[[nodiscard]] constexpr bool contains(const U& other) const
+	{
+		static_assert(isEqualityComparable<V, U>, "Cannot compare 'U' with 'V' in 'Option<V>::contains(U)'.");
+		if (isSome())
+			return value() == other;
+		else
+			return false;
+	}
+	
+	template <typename U>
+	[[nodiscard]] constexpr bool operator==(const Option<U>& other) const
+	{
+		static_assert(isEqualityComparable<V, U>,
+					  "Value type 'V' in 'Option<V>' is not equality comparable "
+					  "(operator== and operator!= defined) with 'U' in 'Option<U>'.");
+		if (isSome() && other.isSome())
+			return value() == other.value();
+		else
+			return false;
+	}
+
+	template <typename U>
+	[[nodiscard]] constexpr bool operator!=(const Option<U>& other) const
+	{
+		static_assert(isEqualityComparable<V, U>,
+					  "Value type 'V' in 'Option<V>' is not equality comparable "
+					  "(operator== and operator!= defined) with 'U' in 'Option<U>'.");
+		if (isSome() && other.isSome())
+			return value() != other.value();
+		else
+			return true;
+	}
+
+  private:
+	[[nodiscard]] constexpr V& valueRef() { return m_some; }
+	[[nodiscard]] constexpr const V& valueCRef() const { return m_some; }
+	
+  private:
+	union {
+		V m_some;
+	};
+	bool m_isSome;
+};
+
+// ========================================================================== //
+
 template <typename V>
 struct [[nodiscard]] Ok {
   static_assert(isMovable<V>, "Value type 'V' in 'Ok<V>' must be movable.");
   static_assert(
       !isReference<V>,
       "Value type 'V' in 'Ok<V>' cannot be a reference."
-      " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
-      " be used for this case.");
+      " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
 
   using value_type = V;
 
@@ -64,16 +311,16 @@ struct [[nodiscard]] Ok {
   constexpr Ok(Ok&&) = default;
   constexpr Ok& operator=(Ok&&) = default;
 
-  [[nodiscard]] constexpr V const& value() const& noexcept { return m_value; }
+  [[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr V const value() const&& { return std::move(m_value); }
+  [[nodiscard]] constexpr const V value() const&& { return std::move(m_value); }
   [[nodiscard]] constexpr V value() && { return std::move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const {
     static_assert(isEqualityComparable<V, U>,
                   "Value type 'V' in 'Ok<V>' is not equality comparable "
-                  "(operator== and operator!= defined) with 'U'");
+                  "(operator== and operator!= defined) with 'U' in 'Ok<U>'.");
     return value() == other.value();
   }
 
@@ -81,7 +328,7 @@ struct [[nodiscard]] Ok {
   [[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const {
     static_assert(isEqualityComparable<V, U>,
                   "Value type 'V' in 'Ok<V>' is not equality comparable "
-                  "(operator== and operator!= defined) with 'U'");
+                  "(operator== and operator!= defined) with 'U' in 'Ok<U>'.");
     return value() != other.value();
   }
 
@@ -102,13 +349,12 @@ struct [[nodiscard]] Ok {
 // ========================================================================== //
 
 template <typename E>
-struct Err {
+struct [[nodiscard]] Err {
   static_assert(isMovable<E>, "Error type 'E' in 'Err<E>' must be movable.");
   static_assert(
       !isReference<E>,
       "Error type 'E' in 'Err<E>' cannot be a reference."
-      " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
-      " used for this case.");
+      " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
 
   using value_type = E;
 
@@ -119,16 +365,16 @@ struct Err {
   constexpr Err(Err&&) = default;
   constexpr Err& operator=(Err&&) = default;
 
-  [[nodiscard]] constexpr E const& value() const& noexcept { return m_value; }
+  [[nodiscard]] constexpr const E& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr E& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr E const value() const&& { return std::move(m_value); }
+  [[nodiscard]] constexpr const E value() const&& { return std::move(m_value); }
   [[nodiscard]] constexpr E value() && { return std::move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Err<U> const& other) const {
     static_assert(isEqualityComparable<E, U>,
                   "Error type 'E' in 'Err<E>' is not equality comparable "
-                  "(operator== and operator!= defined) with 'U'");
+                  "(operator== and operator!= defined) with 'U' in 'Err<U>'.");
     return value() == other.value();
   }
 
@@ -136,7 +382,7 @@ struct Err {
   [[nodiscard]] constexpr bool operator!=(Err<U> const& other) const {
     static_assert(isEqualityComparable<E, U>,
                   "Error type 'E' in 'Err<E>' is not equality comparable "
-                  "(operator== and operator!= defined) with 'U'");
+                  "(operator== and operator!= defined) with 'U' in 'Err<U>'.");
     return value() != other.value();
   }
 
@@ -184,15 +430,13 @@ class [[nodiscard]] Result {
   static_assert(
       !isReference<V>,
       "Value type 'V' in 'Result<V, E>' cannot be a reference."
-      " dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef can"
-      " be used for this case.");
+      " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
   static_assert(isMovable<E>,
                 "Error type 'E' in 'Result<V, E>' must be movable.");
   static_assert(
       !isReference<E>,
       "Error type 'E' in 'Result<V, E>' cannot be a reference."
-      " dutil::Ref, or the stricter dutil::ConstRef, dutil::MutRef can be"
-      " used for this case.");
+      " You might want to use dutil::Ref, or the stricter dutil::ConstRef and dutil::MutRef.");
 
   using value_type = V;
   using error_type = E;
@@ -239,26 +483,24 @@ class [[nodiscard]] Result {
   // TODO cgustafsson: err() -> Option<E>
 
   [[nodiscard]] V& value() & noexcept {
-    // TODO cgustafsson: crash on not ok
-    return valueRef();
+	DUTIL_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+	return valueRef();
   }
 
   [[nodiscard]] const V& value() const& noexcept {
-    // TODO cgustafsson: crash on not ok
+	DUTIL_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
     return valueCRef();
   }
 
   [[nodiscard]] E& err() & noexcept {
-    // TODO cgustafsson: crash on not err
+	DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errRef();
   }
 
   [[nodiscard]] const E& err() const& noexcept {
-    // TODO cgustafsson: crash on not err
+	DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errCRef();
   }
-
-  // TODO cgustafsson: getter that gives ownership / unwrap
 
   [[nodiscard]] V unwrap() && {
     DUTIL_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
@@ -288,10 +530,10 @@ class [[nodiscard]] Result {
       return Err<MutRef<E>>(MutRef<E>(errRef()));
   }
 
-  template <typename T>
-  [[nodiscard]] constexpr bool contains(const T& other) const {
-    static_assert(isEqualityComparable<V, T>,
-                  "Cannot compare 'T' with 'V' in 'Result<V, E>::contain(T)'.");
+  template <typename U>
+  [[nodiscard]] constexpr bool contains(const U& other) const {
+    static_assert(isEqualityComparable<V, U>,
+                  "Cannot compare 'U' with 'V' in 'Result<V, E>::contains(U)'.");
     if (isOk())
       return valueCRef() == other;
     else
@@ -302,7 +544,7 @@ class [[nodiscard]] Result {
   [[nodiscard]] constexpr bool containsErr(const F& other) const {
     static_assert(
         isEqualityComparable<E, F>,
-        "Cannot compare 'F' with 'E' in 'Result<V, E>::containErr(F)'.");
+        "Cannot compare 'F' with 'E' in 'Result<V, E>::containsErr(F)'.");
     if (isErr())
       return errCRef() == other;
     else
@@ -501,6 +743,16 @@ template <typename F, typename V, typename E>
   return result == err;
 }
 
+template <typename V>
+[[nodiscard]] constexpr auto makeNone() noexcept -> Option<V> {
+	return None;
+}
+
+template <typename V>
+[[nodiscard]] constexpr auto makeSome(V value) -> Option<V> {
+	return Some<V>(std::forward<V>(value));
+}
+
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeOk(V value) -> Result<V, E> {
   return Ok<V>(std::forward<V>(value));
@@ -509,6 +761,16 @@ template <typename V, typename E>
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeErr(E err) -> Result<V, E> {
   return Err<E>(std::forward<E>(err));
+}
+
+template <typename V, typename E>
+[[nodiscard]] auto makeOkRef(V& value) noexcept -> Result<Ref<V>, Ref<E>> {
+	return Ok<V>(Ref<V>(std::forward<V&>(value)));
+}
+
+template <typename V, typename E>
+[[nodiscard]] auto makeErrRef(E& err) noexcept -> Result<Ref<V>, Ref<E>> {
+	return Err<E>(Ref<E>(std::forward<E&>(err)));
 }
 
 }  // namespace dutil

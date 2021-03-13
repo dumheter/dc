@@ -42,6 +42,7 @@
 ///   {
 ///      ...
 ///   }
+
 #define DTEST(testName) DTEST_REGISTER(testName, DUTIL_FILENAME, __FILE__)
 
 /// Run all registered tests.
@@ -132,7 +133,7 @@ namespace dtest {
 ///  ASSERT(parent.getMoves() == 2);
 ///
 template <typename T>
-class TrackLifetime {
+class [[nodiscard]] TrackLifetime {
  public:
   TrackLifetime(T object) : m_object(std::move(object)) {}
 
@@ -144,6 +145,8 @@ class TrackLifetime {
 
   [[nodiscard]] constexpr const T& getObject() const { return m_object; }
   [[nodiscard]] constexpr T& getObject() { return m_object; }
+
+	[[nodiscard]] constexpr int getDestructs() const { return m_destructs; }
 
   TrackLifetime(const TrackLifetime& other)
       : m_object(other.m_object), m_parent(other.m_parent) {
@@ -166,6 +169,8 @@ class TrackLifetime {
     getParent()->m_moves++;
     return *this;
   }
+
+	~TrackLifetime() { getParent()->m_destructs++; }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(
@@ -192,6 +197,7 @@ class TrackLifetime {
   TrackLifetime<T>* m_parent = this;
   mutable int m_copies = 0;
   int m_moves = 0;
+	int m_destructs = 0;
 };
 
 }  // namespace dtest
@@ -292,10 +298,23 @@ class Paint {
 
 }  // namespace dtest::details
 
-#define DTEST_REGISTER(testName, fileName, filePath)                           \
-  struct DTest_Reg_##testName##_ {                                             \
+
+#define DTEST_STRINGIFY(expr) #expr
+
+#define DTEST_CONCAT(a, b) DTEST_CONCAT_IMPL(a, b)
+#define DTEST_CONCAT_IMPL(a, b) a##b
+
+#define DTEST_MAKE_CLASS_NAME(testName, line) \
+	DTEST_MAKE_CLASS_NAME_IMPL(testName, line)
+#define DTEST_MAKE_CLASS_NAME_IMPL(testName, line) DTest_##testName##line##_
+
+#define DTEST_REGISTER(testName, fileName, filePath) DTEST_REGISTER_AUX(testName, fileName, filePath) 
+
+#define DTEST_REGISTER_AUX(testName, fileName, filePath)				\
+	static_assert(sizeof(DTEST_STRINGIFY(testName)) > 1, "Test names cannot be empty."); \
+	struct DTEST_MAKE_CLASS_NAME(testName, __LINE__) { \
     void testBody(dtest::details::TestBodyState& dtest_details_testBodyState); \
-    DTest_Reg_##testName##_() {                                                \
+    DTEST_MAKE_CLASS_NAME(testName, __LINE__)() {		\
       dtest::details::dtestAdd(                                                \
           [this](dtest::details::TestBodyState& dtest_details_testBodyState) { \
             testBody(dtest_details_testBodyState);                             \
@@ -303,6 +322,6 @@ class Paint {
           #testName, fileName, dutil::hash64fnv1a(filePath));                  \
     }                                                                          \
   };                                                                           \
-  DTest_Reg_##testName##_ dtest_Reg_##testName{};                              \
-  void DTest_Reg_##testName##_::testBody(                                      \
+	DTEST_MAKE_CLASS_NAME(testName, __LINE__) dtest_Reg_##testName{}; \
+	void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody( \
       dtest::details::TestBodyState& dtest_details_testBodyState)

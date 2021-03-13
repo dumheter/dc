@@ -12,6 +12,7 @@ include_directories(.)
 set(TEST_SOURCES
   main.test.cpp
   result.test.cpp
+  result.option.test.cpp
   dtest.cpp
   track_lifetime.test.cpp
   )
