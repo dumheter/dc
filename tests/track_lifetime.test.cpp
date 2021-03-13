@@ -7,9 +7,9 @@ DTEST(copies) {
   child1 = child2;
   parent = child1;
   parent = child2;
-  DTEST_ASSERT_EQ(parent.getCopies(), 5);
-  DTEST_ASSERT_EQ(parent.getMoves(), 0);
-  DTEST_ASSERT_EQ(parent.getObject(), 13);
+  DASSERT_EQ(parent.getCopies(), 5);
+  DASSERT_EQ(parent.getMoves(), 0);
+  DASSERT_EQ(parent.getObject(), 13);
 }
 
 DTEST(moves) {
@@ -19,7 +19,7 @@ DTEST(moves) {
   child1 = std::move(child2);
   parent = std::move(child1);
   parent = std::move(child2);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
-  DTEST_ASSERT_EQ(parent.getMoves(), 5);
-  DTEST_ASSERT_EQ(parent.getObject(), 7);
+  DASSERT_EQ(parent.getCopies(), 0);
+  DASSERT_EQ(parent.getMoves(), 5);
+  DASSERT_EQ(parent.getObject(), 7);
 }

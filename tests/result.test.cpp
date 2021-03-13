@@ -5,8 +5,8 @@
 
 DTEST(ResultOk) {
   dutil::Result<int, const char*> result = dutil::Ok(1337);
-  DTEST_ASSERT(result.isOk());
-  DTEST_ASSERT(!result.isErr());
+  DASSERT(result.isOk());
+  DASSERT(!result.isErr());
 }
 
 // ========================================================================== //
@@ -15,7 +15,8 @@ DTEST(ResultOk) {
 
 DTEST(eq_ok)
 {
-	
+	dutil::Result<int, float> result = dutil::Ok<int>(15);
+	auto ok = dutil::Ok<int>(15);
 }
 
 DTEST(neq_ok)
@@ -55,8 +56,8 @@ DTEST(match_rvalue_ok) {
       dutil::Ok(std::move(parent));
   float value = std::move(okResult).match([](TrackedInt value) { return 1.f; },
                                           [](std::string err) { return -1.f; });
-  DTEST_ASSERT(value > 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value > 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 DTEST(match_rvalue_err) {
@@ -66,8 +67,8 @@ DTEST(match_rvalue_err) {
   dutil::Result<float, TrackedInt> errResult = dutil::Err(std::move(parent));
   float value = std::move(errResult).match([](float ok) { return 1.f; },
                                            [](TrackedInt err) { return -1.f; });
-  DTEST_ASSERT(value < 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value < 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 DTEST(match_lvalue_ok) {
@@ -78,8 +79,8 @@ DTEST(match_lvalue_ok) {
       dutil::Ok(std::move(parent));
   float value = okResult.match([](TrackedInt& value) { return 1.f; },
                                [](std::string& err) { return -1.f; });
-  DTEST_ASSERT(value > 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value > 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 DTEST(match_lvalue_err) {
@@ -89,8 +90,8 @@ DTEST(match_lvalue_err) {
   dutil::Result<float, TrackedInt> errResult = dutil::Err(std::move(parent));
   float value = errResult.match([](float& ok) { return 1.f; },
                                 [](TrackedInt& err) { return -1.f; });
-  DTEST_ASSERT(value < 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value < 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 DTEST(match_const_lvalue_ok) {
@@ -101,8 +102,8 @@ DTEST(match_const_lvalue_ok) {
       dutil::Ok(std::move(parent));
   float value = okResult.match([](const TrackedInt& value) { return 1.f; },
                                [](const std::string& err) { return -1.f; });
-  DTEST_ASSERT(value > 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value > 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 DTEST(match_const_lvalue_err) {
@@ -113,8 +114,8 @@ DTEST(match_const_lvalue_err) {
       dutil::Err(std::move(parent));
   float value = errResult.match([](const float& ok) { return 1.f; },
                                 [](const TrackedInt& err) { return -1.f; });
-  DTEST_ASSERT(value < 0.f);
-  DTEST_ASSERT_EQ(parent.getCopies(), 0);
+  DASSERT(value < 0.f);
+  DASSERT_EQ(parent.getCopies(), 0);
 }
 
 // ========================================================================== //
@@ -129,7 +130,7 @@ DTEST(clone) {
   auto clone = okResult.clone();
   auto cloneOfClone = clone.clone();
 
-  DTEST_ASSERT_EQ(original.getCopies(), 2);
+  DASSERT_EQ(original.getCopies(), 2);
 }
 
 // ========================================================================== //
@@ -138,10 +139,10 @@ DTEST(clone) {
 
 DTEST(make_ok) {
   auto result = dutil::make_ok<float, int>(13.f);
-  DTEST_ASSERT(result.isOk());
+  DASSERT(result.isOk());
 }
 
 DTEST(make_err) {
   auto result = dutil::make_err<int, std::string>("hey");
-  DTEST_ASSERT(result.isErr());
+  DASSERT(result.isErr());
 }

@@ -46,7 +46,7 @@
 /// Run all registered tests.
 #define DTEST_RUN() dtest::details::runTests()
 
-#define DTEST_ASSERT(expr)                                                 \
+#define DASSERT(expr)													\
   do {                                                                     \
     if (!!(expr)) {                                                        \
       ++dtest_details_testBodyState.pass;                                  \
@@ -61,7 +61,7 @@
     }                                                                      \
   } while (0)
 
-#define DTEST_ASSERT_EQ(a, b)                                              \
+#define DASSERT_EQ(a, b)												\
   do {                                                                     \
     if ((a) == (b)) {                                                      \
       ++dtest_details_testBodyState.pass;                                  \
@@ -257,5 +257,5 @@ class Paint {
     }                                                                          \
   };                                                                           \
   DTest_Reg_##testName dtest_Reg_##testName{};                                 \
-  void DTest_Reg_##testName## ::testBody(                                      \
+  void DTest_Reg_##testName##::testBody(								\
       dtest::details::TestBodyState& dtest_details_testBodyState)
