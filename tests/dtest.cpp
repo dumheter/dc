@@ -76,6 +76,7 @@ void runTests() {
   dutil::Stopwatch stopwatch;
 
   size_t testCount = 0;
+  int warnings = 0;
   for (auto& [_, category] : r.getTestCategories()) {
     testCount += category.tests.size();
     printf(
@@ -89,7 +90,10 @@ void runTests() {
       test.fn(test.state);
       category.fail += (test.state.fail > 0);
 	  if (test.state.pass + test.state.fail == 0)
+	  {
 		  printf("\t\t%s\n", Paint("Warning, no asserts in test.", Color::BrightYellow).c_str());
+		  ++warnings;
+	  }
       printf("\t=%d= %s, %s\n", i++, test.state.name,
              !test.state.fail ? Paint("PASSED", Color::Green).c_str()
                               : Paint("FAILED", Color::Red).c_str());
@@ -119,6 +123,8 @@ void runTests() {
   }
   if (failedCategories == 0)
     printf("ALL %s!\n", Paint("PASSED", Color::Green).c_str());
+  if (warnings)
+	  printf("With %i %s\n", warnings, Paint("warning(s)", Color::BrightYellow).c_str());
 }
 
 Paint::Paint(const char* str, Color color) {
