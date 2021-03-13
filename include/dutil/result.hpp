@@ -39,6 +39,9 @@ struct Ok;
 template <typename E>
 struct Err;
 
+template <typename V, typename E>
+class Result;
+
 // ========================================================================== //
 
 template <typename V>
@@ -153,6 +156,24 @@ struct Err {
 
 // ========================================================================== //
 
+// TODO cgustafsson: remove this
+// namespace internal::result
+// {
+
+// template <typename Va, typename Er>
+// Va&& unsafeValueMove(Result<Va, Er>& result)
+// {
+// 	return std::move(result.valueRef());
+// }
+
+// template <typename Va, typename Er>
+// Er&& unsafErrMove(Result<Va, Er>& result)
+// {
+// 	return std::move(result.errRef());
+// }
+
+// }
+
 /// @tparam V Value type.
 /// @tparam E Error type.
 template <typename V, typename E>
@@ -219,11 +240,20 @@ class [[nodiscard]] Result {
 
   // TODO cgustafsson: getters with fatal assert
 
+	template <typename T>
+	[[nodiscard]] constexpr bool contains(const T& other) const
+	{
+		static_assert(isEqualityComparable<V, T>, "Cannot compare 'T' with 'V' in 'Result<V, E>'.");
+		if (isOk())
+			return valueCRef() == other;
+		else
+			return false;
+	}
+	
 	template <typename U>
-	[[nodiscard]] constexpr bool operator==(const Ok<U>& other) const noexcept
+	[[nodiscard]] constexpr bool operator==(const Ok<U>& other) const
 	{
 		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
-
 		if (isOk())
 			return valueCRef() == other.value();
 		else
@@ -231,10 +261,9 @@ class [[nodiscard]] Result {
 	}
 
 	template <typename U>
-	[[nodiscard]] constexpr bool operator!=(const Ok<U>& other) const noexcept
+	[[nodiscard]] constexpr bool operator!=(const Ok<U>& other) const
 	{
 		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Ok<U>'.");
-
 		if (isOk())
 			return valueCRef() != other.value();
 		else
@@ -242,10 +271,9 @@ class [[nodiscard]] Result {
 	}
 
 	template <typename F>
-	[[nodiscard]] constexpr bool operator==(const Err<F>& other) const noexcept
+	[[nodiscard]] constexpr bool operator==(const Err<F>& other) const
 	{
 		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
-
 		if (isErr())
 			return errCRef() == other.value();
 		else
@@ -253,10 +281,9 @@ class [[nodiscard]] Result {
 	}
 
 	template <typename F>
-	[[nodiscard]] constexpr bool operator!=(const Err<F>& other) const noexcept
+	[[nodiscard]] constexpr bool operator!=(const Err<F>& other) const
 	{
 		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Err<F>'.");
-
 		if (isErr())
 			return errCRef() != other.value();
 		else
@@ -264,7 +291,7 @@ class [[nodiscard]] Result {
 	}
 	
 	template <typename U, typename F>
-	[[nodiscard]] constexpr bool operator==(const Result<U, F>& other) const noexcept
+	[[nodiscard]] constexpr bool operator==(const Result<U, F>& other) const
 	{
 		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
 		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
@@ -278,7 +305,7 @@ class [[nodiscard]] Result {
 	}
 
 	template <typename U, typename F>
-	[[nodiscard]] constexpr bool operator!=(const Result<U, F>& other) const noexcept
+	[[nodiscard]] constexpr bool operator!=(const Result<U, F>& other) const
 	{
 		static_assert(isEqualityComparable<V, U>, "'V' and 'U' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
 		static_assert(isEqualityComparable<E, F>, "'E' and 'F' cannot be compared, in 'Result<V, E>' and 'Result<U, F>'.");
@@ -365,6 +392,12 @@ class [[nodiscard]] Result {
   [[nodiscard]] constexpr E& errRef() noexcept { return m_err; }
   [[nodiscard]] constexpr const E& errCRef() const noexcept { return m_err; }
 
+	// TODO cgustafsson: remove this
+	// template <typename Va, typename Er>
+	// friend Va&& internal::result::unsafeValueMove(Result<Va, Er>&);
+	// template <typename Va, typename Er>
+	// friend Er&& internal::result::unsafErrMove(Result<Va, Er>&);
+
  private:
   union {
     V m_value;
@@ -400,12 +433,12 @@ template <typename F, typename V, typename E>
 }
 
 template <typename V, typename E>
-[[nodiscard]] constexpr auto make_ok(V value) -> Result<V, E> {
+[[nodiscard]] constexpr auto makeOk(V value) -> Result<V, E> {
   return Ok<V>(std::forward<V>(value));
 }
 
 template <typename V, typename E>
-[[nodiscard]] constexpr auto make_err(E err) -> Result<V, E> {
+[[nodiscard]] constexpr auto makeErr(E err) -> Result<V, E> {
   return Err<E>(std::forward<E>(err));
 }
 
