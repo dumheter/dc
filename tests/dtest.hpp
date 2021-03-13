@@ -146,7 +146,7 @@ class [[nodiscard]] TrackLifetime {
   [[nodiscard]] constexpr const T& getObject() const { return m_object; }
   [[nodiscard]] constexpr T& getObject() { return m_object; }
 
-	[[nodiscard]] constexpr int getDestructs() const { return m_destructs; }
+  [[nodiscard]] constexpr int getDestructs() const { return m_destructs; }
 
   TrackLifetime(const TrackLifetime& other)
       : m_object(other.m_object), m_parent(other.m_parent) {
@@ -170,7 +170,7 @@ class [[nodiscard]] TrackLifetime {
     return *this;
   }
 
-	~TrackLifetime() { getParent()->m_destructs++; }
+  ~TrackLifetime() { getParent()->m_destructs++; }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(
@@ -197,7 +197,7 @@ class [[nodiscard]] TrackLifetime {
   TrackLifetime<T>* m_parent = this;
   mutable int m_copies = 0;
   int m_moves = 0;
-	int m_destructs = 0;
+  int m_destructs = 0;
 };
 
 }  // namespace dtest
@@ -298,23 +298,24 @@ class Paint {
 
 }  // namespace dtest::details
 
-
 #define DTEST_STRINGIFY(expr) #expr
 
 #define DTEST_CONCAT(a, b) DTEST_CONCAT_IMPL(a, b)
 #define DTEST_CONCAT_IMPL(a, b) a##b
 
 #define DTEST_MAKE_CLASS_NAME(testName, line) \
-	DTEST_MAKE_CLASS_NAME_IMPL(testName, line)
+  DTEST_MAKE_CLASS_NAME_IMPL(testName, line)
 #define DTEST_MAKE_CLASS_NAME_IMPL(testName, line) DTest_##testName##line##_
 
-#define DTEST_REGISTER(testName, fileName, filePath) DTEST_REGISTER_AUX(testName, fileName, filePath) 
+#define DTEST_REGISTER(testName, fileName, filePath) \
+  DTEST_REGISTER_AUX(testName, fileName, filePath)
 
-#define DTEST_REGISTER_AUX(testName, fileName, filePath)				\
-	static_assert(sizeof(DTEST_STRINGIFY(testName)) > 1, "Test names cannot be empty."); \
-	struct DTEST_MAKE_CLASS_NAME(testName, __LINE__) { \
+#define DTEST_REGISTER_AUX(testName, fileName, filePath)                       \
+  static_assert(sizeof(DTEST_STRINGIFY(testName)) > 1,                         \
+                "Test names cannot be empty.");                                \
+  struct DTEST_MAKE_CLASS_NAME(testName, __LINE__) {                           \
     void testBody(dtest::details::TestBodyState& dtest_details_testBodyState); \
-    DTEST_MAKE_CLASS_NAME(testName, __LINE__)() {		\
+    DTEST_MAKE_CLASS_NAME(testName, __LINE__)() {                              \
       dtest::details::dtestAdd(                                                \
           [this](dtest::details::TestBodyState& dtest_details_testBodyState) { \
             testBody(dtest_details_testBodyState);                             \
@@ -322,6 +323,6 @@ class Paint {
           #testName, fileName, dutil::hash64fnv1a(filePath));                  \
     }                                                                          \
   };                                                                           \
-	DTEST_MAKE_CLASS_NAME(testName, __LINE__) dtest_Reg_##testName{}; \
-	void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody( \
+  DTEST_MAKE_CLASS_NAME(testName, __LINE__) dtest_Reg_##testName{};            \
+  void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody(                    \
       dtest::details::TestBodyState& dtest_details_testBodyState)

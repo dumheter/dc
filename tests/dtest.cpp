@@ -96,9 +96,8 @@ void runTests() {
       if (test.state.fail == 0) category.pass++;
       assertCount += test.state.pass + test.state.fail;
       if (test.state.pass + test.state.fail == 0) {
-        printf(
-            "\t\t%s\n",
-            Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
+        printf("\t\t%s\n",
+               Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
       printf("\t=%d= %s %s\n", i,
