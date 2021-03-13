@@ -10,6 +10,88 @@ DTEST(ResultOk) {
 }
 
 // ========================================================================== //
+// DATA ACCESS
+// ========================================================================== //
+
+DTEST(value)
+{
+	using TrackedInt = dtest::TrackLifetime<int>;
+
+	{
+		TrackedInt original(27);
+		auto result = dutil::makeOk<TrackedInt, float>(std::move(original));
+		TrackedInt& value = result.value();
+		DASSERT_EQ(value.getObject(), 27);
+		DASSERT_TRUE(value.getCopies() == 0);
+	
+		int& object = value.getObject();
+		object = 13;
+		DASSERT_EQ(value.getObject(), 13);
+		DASSERT_TRUE(value.getCopies() == 0);
+	}
+
+	{
+		TrackedInt original(27);
+		const auto result = dutil::makeOk<TrackedInt, float>(std::move(original));
+		const TrackedInt& value = result.value();
+		DASSERT_EQ(value.getObject(), 27);
+		DASSERT_TRUE(value.getCopies() == 0);
+	}
+}
+
+DTEST(err)
+{
+	using TrackedFloat = dtest::TrackLifetime<float>;
+
+	{
+		TrackedFloat original(27.f);
+		auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
+		TrackedFloat& value = result.err();
+		DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
+		DASSERT_TRUE(value.getCopies() == 0);
+	
+		float& object = value.getObject();
+		object = 13.f;
+		DASSERT_TRUE(value.getObject() > 12.f && value.getObject() < 14.f);
+		DASSERT_TRUE(value.getCopies() == 0);
+	}
+
+	{
+		TrackedFloat original(27.f);
+		const auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
+		const TrackedFloat& value = result.err();
+		DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
+		DASSERT_TRUE(value.getCopies() == 0);
+	}
+}
+
+DTEST(as_const_ref)
+{
+	using TrackedString = dtest::TrackLifetime<std::string>;
+
+	TrackedString original(std::string("hey"));
+	const auto result = dutil::makeOk<TrackedString, int>(std::move(original));
+	const auto constRef = result.asConstRef();
+	DASSERT_EQ(result.value(), constRef.value().get());
+	DASSERT_EQ(original.getCopies(), 0);
+}
+
+DTEST(as_mut_ref)
+{
+	using TrackedString = dtest::TrackLifetime<std::string>;
+
+	TrackedString original(std::string("hey"));
+	auto result = dutil::makeOk<TrackedString, int>(std::move(original));
+	auto mutRef = result.asMutRef();
+	DASSERT_EQ(result.value(), mutRef.value().get());
+	DASSERT_EQ(original.getCopies(), 0);
+
+	mutRef.value().get().getObject() += " there";
+	DASSERT_EQ(result.value(), mutRef.value().get());
+	DASSERT_EQ(original.getCopies(), 0);
+}
+
+// ========================================================================== //
 // EQUALITY
 // ========================================================================== //
 

@@ -76,6 +76,7 @@ void runTests() {
   dutil::Stopwatch stopwatch;
 
   size_t testCount = 0;
+  size_t assertCount = 0;
   int warnings = 0;
   for (auto& [_, category] : r.getTestCategories()) {
     testCount += category.tests.size();
@@ -89,6 +90,7 @@ void runTests() {
 		printf("\t=%d= %s ...... \n", i, Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal).c_str());
       test.fn(test.state);
       category.fail += (test.state.fail > 0);
+	  assertCount += test.state.pass + test.state.fail;
       if (test.state.pass + test.state.fail == 0) {
         printf(
             "\t\t%s\n",
@@ -111,8 +113,8 @@ void runTests() {
   printf(
       "\n--------------------------------------------------------------------"
       "--"
-      "\nSUMMARY:\t(ran %zu tests in %.3fs )\n",
-      testCount, stopwatch.fs());
+      "\nSUMMARY:\t(ran %zu tests containing %zu asserts in %.3fs )\n",
+      testCount, assertCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

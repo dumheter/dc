@@ -238,9 +238,49 @@ class [[nodiscard]] Result {
 
   // TODO cgustafsson: err() -> Option<E>
 
-	
+	[[nodiscard]] V& value() & noexcept
+	{
+		// TODO cgustafsson: crash on not ok
+		return valueRef();
+	}
+
+	[[nodiscard]] const V& value() const& noexcept
+	{
+		// TODO cgustafsson: crash on not ok
+		return valueCRef();
+	}
+
+	[[nodiscard]] E& err() & noexcept
+	{
+		// TODO cgustafsson: crash on not err
+		return errRef();
+	}
+
+	[[nodiscard]] const E& err() const& noexcept
+	{
+		// TODO cgustafsson: crash on not err
+		return errCRef();
+	}
 	
   // TODO cgustafsson: getter that gives ownership / unwrap
+
+	/// Create a non owning result, referencing the immutable data of the original.
+	[[nodiscard]] constexpr Result<ConstRef<V>, ConstRef<E>> asConstRef() const& noexcept
+	{
+		if (isOk())
+			return Ok<ConstRef<V>>(ConstRef<V>(valueCRef()));
+		else
+			return Err<ConstRef<E>>(ConstRef<E>(errCRef()));
+	}
+
+	/// Create a non owning result, referencing the mutable data of the original.
+	[[nodiscard]] constexpr Result<MutRef<V>, MutRef<E>> asMutRef() & noexcept
+	{
+		if (isOk())
+			return Ok<MutRef<V>>(MutRef<V>(valueRef()));
+		else
+			return Err<MutRef<E>>(MutRef<E>(errRef()));
+	}
 
   template <typename T>
   [[nodiscard]] constexpr bool contains(const T& other) const {
