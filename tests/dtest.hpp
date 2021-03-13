@@ -307,6 +307,10 @@ class Paint {
   DTEST_MAKE_CLASS_NAME_IMPL(testName, line)
 #define DTEST_MAKE_CLASS_NAME_IMPL(testName, line) DTest_##testName##line##_
 
+#define DTEST_MAKE_VAR_NAME(testName, line) \
+  DTEST_MAKE_VAR_NAME_IMPL(testName, line)
+#define DTEST_MAKE_VAR_NAME_IMPL(testName, line) dtest_##testName##line##_
+
 #define DTEST_REGISTER(testName, fileName, filePath) \
   DTEST_REGISTER_AUX(testName, fileName, filePath)
 
@@ -323,6 +327,7 @@ class Paint {
           #testName, fileName, dutil::hash64fnv1a(filePath));                  \
     }                                                                          \
   };                                                                           \
-  DTEST_MAKE_CLASS_NAME(testName, __LINE__) dtest_Reg_##testName{};            \
+  DTEST_MAKE_CLASS_NAME(testName, __LINE__)                                    \
+  DTEST_MAKE_VAR_NAME(testName, __LINE__);                                     \
   void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody(                    \
       dtest::details::TestBodyState& dtest_details_testBodyState)

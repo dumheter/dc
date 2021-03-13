@@ -208,6 +208,16 @@ struct [[nodiscard]] Option {
     return Some<ConstRef<V>>(ConstRef<V>(valueCRef()));
   }
 
+  // TODO cgustafsson: okOr(E error) && -> Result<U, E>
+
+  // TODO cgustafsson: okOrElse(...) && -> ...
+
+  // TODO cgustafsson: take -> Option
+
+  // TODO cgustafsson: replace??
+
+  // TODO cgustafsson: match
+
   [[nodiscard]] constexpr V& value() & {
     DUTIL_ASSERT(isSome(),
                  "Tried to access value 'Some' when Option is 'None'.");
@@ -225,6 +235,12 @@ struct [[nodiscard]] Option {
                  "Tried to unwrap value 'Some' when Option is 'None'.");
     return std::move(valueRef());
   }
+
+  // TODO cgustafsson: unwrapOr
+
+  // TODO cgustafsson: unwrapOrElse
+
+  // TODO cgustafsson: map
 
   [[nodiscard]] constexpr bool isSome() const { return m_isSome; }
   [[nodiscard]] constexpr bool isNone() const { return !m_isSome; }
@@ -477,6 +493,34 @@ class [[nodiscard]] Result {
       return None;
   }
 
+  [[nodiscard]] V unwrapOr(V other) && {
+    if (isOk())
+      return std::move(valueRef());
+    else
+      return std::move(other);
+  }
+
+  // TODO cgustafsson: unwrapOrElse(Fn(E)) -> V
+
+  [[nodiscard]] V unwrap() && {
+    DUTIL_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
+    return std::move(valueRef());
+  }
+
+  [[nodiscard]] E unwrapErrOr(E other) && {
+    if (isErr())
+      return std::move(errRef());
+    else
+      return std::move(other);
+  }
+
+  [[nodiscard]] E unwrapErr() && {
+    DUTIL_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
+    return std::move(errRef());
+  }
+
+  // TODO cgustafsson: map
+
   [[nodiscard]] V& value() & noexcept {
     DUTIL_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
     return valueRef();
@@ -487,24 +531,14 @@ class [[nodiscard]] Result {
     return valueCRef();
   }
 
-  [[nodiscard]] E& err() & noexcept {
+  [[nodiscard]] E& errValue() & noexcept {
     DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errRef();
   }
 
-  [[nodiscard]] const E& err() const& noexcept {
+  [[nodiscard]] const E& errValue() const& noexcept {
     DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errCRef();
-  }
-
-  [[nodiscard]] V unwrap() && {
-    DUTIL_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
-    return std::move(valueRef());
-  }
-
-  [[nodiscard]] E unwrapErr() && {
-    DUTIL_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
-    return std::move(errRef());
   }
 
   /// Create a non owning result, referencing the immutable data of the

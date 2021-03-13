@@ -3,6 +3,14 @@
 
 #include "dtest.hpp"
 
+using TrackedInt = dtest::TrackLifetime<int>;
+using TrackedFloat = dtest::TrackLifetime<float>;
+using TrackedString = dtest::TrackLifetime<std::string>;
+
+// ========================================================================== //
+// LIFETIME
+// ========================================================================== //
+
 DTEST(ResultOk) {
   dutil::Result<int, const char*> result = dutil::Ok(1337);
   DASSERT_TRUE(result.isOk());
@@ -13,9 +21,25 @@ DTEST(ResultOk) {
 // DATA ACCESS
 // ========================================================================== //
 
-DTEST(value) {
-  using TrackedInt = dtest::TrackLifetime<int>;
+DTEST(ok) {
+  auto result = dutil::makeOk<int, std::string>(27);
+  auto maybeInt = std::move(result).ok();
+  auto maybeString = std::move(result).err();
+  DASSERT_TRUE(maybeInt);
+  DASSERT_EQ(maybeInt.value(), 27);
+  DASSERT_FALSE(maybeString);
+}
 
+DTEST(err) {
+  auto result = dutil::makeErr<int, std::string>("carrot");
+  auto maybeInt = std::move(result).ok();
+  auto maybeString = std::move(result).err();
+  DASSERT_FALSE(maybeInt);
+  DASSERT_TRUE(maybeString);
+  DASSERT_EQ(maybeString.value(), std::string("carrot"));
+}
+
+DTEST(value) {
   {
     TrackedInt original(27);
     auto result = dutil::makeOk<TrackedInt, float>(std::move(original));
@@ -38,13 +62,11 @@ DTEST(value) {
   }
 }
 
-DTEST(err) {
-  using TrackedFloat = dtest::TrackLifetime<float>;
-
+DTEST(errValue) {
   {
     TrackedFloat original(27.f);
     auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
-    TrackedFloat& value = result.err();
+    TrackedFloat& value = result.errValue();
     DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     DASSERT_TRUE(value.getCopies() == 0);
 
@@ -57,15 +79,13 @@ DTEST(err) {
   {
     TrackedFloat original(27.f);
     const auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
-    const TrackedFloat& value = result.err();
+    const TrackedFloat& value = result.errValue();
     DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     DASSERT_TRUE(value.getCopies() == 0);
   }
 }
 
 DTEST(unwrap) {
-  using TrackedInt = dtest::TrackLifetime<int>;
-
   TrackedInt original = 66;
   auto result = dutil::makeOk<TrackedInt, int>(std::move(original));
   DASSERT_EQ(original.getCopies(), 0);
