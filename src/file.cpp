@@ -22,39 +22,39 @@
  * SOFTWARE.
  */
 
-#include "file.hpp"
+#include <dc/file.hpp>
 
 #include <cstdlib>
 
-#include "platform.hpp"
+#include <dc/platform.hpp>
 
-namespace dutil {
+namespace dc {
 
 File::~File() { Close(); }
 
 static const char* ModeToCString(const File::Mode mode) {
   switch (mode) {
     case File::Mode::kRead: {
-#ifdef DUTIL_PLATFORM_WINDOWS
+#ifdef DC_PLATFORM_WINDOWS
       return "rb";
 #endif
       return "r";
     }
     case File::Mode::kWrite: {
-#ifdef DUTIL_PLATFORM_WINDOWS
+#ifdef DC_PLATFORM_WINDOWS
       return "wb";
 #endif
       return "w";
     }
     case File::Mode::kAppend: {
-#ifdef DUTIL_PLATFORM_WINDOWS
+#ifdef DC_PLATFORM_WINDOWS
       return "ab";
 #endif
       return "a";
     }
   }
 
-#ifdef DUTIL_PLATFORM_WINDOWS
+#ifdef DC_PLATFORM_WINDOWS
   return "rb";
 #endif
   return "r";
@@ -261,4 +261,4 @@ bool File::FileExists(const std::string& path) {
   return res == Result::kSuccess;
 }
 
-}  // namespace dutil
+}  // namespace dc

@@ -29,7 +29,7 @@
 
 #include "types.hpp"
 
-namespace dutil {
+namespace dc {
 
 // ============================================================ //
 // Time Related Functions
@@ -152,7 +152,7 @@ class Stopwatch {
 
 template <typename TFunction, typename... ARGS>
 bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
-  static dutil::Stopwatch sw{};
+  static dc::Stopwatch sw{};
   static f64 timer_ns{sw.fnow_ns()};
   const f64 ticks_per_ns = 1000.0 * 1000.0 * 1000.0 / ticks_per_s;
   if (sw.fnow_ns() - timer_ns > ticks_per_ns) {
@@ -167,7 +167,7 @@ bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
 
 template <typename TFn, typename... ARGS>
 bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
-  dutil::Stopwatch stopwatch{};
+  dc::Stopwatch stopwatch{};
   stopwatch.Start();
   bool did_timeout = false;
   bool result = false;
@@ -181,4 +181,4 @@ bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
   return !did_timeout;
 }
 
-}  // namespace dutil
+}  // namespace dc

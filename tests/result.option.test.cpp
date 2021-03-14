@@ -1,7 +1,6 @@
-#include <dutil/result.hpp>
+#include <dc/result.hpp>
+#include <dc/dtest.hpp>
 #include <string>
-
-#include "dtest.hpp"
 
 using TrackedInt = dtest::TrackLifetime<int>;
 using TrackedString = dtest::TrackLifetime<std::string>;
@@ -11,25 +10,25 @@ using TrackedString = dtest::TrackLifetime<std::string>;
 // ========================================================================== //
 
 DTEST(construction) {
-  dutil::Option<int> simple;
+  dc::Option<int> simple;
   DASSERT_FALSE(simple);
 
-  dutil::Some<int> largeValue(1200300);
-  dutil::Option<int> someConstruction = std::move(largeValue);
+  dc::Some<int> largeValue(1200300);
+  dc::Option<int> someConstruction = std::move(largeValue);
   DASSERT_TRUE(someConstruction);
   DASSERT_EQ(someConstruction.value(), 1200300);
 
-  dutil::Option<int> noneConstruction = dutil::None;
+  dc::Option<int> noneConstruction = dc::None;
   DASSERT_FALSE(noneConstruction);
 }
 
 DTEST(construction_option) {
-  auto optionNone = dutil::makeNone<int>();
-  dutil::Option<int> optionNoneConstructed = std::move(optionNone);
+  auto optionNone = dc::makeNone<int>();
+  dc::Option<int> optionNoneConstructed = std::move(optionNone);
   DASSERT_FALSE(optionNoneConstructed);
 
   TrackedString catName("Emma");
-  auto maybeCatName = dutil::makeSome(std::move(catName));
+  auto maybeCatName = dc::makeSome(std::move(catName));
   const int catNameMoves = catName.getMoves();
   auto optionSomeConstructed = std::move(maybeCatName);
   DASSERT_TRUE(optionSomeConstructed);
@@ -39,8 +38,8 @@ DTEST(construction_option) {
 
 DTEST(assignment_option) {
   {
-    auto a = dutil::makeSome('a');
-    auto b = dutil::makeSome('b');
+    auto a = dc::makeSome('a');
+    auto b = dc::makeSome('b');
     a = std::move(b);
     DASSERT_TRUE(a);
     DASSERT_EQ(a.value(), 'b');
@@ -50,8 +49,8 @@ DTEST(assignment_option) {
 
   {
     TrackedInt original = 77;
-    auto optionSome = dutil::makeSome<TrackedInt>(std::move(original));
-    auto optionNone = dutil::makeNone<TrackedInt>();
+    auto optionSome = dc::makeSome<TrackedInt>(std::move(original));
+    auto optionNone = dc::makeNone<TrackedInt>();
     const int someMoves = original.getMoves();
     optionNone = std::move(optionSome);
     DASSERT_TRUE(optionNone);
@@ -61,8 +60,8 @@ DTEST(assignment_option) {
 
   {
     TrackedInt original = -2;
-    auto optionSome = dutil::makeSome<TrackedInt>(std::move(original));
-    auto optionNone = dutil::makeNone<TrackedInt>();
+    auto optionSome = dc::makeSome<TrackedInt>(std::move(original));
+    auto optionNone = dc::makeNone<TrackedInt>();
     const int destructs = original.getDestructs();
     optionSome = std::move(optionNone);
     DASSERT_EQ(original.getDestructs(), destructs + 1);
@@ -70,8 +69,8 @@ DTEST(assignment_option) {
   }
 
   {
-    auto optionNone = dutil::makeNone<int>();
-    auto optionNone2 = dutil::makeNone<int>();
+    auto optionNone = dc::makeNone<int>();
+    auto optionNone2 = dc::makeNone<int>();
     optionNone2 = std::move(optionNone);
     DASSERT_FALSE(optionNone2);
   }
@@ -81,7 +80,7 @@ DTEST(destruction) {
   TrackedString str("wood");
   int destructs;
   {
-    const auto option = dutil::makeSome(std::move(str));
+    const auto option = dc::makeSome(std::move(str));
     DASSERT_TRUE(option);
     destructs = str.getDestructs();
   }
@@ -90,7 +89,7 @@ DTEST(destruction) {
 
 DTEST(clone) {
   TrackedInt original(3);
-  dutil::Option<TrackedInt> option = dutil::Some(std::move(original));
+  dc::Option<TrackedInt> option = dc::Some(std::move(original));
   auto clone = option.clone();
   DASSERT_EQ(original.getCopies(), 1);
   DASSERT_EQ(clone.value(), option.value());
@@ -98,7 +97,7 @@ DTEST(clone) {
 
 DTEST(as_mut_const_ref) {
   TrackedString original(std::string("awesome"));
-  auto option = dutil::makeSome(std::move(original));
+  auto option = dc::makeSome(std::move(original));
   auto constRef = option.asConstRef();
   auto mutRef = option.asMutRef();
   DASSERT_EQ(original.getCopies(), 0);
@@ -117,7 +116,7 @@ DTEST(as_mut_const_ref) {
 
 DTEST(match_rvalue) {
   TrackedInt i(7);
-  auto optionSome = dutil::makeSome(std::move(i));
+  auto optionSome = dc::makeSome(std::move(i));
   const int moves = i.getMoves();
   int resSome = std::move(optionSome)
                     .match([](TrackedInt v) { return v == 7 ? 1 : -1; },
@@ -126,7 +125,7 @@ DTEST(match_rvalue) {
   DASSERT_EQ(i.getMoves(), moves + 1);
   DASSERT_EQ(i.getCopies(), 0);
 
-  auto optionNone = dutil::makeNone<int>();
+  auto optionNone = dc::makeNone<int>();
   int resNone = std::move(optionNone)
                     .match([](int _) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
@@ -134,7 +133,7 @@ DTEST(match_rvalue) {
 
 DTEST(match_lvalue) {
   TrackedInt i(7);
-  auto optionSome = dutil::makeSome(std::move(i));
+  auto optionSome = dc::makeSome(std::move(i));
   const int moves = i.getMoves();
   int resSome = optionSome.match([](TrackedInt& v) { return v == 7 ? 1 : -1; },
                                  []() { return -100; });
@@ -142,27 +141,27 @@ DTEST(match_lvalue) {
   DASSERT_EQ(i.getMoves(), moves);
   DASSERT_EQ(i.getCopies(), 0);
 
-  auto optionNone = dutil::makeNone<int>();
+  auto optionNone = dc::makeNone<int>();
   int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
 }
 
 DTEST(match_const_rvalue) {
   dtest::NoCopy<int> i(7);
-  const auto optionSome = dutil::makeSome(std::move(i));
+  const auto optionSome = dc::makeSome(std::move(i));
   int resSome = optionSome.match(
       [](const dtest::NoCopy<int>& v) { return v == 7 ? 1 : -1; },
       []() { return -100; });
   DASSERT_EQ(resSome, 1);
 
-  const auto optionNone = dutil::makeNone<int>();
+  const auto optionNone = dc::makeNone<int>();
   int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
 }
 
 DTEST(value) {
   TrackedInt original(77);
-  auto option = dutil::makeSome(std::move(original));
+  auto option = dc::makeSome(std::move(original));
   TrackedInt& value = option.value();
   value.getObject() = -11;
   DASSERT_EQ(original.getCopies(), 0);
@@ -171,7 +170,7 @@ DTEST(value) {
 
 DTEST(const_value) {
   TrackedInt original(77);
-  const auto option = dutil::makeSome(std::move(original));
+  const auto option = dc::makeSome(std::move(original));
   const TrackedInt& value = option.value();
   DASSERT_EQ(original.getCopies(), 0);
   DASSERT_EQ(value.getObject(), 77);
@@ -179,7 +178,7 @@ DTEST(const_value) {
 
 DTEST(unwrap) {
   TrackedInt original(101);
-  auto option = dutil::makeSome(std::move(original));
+  auto option = dc::makeSome(std::move(original));
   const int moves = original.getMoves();
   TrackedInt value = std::move(option).unwrap();
   DASSERT_NE(moves, original.getMoves());
@@ -192,8 +191,8 @@ DTEST(unwrap) {
 // ========================================================================== //
 
 DTEST(is_some_none_bool) {
-  const auto some = dutil::makeSome(7);
-  const auto none = dutil::makeNone<int>();
+  const auto some = dc::makeSome(7);
+  const auto none = dc::makeNone<int>();
   DASSERT_TRUE(some.isSome());
   DASSERT_FALSE(some.isNone());
   DASSERT_TRUE(none.isNone());
@@ -203,16 +202,16 @@ DTEST(is_some_none_bool) {
 }
 
 DTEST(contains) {
-  const auto some = dutil::makeSome<char>('c');
-  const auto none = dutil::makeNone<char>();
+  const auto some = dc::makeSome<char>('c');
+  const auto none = dc::makeNone<char>();
   DASSERT_TRUE(some.contains('c'));
   DASSERT_FALSE(some.contains('w'));
   DASSERT_FALSE(none.contains('c'));
 }
 
 DTEST(compare) {
-  const auto now = dutil::makeSome<int>(2021);
-  const auto then = dutil::makeSome<int>(1969);
+  const auto now = dc::makeSome<int>(2021);
+  const auto then = dc::makeSome<int>(1969);
   const auto nowClone = now.clone();
   DASSERT_FALSE(now == then);
   DASSERT_TRUE(now != then);

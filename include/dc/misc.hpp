@@ -25,9 +25,9 @@ all
 
 #pragma once
 
-#include <dutil/types.hpp>
+#include <dc/types.hpp>
 
-namespace dutil {
+namespace dc {
 
 /**
  * Clamp a value on the range [min-max].
@@ -110,4 +110,4 @@ inline constexpr u64 hash64fnv1a(
                                                      details::hash::prime64);
 }
 
-}  // namespace dutil
+}  // namespace dc

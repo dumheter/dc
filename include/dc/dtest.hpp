@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <dutil/misc.hpp>
-#include <dutil/types.hpp>
+#include <dc/misc.hpp>
+#include <dc/types.hpp>
 #include <functional>
 
 #include "dtest.hpp"
-#include "dutil/traits.hpp"
+#include "dc/traits.hpp"
 
 // ========================================================================== //
 // DTEST
@@ -56,7 +56,7 @@
 #define DTEST_RUN() dtest::internal::runTests()
 
 /// Register a new test.
-#define DTEST(testName) DTEST_REGISTER(testName, DUTIL_FILENAME, __FILE__)
+#define DTEST(testName) DTEST_REGISTER(testName, DC_FILENAME, __FILE__)
 
 /// Asserts
 #define DASSERT_TRUE(expr) DASSERT_TRUE_IMPL(expr, __LINE__)
@@ -131,14 +131,14 @@ class [[nodiscard]] TrackLifetime {
   template <typename U>
   [[nodiscard]] constexpr bool operator==(
       const TrackLifetime<U>& other) const noexcept {
-    static_assert(dutil::isEqualityComparable<T, U>);
+    static_assert(dc::isEqualityComparable<T, U>);
     return getObject() == other.getObject();
   }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator!=(
       const TrackLifetime<U>& other) const noexcept {
-    static_assert(dutil::isEqualityComparable<T, U>);
+    static_assert(dc::isEqualityComparable<T, U>);
     return getObject() != other.getObject();
   }
 
@@ -171,8 +171,8 @@ class [[nodiscard]] NoCopy {
  public:
   NoCopy() = default;
   NoCopy(T object) : m_object(object) {}
-  DUTIL_DEFAULT_MOVE(NoCopy);
-  DUTIL_DELETE_COPY(NoCopy);
+  DC_DEFAULT_MOVE(NoCopy);
+  DC_DELETE_COPY(NoCopy);
 
   [[nodiscard]] constexpr T& get() { return m_object; }
   [[nodiscard]] constexpr const T& get() const { return m_object; }
@@ -228,7 +228,7 @@ struct TestCategory {
 class Register {
  public:
   Register() = default;
-  DUTIL_DELETE_COPY(Register);
+  DC_DELETE_COPY(Register);
 
   void addTest(TestFunction fn, const char* testName, const char* fileName,
                u64 filePathHash);
@@ -286,7 +286,7 @@ class Paint {
  public:
   Paint(const char* str, Color color);
   const char* c_str() const;
-  DUTIL_DELETE_COPY(Paint);
+  DC_DELETE_COPY(Paint);
 
  private:
   static constexpr uint kStrLen = 100;
@@ -318,7 +318,7 @@ class Paint {
           [this](dtest::internal::TestBodyState& dtest_internal_testBodyState) { \
             testBody(dtest_internal_testBodyState);                             \
           },                                                                   \
-          #testName, fileName, dutil::hash64fnv1a(filePath));                  \
+          #testName, fileName, dc::hash64fnv1a(filePath));                  \
     }                                                                          \
   };                                                                           \
   DTEST_MAKE_CLASS_NAME(testName, __LINE__)                                    \

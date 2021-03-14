@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include <dutil/assert.hpp>
-#include <dutil/traits.hpp>
-#include <dutil/types.hpp>
+#include <dc/assert.hpp>
+#include <dc/traits.hpp>
+#include <dc/types.hpp>
 #include <utility>
 
-namespace dutil {
+namespace dc {
 
 struct NoneType;
 
@@ -87,8 +87,8 @@ struct [[nodiscard]] Some {
   static_assert(isMovable<V>, "Value type 'V' in 'Some<V>' must be movable.");
   static_assert(!isReference<V>,
                 "Value type 'V' in 'Some<V>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
 
   using value_type = V;
 
@@ -147,8 +147,8 @@ struct [[nodiscard]] Option {
   static_assert(isMovable<V>, "Value type 'V' in 'Option<V>' must be movable.");
   static_assert(!isReference<V>,
                 "Value type 'V' in 'Option<V>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
 
   using value_type = V;
 
@@ -184,7 +184,7 @@ struct [[nodiscard]] Option {
     if (isSome()) m_some.~V();
   }
 
-  DUTIL_DELETE_COPY(Option);
+  DC_DELETE_COPY(Option);
 
   [[nodiscard]] constexpr Option<V> clone() const {
     static_assert(isCopyConstructible<V>,
@@ -197,13 +197,13 @@ struct [[nodiscard]] Option {
   }
 
   [[nodiscard]] constexpr auto asMutRef() & -> Option<MutRef<V>> {
-    DUTIL_ASSERT(isSome(),
+    DC_ASSERT(isSome(),
                  "Tried to access value 'Some' when Option is 'None'.");
     return Some<MutRef<V>>(MutRef<V>(valueRef()));
   }
 
   [[nodiscard]] constexpr auto asConstRef() const& -> Option<ConstRef<V>> {
-    DUTIL_ASSERT(isSome(),
+    DC_ASSERT(isSome(),
                  "Tried to access value 'Some' when Option is 'None'.");
     return Some<ConstRef<V>>(ConstRef<V>(valueCRef()));
   }
@@ -270,19 +270,19 @@ struct [[nodiscard]] Option {
   }
 
   [[nodiscard]] constexpr V& value() & {
-    DUTIL_ASSERT(isSome(),
+    DC_ASSERT(isSome(),
                  "Tried to access value 'Some' when Option is 'None'.");
     return valueRef();
   }
 
   [[nodiscard]] constexpr const V& value() const& {
-    DUTIL_ASSERT(isSome(),
+    DC_ASSERT(isSome(),
                  "Tried to access value 'Some' when Option is 'None'.");
     return valueCRef();
   }
 
   [[nodiscard]] constexpr V unwrap() && {
-    DUTIL_ASSERT(isSome(),
+    DC_ASSERT(isSome(),
                  "Tried to unwrap value 'Some' when Option is 'None'.");
     return std::move(valueRef());
   }
@@ -349,13 +349,13 @@ struct [[nodiscard]] Ok {
   static_assert(isMovable<V>, "Value type 'V' in 'Ok<V>' must be movable.");
   static_assert(!isReference<V>,
                 "Value type 'V' in 'Ok<V>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
 
   using value_type = V;
 
-  /// Can only be constructed with an r-value. Use dutil::Ref, dutil::CRef and
-  /// dutil::MutRef to capture references to non owned objects.
+  /// Can only be constructed with an r-value. Use dc::Ref, dc::CRef and
+  /// dc::MutRef to capture references to non owned objects.
   explicit constexpr Ok(V&& value) : m_value(std::forward<V&&>(value)) {}
 
   constexpr Ok(const Ok&) = default;
@@ -405,8 +405,8 @@ struct [[nodiscard]] Err {
   static_assert(isMovable<E>, "Error type 'E' in 'Err<E>' must be movable.");
   static_assert(!isReference<E>,
                 "Error type 'E' in 'Err<E>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
 
   using value_type = E;
 
@@ -481,14 +481,14 @@ class [[nodiscard]] Result {
                 "Value type 'V' in 'Result<V, E>' must be movable.");
   static_assert(!isReference<V>,
                 "Value type 'V' in 'Result<V, E>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
   static_assert(isMovable<E>,
                 "Error type 'E' in 'Result<V, E>' must be movable.");
   static_assert(!isReference<E>,
                 "Error type 'E' in 'Result<V, E>' cannot be a reference."
-                " You might want to use dutil::Ref, or the stricter "
-                "dutil::ConstRef and dutil::MutRef.");
+                " You might want to use dc::Ref, or the stricter "
+                "dc::ConstRef and dc::MutRef.");
 
   using value_type = V;
   using error_type = E;
@@ -521,7 +521,7 @@ class [[nodiscard]] Result {
   }
 
   Result() = delete;
-  DUTIL_DELETE_COPY(Result);
+  DC_DELETE_COPY(Result);
 
   ~Result() noexcept {
     if (isOk())
@@ -554,7 +554,7 @@ class [[nodiscard]] Result {
   // TODO cgustafsson: unwrapOrElse(Fn(E)) -> V
 
   [[nodiscard]] V unwrap() && {
-    DUTIL_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
+    DC_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
     return std::move(valueRef());
   }
 
@@ -566,29 +566,29 @@ class [[nodiscard]] Result {
   }
 
   [[nodiscard]] E unwrapErr() && {
-    DUTIL_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
+    DC_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
     return std::move(errRef());
   }
 
   // TODO cgustafsson: map
 
   [[nodiscard]] V& value() & noexcept {
-    DUTIL_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
     return valueRef();
   }
 
   [[nodiscard]] const V& value() const& noexcept {
-    DUTIL_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
     return valueCRef();
   }
 
   [[nodiscard]] E& errValue() & noexcept {
-    DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
+    DC_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errRef();
   }
 
   [[nodiscard]] const E& errValue() const& noexcept {
-    DUTIL_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
+    DC_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errCRef();
   }
 
@@ -856,4 +856,4 @@ template <typename V, typename E>
   return Err<E>(Ref<E>(std::forward<E&>(err)));
 }
 
-}  // namespace dutil
+}  // namespace dc

@@ -25,9 +25,9 @@
 #pragma once
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__MINGW64)
-#define DUTIL_PLATFORM_WINDOWS
+#define DC_PLATFORM_WINDOWS
 #elif defined(__linux__)
-#define DUTIL_PLATFORM_LINUX
+#define DC_PLATFORM_LINUX
 #elif defined(__APPLE__)
-#define DUTIL_PLATFORM_APPLE
+#define DC_PLATFORM_APPLE
 #endif

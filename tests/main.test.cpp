@@ -1,4 +1,4 @@
-#include "dtest.hpp"
+#include <dc/dtest.hpp>
 
 int main(int, char**) {
   DTEST_RUN();

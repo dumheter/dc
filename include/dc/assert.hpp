@@ -24,15 +24,15 @@
 
 #pragma once
 
-#define DUTIL_ASSERT(condition, msg) \
-  dutil::Assert(!!(condition), msg, __FILE__, __func__, __LINE__)
+#define DC_ASSERT(condition, msg) \
+  dc::Assert(!!(condition), msg, __FILE__, __func__, __LINE__)
 
-namespace dutil {
+namespace dc {
 
 /**
- * Call by using the macro DUTIL_ASSERT
+ * Call by using the macro DC_ASSERT
  */
 void Assert(bool condition, const char* msg, const char* file, const char* func,
             int line);
 
-}  // namespace dutil
+}  // namespace dc

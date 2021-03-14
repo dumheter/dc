@@ -22,9 +22,9 @@
  * SOFTWARE.
  */
 
-#include "mac.hpp"
+#include <dc/mac.hpp>
 
-namespace dutil {
+namespace dc {
 
 struct byte_to_nibble {
   u8 first : 4, second : 4;
@@ -57,4 +57,4 @@ std::string MacToString(uint_mac mac) {
   return MacToString(macptr);
 }
 
-}  // namespace dutil
+}  // namespace dc

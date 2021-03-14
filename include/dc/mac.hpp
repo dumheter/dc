@@ -28,7 +28,7 @@
 
 #include "types.hpp"
 
-namespace dutil {
+namespace dc {
 
 constexpr std::size_t MAC_SIZE = 6;
 
@@ -48,4 +48,4 @@ std::string MacToString(const u8* mac);
 
 std::string MacToString(uint_mac mac);
 
-}  // namespace dutil
+}  // namespace dc

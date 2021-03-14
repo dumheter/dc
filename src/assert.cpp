@@ -27,19 +27,19 @@
 #include <cwchar>
 #include <string>
 
-#include "platform.hpp"
+#include <dc/platform.hpp>
 
-#if defined(DUTIL_ASSERT_DIALOG)
-#if defined(DUTIL_PLATFORM_WINDOWS)
+#if defined(DC_ASSERT_DIALOG)
+#if defined(DC_PLATFORM_WINDOWS)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#elif defined(DUTIL_PLATFORM_LINUX)
+#elif defined(DC_PLATFORM_LINUX)
 #include <gtk/gtk.h>
 #endif
 #endif
 
-namespace dutil {
+namespace dc {
 
 void Assert(bool condition, const char* msg, const char* file, const char* func,
             int line) {
@@ -50,13 +50,13 @@ void Assert(bool condition, const char* msg, const char* file, const char* func,
   printf("assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg,
          file, line, func);
 
-#if defined(DUTIL_ASSERT_DIALOG)
+#if defined(DC_ASSERT_DIALOG)
   constexpr size_t strlen = 2048;
   char str[strlen];
   snprintf(str, strlen,
            "assertion failed with msg: [%s] @ [%s:%d] in fuction [%s]\n", msg,
            file, line, func);
-#if defined(DUTIL_PLATFORM_WINDOWS)
+#if defined(DC_PLATFORM_WINDOWS)
   wchar_t wstr[strlen];
   memset(wstr, 0, strlen * 2);
   char* p = reinterpret_cast<char*>(wstr);
@@ -65,7 +65,7 @@ void Assert(bool condition, const char* msg, const char* file, const char* func,
   }
   MessageBoxW(nullptr, (LPCWSTR)wstr, (LPCWSTR)L"Assertion Failed",
               MB_OK | MB_APPLMODAL | MB_ICONERROR);
-#elif defined(DUTIL_PLATFORM_LINUX)
+#elif defined(DC_PLATFORM_LINUX)
   if (!gtk_init_check(0, nullptr)) {
     return;
   }
@@ -89,4 +89,4 @@ void Assert(bool condition, const char* msg, const char* file, const char* func,
   abort();
 }
 
-}  // namespace dutil
+}  // namespace dc

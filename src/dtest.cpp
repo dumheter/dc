@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 
-#include "dtest.hpp"
+#include <dc/dtest.hpp>
 
 #include <cstdio>
-#include <dutil/assert.hpp>
-#include <dutil/stopwatch.hpp>
+#include <dc/assert.hpp>
+#include <dc/stopwatch.hpp>
 
 #if defined(_MSC_VER)
 #if !defined(MEAN_AND_LEAN)
@@ -73,7 +73,7 @@ void runTests() {
   printf("___|_ D T E S T _|___\nRunning %d test categories.\n",
          static_cast<int>(r.getTestCategories().size()));
 
-  dutil::Stopwatch stopwatch;
+  dc::Stopwatch stopwatch;
 
   size_t testCount = 0;
   size_t assertCount = 0;
@@ -138,11 +138,11 @@ void runTests() {
 }
 
 Paint::Paint(const char* str, Color color) {
-  DUTIL_ASSERT(strlen(str) < Paint::kStrLen,
+  DC_ASSERT(strlen(str) < Paint::kStrLen,
                "Trying to paint a too large string.");
   const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
                             static_cast<ColorType>(color), str);
-  DUTIL_ASSERT(res >= 0, "Failed to copy string");
+  DC_ASSERT(res >= 0, "Failed to copy string");
 }
 
 const char* Paint::c_str() const { return m_str; }

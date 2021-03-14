@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace dutil {
+namespace dc {
 
 // ========================================================================== //
 // Traits
@@ -88,4 +88,4 @@ using MutRef =
 template <typename Fn, typename... Args>
 using InvokeResult = typename std::invoke_result<Fn, Args...>::type;
 
-}  // namespace dutil
+}  // namespace dc

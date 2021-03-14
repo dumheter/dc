@@ -32,7 +32,7 @@
 
 #include "types.hpp"
 
-namespace dutil {
+namespace dc {
 
 class File {
  public:
@@ -113,4 +113,4 @@ class File {
   std::FILE* file_;
 };
 
-}  // namespace dutil
+}  // namespace dc

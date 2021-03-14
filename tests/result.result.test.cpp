@@ -1,7 +1,6 @@
-#include <dutil/result.hpp>
+#include <dc/result.hpp>
+#include <dc/dtest.hpp>
 #include <string>
-
-#include "dtest.hpp"
 
 using TrackedInt = dtest::TrackLifetime<int>;
 using TrackedFloat = dtest::TrackLifetime<float>;
@@ -12,7 +11,7 @@ using TrackedString = dtest::TrackLifetime<std::string>;
 // ========================================================================== //
 
 DTEST(ResultOk) {
-  dutil::Result<int, const char*> result = dutil::Ok(1337);
+  dc::Result<int, const char*> result = dc::Ok(1337);
   DASSERT_TRUE(result.isOk());
   DASSERT_TRUE(!result.isErr());
 }
@@ -22,7 +21,7 @@ DTEST(ResultOk) {
 // ========================================================================== //
 
 DTEST(ok) {
-  auto result = dutil::makeOk<int, std::string>(27);
+  auto result = dc::makeOk<int, std::string>(27);
   auto maybeInt = std::move(result).ok();
   auto maybeString = std::move(result).err();
   DASSERT_TRUE(maybeInt);
@@ -31,7 +30,7 @@ DTEST(ok) {
 }
 
 DTEST(err) {
-  auto result = dutil::makeErr<int, std::string>("carrot");
+  auto result = dc::makeErr<int, std::string>("carrot");
   auto maybeInt = std::move(result).ok();
   auto maybeString = std::move(result).err();
   DASSERT_FALSE(maybeInt);
@@ -42,7 +41,7 @@ DTEST(err) {
 DTEST(value) {
   {
     TrackedInt original(27);
-    auto result = dutil::makeOk<TrackedInt, float>(std::move(original));
+    auto result = dc::makeOk<TrackedInt, float>(std::move(original));
     TrackedInt& value = result.value();
     DASSERT_EQ(value.getObject(), 27);
     DASSERT_TRUE(value.getCopies() == 0);
@@ -55,7 +54,7 @@ DTEST(value) {
 
   {
     TrackedInt original(27);
-    const auto result = dutil::makeOk<TrackedInt, float>(std::move(original));
+    const auto result = dc::makeOk<TrackedInt, float>(std::move(original));
     const TrackedInt& value = result.value();
     DASSERT_EQ(value.getObject(), 27);
     DASSERT_TRUE(value.getCopies() == 0);
@@ -65,7 +64,7 @@ DTEST(value) {
 DTEST(errValue) {
   {
     TrackedFloat original(27.f);
-    auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
+    auto result = dc::makeErr<int, TrackedFloat>(std::move(original));
     TrackedFloat& value = result.errValue();
     DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     DASSERT_TRUE(value.getCopies() == 0);
@@ -78,7 +77,7 @@ DTEST(errValue) {
 
   {
     TrackedFloat original(27.f);
-    const auto result = dutil::makeErr<int, TrackedFloat>(std::move(original));
+    const auto result = dc::makeErr<int, TrackedFloat>(std::move(original));
     const TrackedFloat& value = result.errValue();
     DASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     DASSERT_TRUE(value.getCopies() == 0);
@@ -87,7 +86,7 @@ DTEST(errValue) {
 
 DTEST(unwrap) {
   TrackedInt original = 66;
-  auto result = dutil::makeOk<TrackedInt, int>(std::move(original));
+  auto result = dc::makeOk<TrackedInt, int>(std::move(original));
   DASSERT_EQ(original.getCopies(), 0);
   const int moves = original.getMoves();
 
@@ -101,7 +100,7 @@ DTEST(unwrapErr) {
   using TrackedInt = dtest::TrackLifetime<int>;
 
   TrackedInt original = 5050;
-  auto result = dutil::makeErr<int, TrackedInt>(std::move(original));
+  auto result = dc::makeErr<int, TrackedInt>(std::move(original));
   DASSERT_EQ(original.getCopies(), 0);
   const int moves = original.getMoves();
 
@@ -115,7 +114,7 @@ DTEST(as_const_ref) {
   using TrackedString = dtest::TrackLifetime<std::string>;
 
   TrackedString original(std::string("hey"));
-  const auto result = dutil::makeOk<TrackedString, int>(std::move(original));
+  const auto result = dc::makeOk<TrackedString, int>(std::move(original));
   const auto constRef = result.asConstRef();
   DASSERT_EQ(result.value(), constRef.value().get());
   DASSERT_EQ(original.getCopies(), 0);
@@ -125,7 +124,7 @@ DTEST(as_mut_ref) {
   using TrackedString = dtest::TrackLifetime<std::string>;
 
   TrackedString original(std::string("hey"));
-  auto result = dutil::makeOk<TrackedString, int>(std::move(original));
+  auto result = dc::makeOk<TrackedString, int>(std::move(original));
   auto mutRef = result.asMutRef();
   DASSERT_EQ(result.value(), mutRef.value().get());
   DASSERT_EQ(original.getCopies(), 0);
@@ -140,8 +139,8 @@ DTEST(as_mut_ref) {
 // ========================================================================== //
 
 DTEST(contains) {
-  const auto resultOk = dutil::makeOk<int, std::string>(-133);
-  const auto resultErr = dutil::makeErr<int, std::string>(std::string("wow"));
+  const auto resultOk = dc::makeOk<int, std::string>(-133);
+  const auto resultErr = dc::makeErr<int, std::string>(std::string("wow"));
   DASSERT_TRUE(resultOk.contains(-133));
   DASSERT_TRUE(resultErr.containsErr(std::string("wow")));
   DASSERT_FALSE(resultOk.containsErr(std::string("wow")));
@@ -149,26 +148,26 @@ DTEST(contains) {
 }
 
 DTEST(eq_ok_err) {
-  dutil::Result<int, float> result = dutil::Ok<int>(15);
-  auto ok = dutil::Ok<int>(15);
-  auto err = dutil::Err<float>(15.f);
+  dc::Result<int, float> result = dc::Ok<int>(15);
+  auto ok = dc::Ok<int>(15);
+  auto err = dc::Err<float>(15.f);
   DASSERT_TRUE(result == ok);
   DASSERT_FALSE(result == err);
 }
 
 DTEST(neq_ok_err) {
-  dutil::Result<int, float> result = dutil::Ok<int>(15);
-  auto ok = dutil::Ok<int>(15);
-  auto err = dutil::Err<float>(15.f);
+  dc::Result<int, float> result = dc::Ok<int>(15);
+  auto ok = dc::Ok<int>(15);
+  auto err = dc::Err<float>(15.f);
   DASSERT_FALSE(result != ok);
   DASSERT_TRUE(result != err);
 }
 
 DTEST(eq_result) {
-  const auto AOk = dutil::makeOk<int, char>(42);
-  const auto AErr = dutil::makeErr<int, char>('X');
-  const auto BOk = dutil::makeOk<int, char>(42);
-  const auto BErr = dutil::makeErr<int, char>('X');
+  const auto AOk = dc::makeOk<int, char>(42);
+  const auto AErr = dc::makeErr<int, char>('X');
+  const auto BOk = dc::makeOk<int, char>(42);
+  const auto BErr = dc::makeErr<int, char>('X');
   DASSERT_TRUE(AOk == BOk);
   DASSERT_FALSE(AOk == BErr);
   DASSERT_FALSE(AErr == BOk);
@@ -176,10 +175,10 @@ DTEST(eq_result) {
 }
 
 DTEST(neq_result) {
-  const auto AOk = dutil::makeOk<int, char>(42);
-  const auto AErr = dutil::makeErr<int, char>('X');
-  const auto BOk = dutil::makeOk<int, char>(42);
-  const auto BErr = dutil::makeErr<int, char>('X');
+  const auto AOk = dc::makeOk<int, char>(42);
+  const auto AErr = dc::makeErr<int, char>('X');
+  const auto BOk = dc::makeOk<int, char>(42);
+  const auto BErr = dc::makeErr<int, char>('X');
   DASSERT_FALSE(AOk != BOk);
   DASSERT_TRUE(AOk != BErr);
   DASSERT_TRUE(AErr != BOk);
@@ -194,8 +193,8 @@ DTEST(match_rvalue_ok) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dutil::Result<TrackedInt, std::string> okResult =
-      dutil::Ok(std::move(parent));
+  dc::Result<TrackedInt, std::string> okResult =
+      dc::Ok(std::move(parent));
   float value = std::move(okResult).match([](TrackedInt value) { return 1.f; },
                                           [](std::string err) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
@@ -206,7 +205,7 @@ DTEST(match_rvalue_err) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dutil::Result<float, TrackedInt> errResult = dutil::Err(std::move(parent));
+  dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
   float value = std::move(errResult).match([](float ok) { return 1.f; },
                                            [](TrackedInt err) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
@@ -217,8 +216,8 @@ DTEST(match_lvalue_ok) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dutil::Result<TrackedInt, std::string> okResult =
-      dutil::Ok(std::move(parent));
+  dc::Result<TrackedInt, std::string> okResult =
+      dc::Ok(std::move(parent));
   float value = okResult.match([](TrackedInt& value) { return 1.f; },
                                [](std::string& err) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
@@ -229,7 +228,7 @@ DTEST(match_lvalue_err) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dutil::Result<float, TrackedInt> errResult = dutil::Err(std::move(parent));
+  dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
   float value = errResult.match([](float& ok) { return 1.f; },
                                 [](TrackedInt& err) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
@@ -240,8 +239,8 @@ DTEST(match_const_lvalue_ok) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  const dutil::Result<TrackedInt, std::string> okResult =
-      dutil::Ok(std::move(parent));
+  const dc::Result<TrackedInt, std::string> okResult =
+      dc::Ok(std::move(parent));
   float value = okResult.match([](const TrackedInt& value) { return 1.f; },
                                [](const std::string& err) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
@@ -252,8 +251,8 @@ DTEST(match_const_lvalue_err) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  const dutil::Result<float, TrackedInt> errResult =
-      dutil::Err(std::move(parent));
+  const dc::Result<float, TrackedInt> errResult =
+      dc::Err(std::move(parent));
   float value = errResult.match([](const float& ok) { return 1.f; },
                                 [](const TrackedInt& err) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
@@ -268,7 +267,7 @@ DTEST(clone) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt original = 77;
 
-  dutil::Result<TrackedInt, float> okResult = dutil::Ok(std::move(original));
+  dc::Result<TrackedInt, float> okResult = dc::Ok(std::move(original));
   auto clone = okResult.clone();
   auto cloneOfClone = clone.clone();
 
@@ -280,11 +279,11 @@ DTEST(clone) {
 // ========================================================================== //
 
 DTEST(make_ok) {
-  auto result = dutil::makeOk<float, int>(13.f);
+  auto result = dc::makeOk<float, int>(13.f);
   DASSERT_TRUE(result.isOk());
 }
 
 DTEST(make_err) {
-  auto result = dutil::makeErr<int, std::string>("hey");
+  auto result = dc::makeErr<int, std::string>("hey");
   DASSERT_TRUE(result.isErr());
 }

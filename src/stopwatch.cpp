@@ -22,9 +22,9 @@
  * SOFTWARE.
  */
 
-#include "stopwatch.hpp"
+#include <dc/stopwatch.hpp>
 
-namespace dutil {
+namespace dc {
 
 Stopwatch::Stopwatch() : start_{}, stop_{} { Start(); }
 
@@ -98,4 +98,4 @@ double Stopwatch::fnow_ns() const {
   return duration<double, std::nano>{clock_type::now() - start_}.count();
 }
 
-}  // namespace dutil
+}  // namespace dc

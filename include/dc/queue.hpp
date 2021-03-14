@@ -30,7 +30,7 @@
 
 #include "types.hpp"
 
-namespace dutil {
+namespace dc {
 
 enum class QueueResult : u8 { kSuccess = 0, kFull, kEmpty };
 
@@ -365,4 +365,4 @@ const QueueIterator<T, TUseMutex>& QueueIterator<T, TUseMutex>::operator--() {
   return *this;
 }
 
-}  // namespace dutil
+}  // namespace dc

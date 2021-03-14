@@ -58,19 +58,19 @@ static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
 // CTOR & DTOR
 // ========================================================================== //
 
-#define DUTIL_DELETE_COPY(ClassName)          \
+#define DC_DELETE_COPY(ClassName)          \
   ClassName(const ClassName& other) = delete; \
   ClassName& operator=(const ClassName& other) = delete
 
-#define DUTIL_DEFAULT_COPY(ClassName)          \
+#define DC_DEFAULT_COPY(ClassName)          \
   ClassName(const ClassName& other) = default; \
   ClassName& operator=(const ClassName& other) = default
 
-#define DUTIL_DELETE_MOVE(ClassName)     \
+#define DC_DELETE_MOVE(ClassName)     \
   ClassName(ClassName&& other) = delete; \
   ClassName& operator=(ClassName&& other) = delete
 
-#define DUTIL_DEFAULT_MOVE(ClassName)     \
+#define DC_DEFAULT_MOVE(ClassName)     \
   ClassName(ClassName&& other) = default; \
   ClassName& operator=(ClassName&& other) = default
 
@@ -78,7 +78,7 @@ static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
 // MACROS
 // ========================================================================== //
 
-namespace dutil {
+namespace dc {
 
 /// Returns pointer to past the last slash in the path string.
 constexpr const char* filenameFromPath(const char* path) {
@@ -96,8 +96,8 @@ constexpr const char* filenameFromPath(const char* path) {
   return filename;
 }
 
-}  // namespace dutil
+}  // namespace dc
 
-#define DUTIL_FILENAME dutil::filenameFromPath(__FILE__)
+#define DC_FILENAME dc::filenameFromPath(__FILE__)
 
-#define DUTIL_UNUSED(variable) (void)variable
+#define DC_UNUSED(variable) (void)variable
