@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 #// Options
 
 option(DC_STATIC_LIB "Should dc be compiled to a static library?" ON)
-option(DC_BUILD_TESTS "Should the test build be generated?" ON) # todo change default to off
+option(DC_BUILD_TESTS "Should the test build be generated?" OFF)
 option(DC_ADD_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." ON)
 
@@ -66,4 +66,15 @@ if (DC_BUILD_TESTS)
   else ()
     message(FATAL_ERROR "Unable to build tests when the testing library 'dtest' is disabled")
   endif ()
+endif ()
+
+#//////////////////////////////////////////////////////////////////////////////
+#// Copy compile_commands.json to project root
+if (WIN32)
+  add_custom_target(
+    copy-compile-commands ALL
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_BINARY_DIR}/compile_commands.json
+    ${CMAKE_CURRENT_LIST_DIR}
+    )
 endif ()

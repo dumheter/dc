@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-// NOTE: Inspired by https://github.com/lamarrr/STX, check it out!
+/// NOTE: Inspired by https://github.com/lamarrr/STX, check it out!
 
 #pragma once
 
