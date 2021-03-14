@@ -216,7 +216,58 @@ struct [[nodiscard]] Option {
 
   // TODO cgustafsson: replace??
 
-  // TODO cgustafsson: match
+  template <typename SomeFn, typename NoneFn>
+  [[nodiscard]] constexpr auto match(
+      SomeFn someFn, NoneFn noneFn) && -> InvokeResult<SomeFn&&, V&&> {
+    static_assert(
+        isInvocable<SomeFn&&, V&&>,
+        "Cannot call 'SomeFn', is it a function with argument 'V&&'?");
+    static_assert(isInvocable<NoneFn&&>,
+                  "Cannot call 'NoneFn', is it a function with no arguments?");
+    static_assert(
+        isSame<InvokeResult<SomeFn&&, V&&>, InvokeResult<NoneFn&&>>,
+        "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
+
+    if (isSome())
+      return std::forward<SomeFn&&>(someFn)(std::move(valueRef()));
+    else
+      return std::forward<NoneFn&&>(noneFn)();
+  }
+
+  template <typename SomeFn, typename NoneFn>
+  [[nodiscard]] constexpr auto match(
+      SomeFn someFn, NoneFn noneFn) & -> InvokeResult<SomeFn&&, V&> {
+    static_assert(isInvocable<SomeFn&&, V&>,
+                  "Cannot call 'SomeFn', is it a function with argument 'V&'");
+    static_assert(isInvocable<NoneFn&&>,
+                  "Cannot call 'NoneFn', is it a function with no arguments?");
+    static_assert(
+        isSame<InvokeResult<SomeFn&&, V&>, InvokeResult<NoneFn&&>>,
+        "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
+
+    if (isSome())
+      return std::forward<SomeFn&&>(someFn)(valueRef());
+    else
+      return std::forward<NoneFn&&>(noneFn)();
+  }
+
+  template <typename SomeFn, typename NoneFn>
+  [[nodiscard]] constexpr auto match(
+      SomeFn someFn, NoneFn noneFn) const& -> InvokeResult<SomeFn&&, const V&> {
+    static_assert(
+        isInvocable<SomeFn&&, const V&>,
+        "Cannot call 'SomeFn', is it a function with argument 'const V&'?");
+    static_assert(isInvocable<NoneFn&&>,
+                  "Cannot call 'NoneFn', is it a function with no arguments?");
+    static_assert(
+        isSame<InvokeResult<SomeFn&&, const V&>, InvokeResult<NoneFn&&>>,
+        "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
+
+    if (isSome())
+      return std::forward<SomeFn&&>(someFn)(valueCRef());
+    else
+      return std::forward<NoneFn&&>(noneFn)();
+  }
 
   [[nodiscard]] constexpr V& value() & {
     DUTIL_ASSERT(isSome(),
@@ -667,9 +718,9 @@ class [[nodiscard]] Result {
   [[nodiscard]] constexpr auto match(
       OkFn&& okFn, ErrFn&& errFn) && -> InvokeResult<OkFn&&, V&&> {
     static_assert(isInvocable<OkFn&&, V&&>,
-                  "Cannot call 'OkFn', is it a function?");
+                  "Cannot call 'OkFn', is it a function with argument 'V&&'?");
     static_assert(isInvocable<ErrFn&&, E&&>,
-                  "Cannot call 'ErrFn', is it a function?");
+                  "Cannot call 'ErrFn', is it a function with argument 'E&&'?");
     static_assert(
         isSame<InvokeResult<OkFn&&, V&&>, InvokeResult<ErrFn&&, E&&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
@@ -684,9 +735,9 @@ class [[nodiscard]] Result {
   [[nodiscard]] constexpr auto match(
       OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&> {
     static_assert(isInvocable<OkFn&&, V&>,
-                  "Cannot call 'OkFn', is it a function?");
+                  "Cannot call 'OkFn', is it a function with argument 'V&'?");
     static_assert(isInvocable<ErrFn&&, E&>,
-                  "Cannot call 'ErrFn', is it a function?");
+                  "Cannot call 'ErrFn', is it a function with argument 'E&'?");
     static_assert(
         isSame<InvokeResult<OkFn&&, V&>, InvokeResult<ErrFn&&, E&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
@@ -700,10 +751,12 @@ class [[nodiscard]] Result {
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
       OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResult<OkFn&&, const V&> {
-    static_assert(isInvocable<OkFn&&, const V&>,
-                  "Cannot call 'OkFn', is it a function?");
-    static_assert(isInvocable<ErrFn&&, const E&>,
-                  "Cannot call 'ErrFn', is it a function?");
+    static_assert(
+        isInvocable<OkFn&&, const V&>,
+        "Cannot call 'OkFn', is it a function with argument 'const V&'?");
+    static_assert(
+        isInvocable<ErrFn&&, const E&>,
+        "Cannot call 'ErrFn', is it a function with argument 'const E&'?");
     static_assert(
         isSame<InvokeResult<OkFn&&, const V&>, InvokeResult<ErrFn&&, const E&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");

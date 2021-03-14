@@ -112,8 +112,53 @@ DTEST(as_mut_const_ref) {
 }
 
 // ========================================================================== //
-// ACCESSORS
+// ACCESSORS / MODIFIERS
 // ========================================================================== //
+
+DTEST(match_rvalue) {
+  TrackedInt i(7);
+  auto optionSome = dutil::makeSome(std::move(i));
+  const int moves = i.getMoves();
+  int resSome = std::move(optionSome)
+                    .match([](TrackedInt v) { return v == 7 ? 1 : -1; },
+                           []() { return -100; });
+  DASSERT_EQ(resSome, 1);
+  DASSERT_EQ(i.getMoves(), moves + 1);
+  DASSERT_EQ(i.getCopies(), 0);
+
+  auto optionNone = dutil::makeNone<int>();
+  int resNone = std::move(optionNone)
+                    .match([](int _) { return 10; }, []() { return 11; });
+  DASSERT_EQ(resNone, 11);
+}
+
+DTEST(match_lvalue) {
+  TrackedInt i(7);
+  auto optionSome = dutil::makeSome(std::move(i));
+  const int moves = i.getMoves();
+  int resSome = optionSome.match([](TrackedInt& v) { return v == 7 ? 1 : -1; },
+                                 []() { return -100; });
+  DASSERT_EQ(resSome, 1);
+  DASSERT_EQ(i.getMoves(), moves);
+  DASSERT_EQ(i.getCopies(), 0);
+
+  auto optionNone = dutil::makeNone<int>();
+  int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
+  DASSERT_EQ(resNone, 11);
+}
+
+DTEST(match_const_rvalue) {
+  dtest::NoCopy<int> i(7);
+  const auto optionSome = dutil::makeSome(std::move(i));
+  int resSome = optionSome.match(
+      [](const dtest::NoCopy<int>& v) { return v == 7 ? 1 : -1; },
+      []() { return -100; });
+  DASSERT_EQ(resSome, 1);
+
+  const auto optionNone = dutil::makeNone<int>();
+  int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
+  DASSERT_EQ(resNone, 11);
+}
 
 DTEST(value) {
   TrackedInt original(77);
