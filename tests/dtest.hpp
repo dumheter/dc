@@ -53,7 +53,7 @@
 ///   ```
 
 /// Run all registered tests.
-#define DTEST_RUN() dtest::details::runTests()
+#define DTEST_RUN() dtest::internal::runTests()
 
 /// Register a new test.
 #define DTEST(testName) DTEST_REGISTER(testName, DUTIL_FILENAME, __FILE__)
@@ -64,11 +64,11 @@
 #define DASSERT_EQ(a, b) DASSERT_EQ_IMPL(a, b, __LINE__)
 #define DASSERT_NE(a, b) DASSERT_NE_IMPL(a, b, __LINE__)
 
+namespace dtest {
+
 // ========================================================================== //
 // HELPERS
 // ========================================================================== //
-
-namespace dtest {
 
 /// Track the lifetime of any object, with lifetime meaning:
 ///    - track COPIES made of the original.
@@ -164,6 +164,8 @@ class [[nodiscard]] TrackLifetime {
   int m_destructs = 0;
 };
 
+// ========================================================================== //
+
 template <typename T>
 class [[nodiscard]] NoCopy {
  public:
@@ -198,10 +200,10 @@ class [[nodiscard]] NoCopy {
 }  // namespace dtest
 
 // ========================================================================== //
-// INTERNAL DETAILS
+// INTERNAL
 // ========================================================================== //
 
-namespace dtest::details {
+namespace dtest::internal {
 
 struct TestBodyState {
   const char* name = nullptr;
@@ -291,7 +293,7 @@ class Paint {
   char m_str[kStrLen];
 };
 
-}  // namespace dtest::details
+}  // namespace dtest::internal
 
 #define DTEST_STRINGIFY(expr) #expr
 
@@ -310,11 +312,11 @@ class Paint {
   static_assert(sizeof(DTEST_STRINGIFY(testName)) > 1,                         \
                 "Test names cannot be empty.");                                \
   struct DTEST_MAKE_CLASS_NAME(testName, __LINE__) {                           \
-    void testBody(dtest::details::TestBodyState& dtest_details_testBodyState); \
+    void testBody(dtest::internal::TestBodyState& dtest_internal_testBodyState); \
     DTEST_MAKE_CLASS_NAME(testName, __LINE__)() {                              \
-      dtest::details::dtestAdd(                                                \
-          [this](dtest::details::TestBodyState& dtest_details_testBodyState) { \
-            testBody(dtest_details_testBodyState);                             \
+      dtest::internal::dtestAdd(                                                \
+          [this](dtest::internal::TestBodyState& dtest_internal_testBodyState) { \
+            testBody(dtest_internal_testBodyState);                             \
           },                                                                   \
           #testName, fileName, dutil::hash64fnv1a(filePath));                  \
     }                                                                          \
@@ -322,7 +324,7 @@ class Paint {
   DTEST_MAKE_CLASS_NAME(testName, __LINE__)                                    \
   DTEST_MAKE_VAR_NAME(testName, __LINE__);                                     \
   void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody(                    \
-      dtest::details::TestBodyState& dtest_details_testBodyState)
+      dtest::internal::TestBodyState& dtest_internal_testBodyState)
 
 // ========================================================================== //
 // ASSERT MACRCO IMPL
@@ -331,14 +333,14 @@ class Paint {
 #define DASSERT_TRUE_IMPL(expr, line)                                      \
   do {                                                                     \
     if (!!(expr)) {                                                        \
-      ++dtest_details_testBodyState.pass;                                  \
+      ++dtest_internal_testBodyState.pass;                                  \
       printf("\t\t+ Assert:%d true " #expr " %s\n", line,                  \
-             dtest::details::Paint("passed", dtest::details::Color::Green) \
+             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
-      ++dtest_details_testBodyState.fail;                                  \
+      ++dtest_internal_testBodyState.fail;                                  \
       printf("\t\t- Assert:%d true " #expr " %s\n", line,                  \
-             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)
@@ -346,14 +348,14 @@ class Paint {
 #define DASSERT_FALSE_IMPL(expr, line)                                     \
   do {                                                                     \
     if (!(expr)) {                                                         \
-      ++dtest_details_testBodyState.pass;                                  \
+      ++dtest_internal_testBodyState.pass;                                  \
       printf("\t\t+ Assert:%d false " #expr " %s\n", line,                 \
-             dtest::details::Paint("passed", dtest::details::Color::Green) \
+             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
-      ++dtest_details_testBodyState.fail;                                  \
+      ++dtest_internal_testBodyState.fail;                                  \
       printf("\t\t- Assert:%d false " #expr " %s\n", line,                 \
-             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)
@@ -361,14 +363,14 @@ class Paint {
 #define DASSERT_EQ_IMPL(a, b, line)                                        \
   do {                                                                     \
     if ((a) == (b)) {                                                      \
-      ++dtest_details_testBodyState.pass;                                  \
+      ++dtest_internal_testBodyState.pass;                                  \
       printf("\t\t+ Assert:%d " #a " == " #b " %s\n", line,                \
-             dtest::details::Paint("passed", dtest::details::Color::Green) \
+             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
-      ++dtest_details_testBodyState.fail;                                  \
+      ++dtest_internal_testBodyState.fail;                                  \
       printf("\t\t- Assert:%d " #a " == " #b " %s\n", line,                \
-             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)
@@ -376,14 +378,14 @@ class Paint {
 #define DASSERT_NE_IMPL(a, b, line)                                        \
   do {                                                                     \
     if ((a) != (b)) {                                                      \
-      ++dtest_details_testBodyState.pass;                                  \
+      ++dtest_internal_testBodyState.pass;                                  \
       printf("\t\t+ Assert:%d " #a " != " #b " %s\n", line,                \
-             dtest::details::Paint("passed", dtest::details::Color::Green) \
+             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
                  .c_str());                                                \
     } else {                                                               \
-      ++dtest_details_testBodyState.fail;                                  \
+      ++dtest_internal_testBodyState.fail;                                  \
       printf("\t\t- Assert:%d " #a " != " #b " %s\n", line,                \
-             dtest::details::Paint("failed", dtest::details::Color::Red)   \
+             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                  .c_str());                                                \
     }                                                                      \
   } while (0)

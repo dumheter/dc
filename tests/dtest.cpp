@@ -38,7 +38,7 @@
 #include <Windows.h>
 #endif
 
-namespace dtest::details {
+namespace dtest::internal {
 
 void Register::addTest(TestFunction fn, const char* testName,
                        const char* fileName, u64 filePathHash) {
@@ -147,4 +147,4 @@ Paint::Paint(const char* str, Color color) {
 
 const char* Paint::c_str() const { return m_str; }
 
-}  // namespace dtest::details
+}  // namespace dtest::internal
