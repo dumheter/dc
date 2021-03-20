@@ -1,5 +1,5 @@
-#include <dc/result.hpp>
 #include <dc/dtest.hpp>
+#include <dc/result.hpp>
 #include <string>
 
 using TrackedInt = dtest::TrackLifetime<int>;
@@ -126,8 +126,8 @@ DTEST(match_rvalue) {
   DASSERT_EQ(i.getCopies(), 0);
 
   auto optionNone = dc::makeNone<int>();
-  int resNone = std::move(optionNone)
-                    .match([](int _) { return 10; }, []() { return 11; });
+  int resNone =
+      std::move(optionNone).match([](int) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
 }
 
@@ -142,11 +142,11 @@ DTEST(match_lvalue) {
   DASSERT_EQ(i.getCopies(), 0);
 
   auto optionNone = dc::makeNone<int>();
-  int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
+  int resNone = optionNone.match([](int) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
 }
 
-DTEST(match_const_rvalue) {
+DTEST(match_const_lvalue) {
   dtest::NoCopy<int> i(7);
   const auto optionSome = dc::makeSome(std::move(i));
   int resSome = optionSome.match(
@@ -155,7 +155,7 @@ DTEST(match_const_rvalue) {
   DASSERT_EQ(resSome, 1);
 
   const auto optionNone = dc::makeNone<int>();
-  int resNone = optionNone.match([](int _) { return 10; }, []() { return 11; });
+  int resNone = optionNone.match([](int) { return 10; }, []() { return 11; });
   DASSERT_EQ(resNone, 11);
 }
 
@@ -181,7 +181,7 @@ DTEST(unwrap) {
   auto option = dc::makeSome(std::move(original));
   const int moves = original.getMoves();
   TrackedInt value = std::move(option).unwrap();
-  DASSERT_NE(moves, original.getMoves());
+  DASSERT_EQ(moves + 1, original.getMoves());
   DASSERT_EQ(value.getObject(), 101);
   DASSERT_EQ(original.getCopies(), 0);
 }

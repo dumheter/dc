@@ -22,10 +22,9 @@
  * SOFTWARE.
  */
 
-#include <dc/dtest.hpp>
-
 #include <cstdio>
 #include <dc/assert.hpp>
+#include <dc/dtest.hpp>
 #include <dc/stopwatch.hpp>
 
 #if defined(_MSC_VER)
@@ -44,7 +43,16 @@ void Register::addTest(TestFunction fn, const char* testName,
                        const char* fileName, u64 filePathHash) {
   TestCategory& category = m_testCategories[filePathHash];
   category.name = fileName;
-  category.tests.push_back({{testName, 0, 0}, std::move(fn)});
+  TestBodyState bodyState;
+  bodyState.name = testName;
+  TestCase testCase;
+  testCase.state = std::move(bodyState);
+  testCase.fn = std::move(fn);
+  category.tests.push_back(std::move(testCase));
+}
+
+void Register::addVip(u64 filePathHash) {
+  m_vipCategories.emplace(filePathHash);
 }
 
 Register& getRegister() {
@@ -70,15 +78,20 @@ void runTests() {
   FixConsole();
   Register& r = getRegister();
 
-  printf("___|_ D T E S T _|___\nRunning %d test categories.\n",
-         static_cast<int>(r.getTestCategories().size()));
+  const bool vipActive = r.hasVipCategories();
+  printf("___|_ D T E S T _|___\n%sRunning %d test categories.\n",
+         vipActive ? "! VIP Active ! " : "",
+         vipActive ? static_cast<int>(r.vipCount())
+                   : static_cast<int>(r.getTestCategories().size()));
 
   dc::Stopwatch stopwatch;
 
   size_t testCount = 0;
   size_t assertCount = 0;
   int warnings = 0;
-  for (auto& [_, category] : r.getTestCategories()) {
+  for (auto& [hash, category] : r.getTestCategories()) {
+    if (vipActive && !r.containsVipCategory(hash)) continue;
+
     testCount += category.tests.size();
     printf(
         "----------------------------------------------------------------------"
@@ -139,7 +152,7 @@ void runTests() {
 
 Paint::Paint(const char* str, Color color) {
   DC_ASSERT(strlen(str) < Paint::kStrLen,
-               "Trying to paint a too large string.");
+            "Trying to paint a too large string.");
   const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
                             static_cast<ColorType>(color), str);
   DC_ASSERT(res >= 0, "Failed to copy string");

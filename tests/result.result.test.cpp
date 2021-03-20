@@ -1,5 +1,5 @@
-#include <dc/result.hpp>
 #include <dc/dtest.hpp>
+#include <dc/result.hpp>
 #include <string>
 
 using TrackedInt = dtest::TrackLifetime<int>;
@@ -193,8 +193,7 @@ DTEST(match_rvalue_ok) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult =
-      dc::Ok(std::move(parent));
+  dc::Result<TrackedInt, std::string> okResult = dc::Ok(std::move(parent));
   float value = std::move(okResult).match([](TrackedInt value) { return 1.f; },
                                           [](std::string err) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
@@ -206,8 +205,8 @@ DTEST(match_rvalue_err) {
   TrackedInt parent = 13;
 
   dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
-  float value = std::move(errResult).match([](float ok) { return 1.f; },
-                                           [](TrackedInt err) { return -1.f; });
+  float value = std::move(errResult).match([](float) { return 1.f; },
+                                           [](TrackedInt) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
   DASSERT_EQ(parent.getCopies(), 0);
 }
@@ -216,10 +215,9 @@ DTEST(match_lvalue_ok) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult =
-      dc::Ok(std::move(parent));
-  float value = okResult.match([](TrackedInt& value) { return 1.f; },
-                               [](std::string& err) { return -1.f; });
+  dc::Result<TrackedInt, std::string> okResult = dc::Ok(std::move(parent));
+  float value = okResult.match([](TrackedInt&) { return 1.f; },
+                               [](std::string&) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
   DASSERT_EQ(parent.getCopies(), 0);
 }
@@ -229,8 +227,8 @@ DTEST(match_lvalue_err) {
   TrackedInt parent = 13;
 
   dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
-  float value = errResult.match([](float& ok) { return 1.f; },
-                                [](TrackedInt& err) { return -1.f; });
+  float value = errResult.match([](float&) { return 1.f; },
+                                [](TrackedInt&) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
   DASSERT_EQ(parent.getCopies(), 0);
 }
@@ -241,8 +239,8 @@ DTEST(match_const_lvalue_ok) {
 
   const dc::Result<TrackedInt, std::string> okResult =
       dc::Ok(std::move(parent));
-  float value = okResult.match([](const TrackedInt& value) { return 1.f; },
-                               [](const std::string& err) { return -1.f; });
+  float value = okResult.match([](const TrackedInt&) { return 1.f; },
+                               [](const std::string&) { return -1.f; });
   DASSERT_TRUE(value > 0.f);
   DASSERT_EQ(parent.getCopies(), 0);
 }
@@ -251,10 +249,9 @@ DTEST(match_const_lvalue_err) {
   using TrackedInt = dtest::TrackLifetime<int>;
   TrackedInt parent = 13;
 
-  const dc::Result<float, TrackedInt> errResult =
-      dc::Err(std::move(parent));
-  float value = errResult.match([](const float& ok) { return 1.f; },
-                                [](const TrackedInt& err) { return -1.f; });
+  const dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
+  float value = errResult.match([](const float&) { return 1.f; },
+                                [](const TrackedInt&) { return -1.f; });
   DASSERT_TRUE(value < 0.f);
   DASSERT_EQ(parent.getCopies(), 0);
 }

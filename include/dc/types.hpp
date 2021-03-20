@@ -58,46 +58,18 @@ static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
 // CTOR & DTOR
 // ========================================================================== //
 
-#define DC_DELETE_COPY(ClassName)          \
+#define DC_DELETE_COPY(ClassName)             \
   ClassName(const ClassName& other) = delete; \
   ClassName& operator=(const ClassName& other) = delete
 
-#define DC_DEFAULT_COPY(ClassName)          \
+#define DC_DEFAULT_COPY(ClassName)             \
   ClassName(const ClassName& other) = default; \
   ClassName& operator=(const ClassName& other) = default
 
-#define DC_DELETE_MOVE(ClassName)     \
+#define DC_DELETE_MOVE(ClassName)        \
   ClassName(ClassName&& other) = delete; \
   ClassName& operator=(ClassName&& other) = delete
 
-#define DC_DEFAULT_MOVE(ClassName)     \
+#define DC_DEFAULT_MOVE(ClassName)        \
   ClassName(ClassName&& other) = default; \
   ClassName& operator=(ClassName&& other) = default
-
-// ========================================================================== //
-// MACROS
-// ========================================================================== //
-
-namespace dc {
-
-/// Returns pointer to past the last slash in the path string.
-constexpr const char* filenameFromPath(const char* path) {
-  const char* filename = path;
-
-  while (*path) {
-#if !defined(WIN32)
-    if (*path++ == '/')
-#else
-    if (*path++ == '\\')
-#endif
-      filename = path;
-  }
-
-  return filename;
-}
-
-}  // namespace dc
-
-#define DC_FILENAME dc::filenameFromPath(__FILE__)
-
-#define DC_UNUSED(variable) (void)variable

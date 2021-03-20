@@ -197,14 +197,12 @@ struct [[nodiscard]] Option {
   }
 
   [[nodiscard]] constexpr auto asMutRef() & -> Option<MutRef<V>> {
-    DC_ASSERT(isSome(),
-                 "Tried to access value 'Some' when Option is 'None'.");
+    DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return Some<MutRef<V>>(MutRef<V>(valueRef()));
   }
 
   [[nodiscard]] constexpr auto asConstRef() const& -> Option<ConstRef<V>> {
-    DC_ASSERT(isSome(),
-                 "Tried to access value 'Some' when Option is 'None'.");
+    DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return Some<ConstRef<V>>(ConstRef<V>(valueCRef()));
   }
 
@@ -270,20 +268,17 @@ struct [[nodiscard]] Option {
   }
 
   [[nodiscard]] constexpr V& value() & {
-    DC_ASSERT(isSome(),
-                 "Tried to access value 'Some' when Option is 'None'.");
+    DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return valueRef();
   }
 
   [[nodiscard]] constexpr const V& value() const& {
-    DC_ASSERT(isSome(),
-                 "Tried to access value 'Some' when Option is 'None'.");
+    DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return valueCRef();
   }
 
   [[nodiscard]] constexpr V unwrap() && {
-    DC_ASSERT(isSome(),
-                 "Tried to unwrap value 'Some' when Option is 'None'.");
+    DC_ASSERT(isSome(), "Tried to unwrap value 'Some' when Option is 'None'.");
     return std::move(valueRef());
   }
 

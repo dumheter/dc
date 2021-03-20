@@ -25,9 +25,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
-#include <string>
-
 #include <dc/platform.hpp>
+#include <string>
 
 #if defined(DC_ASSERT_DIALOG)
 #if defined(DC_PLATFORM_WINDOWS)

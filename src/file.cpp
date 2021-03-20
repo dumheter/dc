@@ -22,10 +22,8 @@
  * SOFTWARE.
  */
 
-#include <dc/file.hpp>
-
 #include <cstdlib>
-
+#include <dc/file.hpp>
 #include <dc/platform.hpp>
 
 namespace dc {
