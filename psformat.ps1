@@ -6,3 +6,4 @@ where {
 }
 
 foreach ($file in $files) { clang-format -style=file -i $file.FullName } 
+echo "Done formatting all .(cpp|h|hpp) files."

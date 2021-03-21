@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(dc CXX)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Options
@@ -11,6 +11,7 @@ option(DC_WERROR "Warning is error." ON)
 option(DC_STATIC_LIB "Should dc be compiled to a static library?" ON)
 option(DC_PROVIDES_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." ON)
+option(DC_LOG_DEBUG "Enable extra debugging options for dc::log." OFF)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Fmt
@@ -32,7 +33,7 @@ include_directories(${PROJECT_NAME} thirdparty/moodycamel/include)
 set(DC_SOURCES
   include/dc/assert.hpp
   include/dc/core.hpp
-  include/dc/dlog.hpp
+  include/dc/log.hpp
   include/dc/file.hpp
   include/dc/mac.hpp
   include/dc/misc.hpp
@@ -44,7 +45,7 @@ set(DC_SOURCES
   include/dc/traits.hpp
   include/dc/types.hpp
   src/assert.cpp
-  src/dlog.cpp
+  src/log.cpp
   src/file.cpp
   src/mac.cpp
   src/stopwatch.cpp
@@ -140,6 +141,10 @@ endif ()
 
 if (DC_WERROR)
   target_compile_options(${PROJECT_NAME} PRIVATE ${WERROR_FLAG})
+endif ()
+
+if (DC_LOG_DEBUG)
+  target_compile_options(${PROJECT_NAME} PRIVATE -DDC_LOG_DEBUG)
 endif ()
 
 #//////////////////////////////////////////////////////////////////////////////

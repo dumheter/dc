@@ -36,36 +36,36 @@
 // Macros
 // ========================================================================== //
 
-/// Init dlog library, should do first thing before calling anything else.
-#define DLOG_INIT()       \
+/// Init log library, should do first thing before calling anything else.
+#define DC_LOG_INIT()     \
   do {                    \
     dc::internal::init(); \
   } while (0)
 
 /// Use these macros to dispatch log payloads to the log worker.
-#define DLOG_VERBOSE(...)                                                    \
+#define DC_VERBOSE(...)                                                      \
   do {                                                                       \
     dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,            \
                                  dc::internal::Level::Verbose, __VA_ARGS__); \
   } while (0)
-#define DLOG_INFO(...)                                                    \
+#define DC_INFO(...)                                                      \
   do {                                                                    \
     dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,         \
                                  dc::internal::Level::Info, __VA_ARGS__); \
   } while (0)
-#define DLOG_WARNING(...)                                                    \
+#define DC_WARNING(...)                                                      \
   do {                                                                       \
     dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,            \
                                  dc::internal::Level::Warning, __VA_ARGS__); \
   } while (0)
-#define DLOG_ERROR(...)                                                    \
+#define DC_ERROR(...)                                                      \
   do {                                                                     \
     dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,          \
                                  dc::internal::Level::Error, __VA_ARGS__); \
   } while (0)
 
 /// Log the raw string, without log payload
-#define DLOG_RAW(...)                                                    \
+#define DC_RAW(...)                                                      \
   do {                                                                   \
     dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,        \
                                  dc::internal::Level::Raw, __VA_ARGS__); \
@@ -94,20 +94,26 @@ struct [[nodiscard]] LogPayload {
   std::string msg;
 };
 
+// TODO cgustafsson: detect if we are in main, then auto destruct on leaving
+// scope?
 void init();
 
-class DlogState;
+class LogState;
 
-[[nodiscard]] DlogState& dlogStateInstance();
+[[nodiscard]] LogState& logStateInstance();
 
 [[nodiscard]] bool pushLog(LogPayload&& log);
 
 // TODO cgustafsson: make a shutdown where we can wait (with timeout) for the
 // worker to finish logging.
 
-void DlogWorkerLaunch();
+void logWorkerLaunch();
 
-void DlogWorkerShutdown();
+/// Signal for the log worker to finish up and shutdown the log operation.
+/// @param timeoutUs Specify a maximum time in microseconds, to wait for it to
+/// finish.
+/// @return If the log worker finished all work before dying.
+[[maybe_unused]] bool logWorkerShutdown(u64 timeoutUs = 100'000);
 
 template <typename... Args>
 inline void makeLogPayload(const char* fileName, const char* functionName,

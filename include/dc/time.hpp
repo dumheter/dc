@@ -33,6 +33,11 @@ namespace dc {
 /// reordering.
 u64 getTimeUs();
 
+/// Get a timestamp from a high resolution clock. In addition, it has memory
+/// barrieers to protect from reordering.
+// TODO cgustafsson: needs testing
+u64 getTimeUsNoReorder();
+
 void sleepMs(u32 timeMs);
 
 /// fmt formatting code exists in dlog.hpp

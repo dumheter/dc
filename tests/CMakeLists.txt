@@ -18,7 +18,7 @@ set(TEST_SOURCES
   result.result.test.cpp
   result.option.test.cpp
   track_lifetime.test.cpp
-  dlog.test.cpp
+  log.test.cpp
   time.test.cpp
   )
 

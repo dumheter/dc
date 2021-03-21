@@ -24,6 +24,7 @@
 
 #include <time.h>
 
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <dc/assert.hpp>
@@ -64,6 +65,35 @@ namespace dc {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+    timeUs = time.tv_sec * 1000000 + time.tv_nsec / 1000;
+  else
+    timeUs = 0;
+#else
+  DC_ASSERT(false, "not implemented");
+  timeUs = 0;
+#endif
+  return timeUs;
+}
+
+[[nodiscard]] u64 getTimeUsNoReorder() {
+  u64 timeUs;
+#if defined(DC_PLATFORM_WINDOWS)
+  LARGE_INTEGER time, freq;
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+  if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+  if (!QueryPerformanceFrequency(&freq)) {
+    time.QuadPart = 0;
+    freq.QuadPart = 1;
+  }
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+
+  timeUs = static_cast<u64>(time.QuadPart * 1000'000 / freq.QuadPart);
+#elif defined(DC_PLATFORM_LINUX)
+  timespec time;
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+  const auto res = clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+  if (res == 0)
     timeUs = time.tv_sec * 1000000 + time.tv_nsec / 1000;
   else
     timeUs = 0;

@@ -25,7 +25,7 @@
 #include <moodycamel/blockingconcurrentqueue.h>
 
 #include <dc/core.hpp>
-#include <dc/dlog.hpp>
+#include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <dc/traits.hpp>
 #include <thread>
@@ -62,33 +62,45 @@ static inline void fixConsole() {
 void init() {
   fixConsole();
 
-  [[maybe_unused]] auto& a = internal::dlogStateInstance();
+  [[maybe_unused]] auto& a = internal::logStateInstance();
 }
 
 // ========================================================================== //
 // State
 // ========================================================================== //
 
-class DlogState {
+class LogState {
  public:
   using Queue = moodycamel::BlockingConcurrentQueue<LogPayload>;
 
-  bool pushLog(LogPayload&& log) { return m_queue.enqueue(std::move(log)); }
+  [[nodiscard]] bool pushLog(LogPayload&& log) {
+    return m_queue.enqueue(std::move(log));
+  }
 
-  Queue& getQueue() { return m_queue; }
+  [[nodiscard]] Queue& getQueue() { return m_queue; }
+
+  /// Wait on worker dead signal, with timeout.
+  /// Should only be done on one thread, since only one signal will be sent.
+  [[nodiscard]] bool waitOnWorkerDeadTimeoutUs(u64 timeoutUs) {
+    return m_workerDeadSem.wait(timeoutUs);
+  }
+
+  /// Worker call when it dies.
+  void workerDied() { m_workerDeadSem.signal(); }
 
  private:
   Queue m_queue;
+  moodycamel::LightweightSemaphore m_workerDeadSem;
 };
 
-[[nodiscard]] DlogState& dlogStateInstance() {
-  static DlogState dlogState;
-  return dlogState;
+[[nodiscard]] LogState& logStateInstance() {
+  static LogState logState;
+  return logState;
 }
 
 [[nodiscard]] bool pushLog(LogPayload&& log) {
-  DlogState& dlogState = dlogStateInstance();
-  return dlogState.pushLog(std::move(log));
+  LogState& logState = logStateInstance();
+  return logState.pushLog(std::move(log));
 }
 
 inline static LogPayload makeShutdownLogPayload() {
@@ -110,37 +122,82 @@ inline static bool isShutdownLogPayload(const LogPayload& log) {
 // Worker
 // ========================================================================== //
 
+#if defined(DC_LOG_DEBUG)
+static void printLogPayload(const LogPayload& log, size_t qSize) {
+  const Timestamp now = makeTimestamp();
+#else
 static void printLogPayload(const LogPayload& log) {
-  if (log.level != Level::Raw)
+#endif
+
+  if (log.level != Level::Raw) {
+#if defined(DC_LOG_DEBUG)
+    const float diff = now.second > log.timestamp.second
+                           ? now.second - log.timestamp.second
+                           : now.second + 60.f - log.timestamp.second;
+    fmt::print(
+        "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
+        log.timestamp, diff, qSize, log.level, log.fileName, log.lineno,
+        log.functionName, log.msg);
+#else
     fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", log.timestamp,
                log.level, log.fileName, log.lineno, log.functionName, log.msg);
-  else
+#endif
+  } else
     fmt::print("{}", log.msg);
 }
 
-static void DlogWorkerRun(DlogState::Queue& queue) {
+static void logWorkerRun(LogState& state) {
+  LogState::Queue& queue = state.getQueue();
   LogPayload log;
+
   for (;;) {
     queue.wait_dequeue(log);
 
     if (isShutdownLogPayload(log)) break;
 
+#if defined(DC_LOG_DEBUG)
+    printLogPayload(log, queue.size_approx());
+#else
     printLogPayload(log);
+#endif
   }
-  fmt::print("[{:dp}] ! dlog worker exit code detected, I die. !\n",
-             makeTimestamp());
+
+#if defined(DC_LOG_DEBUG)
+  fmt::print(
+      "#\033[93m[{:dp}] ! log worker exit code detected, I die. !\033[0m#\n",
+      makeTimestamp());
+#endif
+  state.workerDied();
 }
 
-void DlogWorkerLaunch() {
-  DlogState& dlogState = dlogStateInstance();
-  std::thread t(DlogWorkerRun,
-                dc::MutRef<DlogState::Queue>(dlogState.getQueue()));
+void logWorkerLaunch() {
+  LogState& logState = logStateInstance();
+  std::thread t(logWorkerRun, dc::MutRef<LogState>(logState));
   t.detach();
 }
 
-void DlogWorkerShutdown() {
-  DlogState& dlogState = dlogStateInstance();
-  dlogState.pushLog(makeShutdownLogPayload());
+bool logWorkerShutdown(u64 timeoutUs) {
+#if defined(DC_LOG_DEBUG)
+  const auto before = dc::getTimeUsNoReorder();
+#endif
+  LogState& logState = logStateInstance();
+
+  bool ok;
+  for (int i = 0; i < 5; ++i) {
+    ok = logState.pushLog(makeShutdownLogPayload());
+    if (ok) break;
+  }
+
+  bool didDieOk = false;
+  if (ok) didDieOk = logState.waitOnWorkerDeadTimeoutUs(timeoutUs);
+
+#if defined(DC_LOG_DEBUG)
+  const auto diff = dc::getTimeUsNoReorder() - before;
+  fmt::print("#\033[93mShutdown in {:.6f} seconds.\033[0m#\n",
+             diff / 1'000'000.f);
+#endif
+
+  return didDieOk;
 }
 
 }  // namespace dc::internal
