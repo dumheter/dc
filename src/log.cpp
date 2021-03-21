@@ -43,7 +43,46 @@
 #include <Windows.h>
 #endif
 
-namespace dc::internal {
+// ========================================================================== //
+// Implementation
+// ========================================================================== //
+
+namespace dc::log
+{
+
+namespace internal
+{
+class State;
+static void fixConsole();
+void workerLaunch();
+[[nodiscard]] bool workerShutdown(u64 timeoutUs);
+[[nodiscard]] State& getStateInstance();
+static void setLevel(Level level);
+}
+
+void start() {
+	internal::fixConsole();
+	[[maybe_unused]] auto& a = internal::getStateInstance();
+	internal::workerLaunch();
+}
+
+bool stopSafely(u64 timeoutUs)
+{
+	return internal::workerShutdown(timeoutUs);
+}
+
+void setLevel(Level level)
+{
+	internal::setLevel(level);
+}
+
+}
+
+// ========================================================================== //
+// Internal
+// ========================================================================== //
+
+namespace dc::log::internal {
 
 static inline void fixConsole() {
 #if defined(DC_PLATFORM_WINDOWS)
@@ -59,22 +98,16 @@ static inline void fixConsole() {
 #endif
 }
 
-void init() {
-  fixConsole();
-
-  [[maybe_unused]] auto& a = internal::logStateInstance();
-}
-
 // ========================================================================== //
 // State
 // ========================================================================== //
 
-class LogState {
+class State {
  public:
-  using Queue = moodycamel::BlockingConcurrentQueue<LogPayload>;
+  using Queue = moodycamel::BlockingConcurrentQueue<Payload>;
 
-  [[nodiscard]] bool pushLog(LogPayload&& log) {
-    return m_queue.enqueue(std::move(log));
+  [[nodiscard]] bool push(Payload&& payload) {
+    return m_queue.enqueue(std::move(payload));
   }
 
   [[nodiscard]] Queue& getQueue() { return m_queue; }
@@ -88,34 +121,44 @@ class LogState {
   /// Worker call when it dies.
   void workerDied() { m_workerDeadSem.signal(); }
 
+	Settings& getSettings() { return m_settings; }
+	const Settings& getSettings() const { return m_settings; }
+
  private:
   Queue m_queue;
   moodycamel::LightweightSemaphore m_workerDeadSem;
+	Settings m_settings;
 };
 
-[[nodiscard]] LogState& logStateInstance() {
-  static LogState logState;
-  return logState;
+[[nodiscard]] State& getStateInstance() {
+  static State state;
+  return state;
 }
 
-[[nodiscard]] bool pushLog(LogPayload&& log) {
-  LogState& logState = logStateInstance();
-  return logState.pushLog(std::move(log));
+[[nodiscard]] bool push(Payload&& payload) {
+  State& state = getStateInstance();
+  return state.push(std::move(payload));
 }
 
-inline static LogPayload makeShutdownLogPayload() {
-  LogPayload log;
-  log.fileName = nullptr;
-  log.functionName = nullptr;
-  log.lineno = -418;
-  log.timestamp = {};
-  log.level = Level::Info;
-  return log;
+inline static Payload makeShutdownPayload() {
+  Payload payload;
+  payload.fileName = nullptr;
+  payload.functionName = nullptr;
+  payload.lineno = -418;
+  payload.timestamp = {};
+  payload.level = Level::None;
+  return payload;
 }
 
-inline static bool isShutdownLogPayload(const LogPayload& log) {
-  return log.lineno == -418 && log.level == Level::Info &&
-         log.fileName == nullptr && log.functionName == nullptr;
+inline static bool isShutdownPayload(const Payload& payload) {
+  return payload.lineno == -418 && payload.level == Level::None &&
+         payload.fileName == nullptr && payload.functionName == nullptr;
+}
+
+inline static void setLevel(Level level)
+{
+	State& state = internal::getStateInstance();
+	state.getSettings().level = level;
 }
 
 // ========================================================================== //
@@ -123,42 +166,46 @@ inline static bool isShutdownLogPayload(const LogPayload& log) {
 // ========================================================================== //
 
 #if defined(DC_LOG_DEBUG)
-static void printLogPayload(const LogPayload& log, size_t qSize) {
+static void printPayload(const Payload& payload, Level level, size_t qSize) {
   const Timestamp now = makeTimestamp();
 #else
-static void printLogPayload(const LogPayload& log) {
+ static void printPayload(const Payload& payload, Level level) {
 #endif
 
-  if (log.level != Level::Raw) {
+	 if (payload.level >= level) {
+		 if (payload.level != Level::Raw)
+		 {
 #if defined(DC_LOG_DEBUG)
-    const float diff = now.second > log.timestamp.second
-                           ? now.second - log.timestamp.second
-                           : now.second + 60.f - log.timestamp.second;
-    fmt::print(
-        "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
-        log.timestamp, diff, qSize, log.level, log.fileName, log.lineno,
-        log.functionName, log.msg);
+			 const float diff = now.second > payload.timestamp.second
+								? now.second - payload.timestamp.second
+								: now.second + 60.f - payload.timestamp.second;
+			 fmt::print(
+				 "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
+				 payload.timestamp, diff, qSize, payload.level, payload.fileName, payload.lineno,
+				 payload.functionName, payload.msg);
 #else
-    fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", log.timestamp,
-               log.level, log.fileName, log.lineno, log.functionName, log.msg);
+			 fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", payload.timestamp,
+						payload.level, payload.fileName, payload.lineno, payload.functionName, payload.msg);
 #endif
-  } else
-    fmt::print("{}", log.msg);
+		 }
+		 else if (payload.level == Level::Raw)
+			 fmt::print("{}", payload.msg);
+	 }
 }
 
-static void logWorkerRun(LogState& state) {
-  LogState::Queue& queue = state.getQueue();
-  LogPayload log;
+static void workerRun(State& state) {
+  State::Queue& queue = state.getQueue();
+  Payload payload;
 
   for (;;) {
-    queue.wait_dequeue(log);
+    queue.wait_dequeue(payload);
 
-    if (isShutdownLogPayload(log)) break;
+    if (isShutdownPayload(payload)) break;
 
 #if defined(DC_LOG_DEBUG)
-    printLogPayload(log, queue.size_approx());
+    printPayload(payload, state.getSettings().level, queue.size_approx());
 #else
-    printLogPayload(log);
+    printPayload(payload, state.getSettings().level);
 #endif
   }
 
@@ -170,26 +217,26 @@ static void logWorkerRun(LogState& state) {
   state.workerDied();
 }
 
-void logWorkerLaunch() {
-  LogState& logState = logStateInstance();
-  std::thread t(logWorkerRun, dc::MutRef<LogState>(logState));
+inline void workerLaunch() {
+  State& state = getStateInstance();
+  std::thread t(workerRun, dc::MutRef<State>(state));
   t.detach();
 }
 
-bool logWorkerShutdown(u64 timeoutUs) {
+inline bool workerShutdown(u64 timeoutUs) {
 #if defined(DC_LOG_DEBUG)
   const auto before = dc::getTimeUsNoReorder();
 #endif
-  LogState& logState = logStateInstance();
+  State& state = getStateInstance();
 
   bool ok;
   for (int i = 0; i < 5; ++i) {
-    ok = logState.pushLog(makeShutdownLogPayload());
+    ok = state.push(makeShutdownPayload());
     if (ok) break;
   }
 
   bool didDieOk = false;
-  if (ok) didDieOk = logState.waitOnWorkerDeadTimeoutUs(timeoutUs);
+  if (ok) didDieOk = state.waitOnWorkerDeadTimeoutUs(timeoutUs);
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;

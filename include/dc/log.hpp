@@ -36,56 +36,68 @@
 // Macros
 // ========================================================================== //
 
-/// Init log library, should do first thing before calling anything else.
-#define DC_LOG_INIT()     \
-  do {                    \
-    dc::internal::init(); \
-  } while (0)
-
 /// Use these macros to dispatch log payloads to the log worker.
 #define DC_VERBOSE(...)                                                      \
   do {                                                                       \
-    dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,            \
-                                 dc::internal::Level::Verbose, __VA_ARGS__); \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,            \
+                                 dc::log::Level::Verbose, __VA_ARGS__); \
   } while (0)
 #define DC_INFO(...)                                                      \
   do {                                                                    \
-    dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,         \
-                                 dc::internal::Level::Info, __VA_ARGS__); \
+	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
+                                 dc::log::Level::Info, __VA_ARGS__); \
   } while (0)
 #define DC_WARNING(...)                                                      \
   do {                                                                       \
-    dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,            \
-                                 dc::internal::Level::Warning, __VA_ARGS__); \
+	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
+                                 dc::log::Level::Warning, __VA_ARGS__); \
   } while (0)
 #define DC_ERROR(...)                                                      \
   do {                                                                     \
-    dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,          \
-                                 dc::internal::Level::Error, __VA_ARGS__); \
+	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
+                                 dc::log::Level::Error, __VA_ARGS__); \
   } while (0)
 
-/// Log the raw string, without log payload
+/// Log the raw string, without payload
 #define DC_RAW(...)                                                      \
   do {                                                                   \
-    dc::internal::makeLogPayload(DC_FILENAME, __func__, __LINE__,        \
-                                 dc::internal::Level::Raw, __VA_ARGS__); \
+	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
+                                 dc::log::Level::Raw, __VA_ARGS__); \
   } while (0)
+
+namespace dc::log
+{
+
+/// Start the log worker. Log will not do anything until this is called.
+void start();
+
+/// Stop the log worker. It's called safely because not calling it is not safe.
+/// There could be logs lost by not calling it.
+/// @param timeoutUs Specify a maximum time in microseconds, to wait for it to
+/// finish.
+/// @return If the log worker finished all work before dying.
+bool stopSafely(u64 timeoutUs = 1'000'000);
+
+enum class Level {
+	Verbose,
+	Info,
+	Warning,
+	Error,
+	Raw,
+	None,
+};
+
+void setLevel(Level level);
+
+}
 
 // ========================================================================== //
 // Internal
 // ========================================================================== //
 
-namespace dc::internal {
+namespace dc::log::internal {
 
-enum class Level {
-  Verbose,
-  Info,
-  Warning,
-  Error,
-  Raw,
-};
-
-struct [[nodiscard]] LogPayload {
+struct [[nodiscard]] Payload {
   const char* fileName;
   const char* functionName;
   int lineno;
@@ -94,65 +106,50 @@ struct [[nodiscard]] LogPayload {
   std::string msg;
 };
 
-// TODO cgustafsson: detect if we are in main, then auto destruct on leaving
-// scope?
-void init();
+struct [[nodiscard]] Settings {
+	Level level;
+};
 
-class LogState;
-
-[[nodiscard]] LogState& logStateInstance();
-
-[[nodiscard]] bool pushLog(LogPayload&& log);
-
-// TODO cgustafsson: make a shutdown where we can wait (with timeout) for the
-// worker to finish logging.
-
-void logWorkerLaunch();
-
-/// Signal for the log worker to finish up and shutdown the log operation.
-/// @param timeoutUs Specify a maximum time in microseconds, to wait for it to
-/// finish.
-/// @return If the log worker finished all work before dying.
-[[maybe_unused]] bool logWorkerShutdown(u64 timeoutUs = 100'000);
+[[nodiscard]] bool push(Payload&& payload);
 
 template <typename... Args>
-inline void makeLogPayload(const char* fileName, const char* functionName,
+inline void makePayload(const char* fileName, const char* functionName,
                            int lineno, Level level, Args&&... args) {
-  LogPayload log;
-  log.fileName = fileName;
-  log.functionName = functionName;
-  log.lineno = lineno;
-  log.level = level;
-  log.timestamp = makeTimestamp();
-  log.msg = fmt::format(std::forward<Args>(args)...);
+  Payload payload;
+  payload.fileName = fileName;
+  payload.functionName = functionName;
+  payload.lineno = lineno;
+  payload.level = level;
+  payload.timestamp = makeTimestamp();
+  payload.msg = fmt::format(std::forward<Args>(args)...);
 
   // Can fail if we cannot allocate memory (if needed).
-  const bool res = internal::pushLog(std::move(log));
+  const bool res = internal::push(std::move(payload));
   DC_ASSERT(res, "failed to allocate memory");
 }
 
-}  // namespace dc::internal
+}  // namespace dc::log::internal
 
 // ========================================================================== //
 // Fmt specialization
 // ========================================================================== //
 
 template <>
-struct fmt::formatter<dc::internal::Level> : formatter<string_view> {
+struct fmt::formatter<dc::log::Level> : formatter<string_view> {
   template <typename FormatContext>
-  auto format(dc::internal::Level level, FormatContext& ctx) {
+  auto format(dc::log::Level level, FormatContext& ctx) {
     string_view str;
     switch (level) {
-      case dc::internal::Level::Verbose:
+      case dc::log::Level::Verbose:
         str = "verbose";
         break;
-      case dc::internal::Level::Info:
+      case dc::log::Level::Info:
         str = "info";
         break;
-      case dc::internal::Level::Warning:
+      case dc::log::Level::Warning:
         str = "warning";
         break;
-      case dc::internal::Level::Error:
+      case dc::log::Level::Error:
         str = "error";
         break;
       default:
