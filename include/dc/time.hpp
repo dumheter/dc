@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,11 +26,25 @@
 
 #include <dc/core.hpp>
 
-namespace dc
-{
+namespace dc {
 
+/// Get a timestamp from a high resolution clock.
+/// Note: Do not use for any serious benchmark, is not protected from
+/// reordering.
 u64 getTimeUs();
 
 void sleepMs(u32 timeMs);
 
-}
+/// fmt formatting code exists in dlog.hpp
+struct [[nodiscard]] Timestamp {
+  u32 yearFrom2000 : 12;  //< [2000, 6096]
+  u32 month : 4;          //< [0, 16)
+  u32 day : 5;            //< [0, 32)
+  u32 hour : 5;           //< [0, 32)
+  u32 minute : 6;         //< [0, 64)
+  float second;
+};
+
+[[nodiscard]] Timestamp makeTimestamp();
+
+}  // namespace dc

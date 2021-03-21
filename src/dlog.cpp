@@ -24,11 +24,10 @@
 
 #include <moodycamel/blockingconcurrentqueue.h>
 
+#include <dc/core.hpp>
 #include <dc/dlog.hpp>
 #include <dc/platform.hpp>
-#include <dc/core.hpp>
 #include <dc/traits.hpp>
-
 #include <thread>
 
 #if defined(DC_PLATFORM_WINDOWS)
@@ -60,103 +59,88 @@ static inline void fixConsole() {
 #endif
 }
 
-void init()
-{
-	fixConsole();
+void init() {
+  fixConsole();
 
-	[[maybe_unused]] auto& a = internal::dlogStateInstance();
+  [[maybe_unused]] auto& a = internal::dlogStateInstance();
 }
 
 // ========================================================================== //
 // State
 // ========================================================================== //
 
-class DlogState
-{
-  public:
-	using Queue = moodycamel::BlockingConcurrentQueue<LogPayload>;
+class DlogState {
+ public:
+  using Queue = moodycamel::BlockingConcurrentQueue<LogPayload>;
 
-	bool pushLog(LogPayload&& log)
-	{
-		return m_queue.enqueue(std::move(log));
-	}
+  bool pushLog(LogPayload&& log) { return m_queue.enqueue(std::move(log)); }
 
-	Queue& getQueue() { return m_queue; }
+  Queue& getQueue() { return m_queue; }
 
-  private:
-	Queue m_queue;
+ private:
+  Queue m_queue;
 };
 
-[[nodiscard]] DlogState& dlogStateInstance()
-{
-	static DlogState dlogState;
-	return dlogState;
+[[nodiscard]] DlogState& dlogStateInstance() {
+  static DlogState dlogState;
+  return dlogState;
 }
 
-[[nodiscard]] bool pushLog(LogPayload&& log)
-{
-	DlogState& dlogState = dlogStateInstance();
-	return dlogState.pushLog(std::move(log));
+[[nodiscard]] bool pushLog(LogPayload&& log) {
+  DlogState& dlogState = dlogStateInstance();
+  return dlogState.pushLog(std::move(log));
 }
 
-inline static LogPayload makeShutdownLogPayload()
-{
-	LogPayload log;
-	log.fileName = nullptr;
-	log.functionName = nullptr;
-	log.lineno = -418;
-	log.timestamp = 0;
-	log.level = Level::Info;
-	return log;
+inline static LogPayload makeShutdownLogPayload() {
+  LogPayload log;
+  log.fileName = nullptr;
+  log.functionName = nullptr;
+  log.lineno = -418;
+  log.timestamp = {};
+  log.level = Level::Info;
+  return log;
 }
 
-inline static bool isShutdownLogPayload(const LogPayload& log)
-{
-	return log.lineno == -418
-			&& log.timestamp == 0
-			&& log.level == Level::Info
-			&& log.fileName == nullptr
-			&& log.functionName == nullptr;
+inline static bool isShutdownLogPayload(const LogPayload& log) {
+  return log.lineno == -418 && log.level == Level::Info &&
+         log.fileName == nullptr && log.functionName == nullptr;
 }
 
 // ========================================================================== //
 // Worker
 // ========================================================================== //
 
-static void printLogPayload(const LogPayload& log)
-{
-	if (log.level != Level::Raw)
-		fmt::print("[TODO 13:37] [{:7}] [{:16}:{}] [{:10}] {}\n", log.level, log.fileName, log.lineno, log.functionName, log.msg);
-	else
-		fmt::print("{}", log.msg);
+static void printLogPayload(const LogPayload& log) {
+  if (log.level != Level::Raw)
+    fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", log.timestamp,
+               log.level, log.fileName, log.lineno, log.functionName, log.msg);
+  else
+    fmt::print("{}", log.msg);
 }
 
-static void DlogWorkerRun(DlogState::Queue& queue)
-{
-	LogPayload log;
-	for (;;)
-	{
-		queue.wait_dequeue(log);
+static void DlogWorkerRun(DlogState::Queue& queue) {
+  LogPayload log;
+  for (;;) {
+    queue.wait_dequeue(log);
 
-		if (isShutdownLogPayload(log))
-			break;
+    if (isShutdownLogPayload(log)) break;
 
-		printLogPayload(log);
-	}
-	fmt::print("$|dlog worker|$ Dlog's exit code detected, I die.\n");
+    printLogPayload(log);
+  }
+  fmt::print("[{:dp}] ! dlog worker exit code detected, I die. !\n",
+             makeTimestamp());
 }
 
-void DlogWorkerLaunch()
-{
-	DlogState& dlogState = dlogStateInstance();
-	std::thread t(DlogWorkerRun, dc::MutRef<DlogState::Queue>(dlogState.getQueue()));
-	t.detach();
+void DlogWorkerLaunch() {
+  DlogState& dlogState = dlogStateInstance();
+  std::thread t(DlogWorkerRun,
+                dc::MutRef<DlogState::Queue>(dlogState.getQueue()));
+  t.detach();
 }
 
-void DlogWorkerShutdown()
-{
-	DlogState& dlogState = dlogStateInstance();
-	dlogState.pushLog(makeShutdownLogPayload());
+void DlogWorkerShutdown() {
+  DlogState& dlogState = dlogStateInstance();
+  dlogState.pushLog(makeShutdownLogPayload());
 }
 
-}
+}  // namespace dc::internal

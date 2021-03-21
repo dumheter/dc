@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <dc/assert.hpp>
 #include <dc/types.hpp>
 
 // ========================================================================== //
@@ -61,3 +62,5 @@ constexpr const char* filenameFromPath(const char* path) {
 #endif
 
 #define DC_FORCE_INLINE __forceinline
+
+#define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
