@@ -47,36 +47,28 @@
 // Implementation
 // ========================================================================== //
 
-namespace dc::log
-{
+namespace dc::log {
 
-namespace internal
-{
+namespace internal {
 class State;
 static void fixConsole();
 void workerLaunch();
 [[nodiscard]] bool workerShutdown(u64 timeoutUs);
 [[nodiscard]] State& getStateInstance();
 static void setLevel(Level level);
-}
+}  // namespace internal
 
 void start() {
-	internal::fixConsole();
-	[[maybe_unused]] auto& a = internal::getStateInstance();
-	internal::workerLaunch();
+  internal::fixConsole();
+  [[maybe_unused]] auto& a = internal::getStateInstance();
+  internal::workerLaunch();
 }
 
-bool stopSafely(u64 timeoutUs)
-{
-	return internal::workerShutdown(timeoutUs);
-}
+bool stopSafely(u64 timeoutUs) { return internal::workerShutdown(timeoutUs); }
 
-void setLevel(Level level)
-{
-	internal::setLevel(level);
-}
+void setLevel(Level level) { internal::setLevel(level); }
 
-}
+}  // namespace dc::log
 
 // ========================================================================== //
 // Internal
@@ -121,13 +113,13 @@ class State {
   /// Worker call when it dies.
   void workerDied() { m_workerDeadSem.signal(); }
 
-	Settings& getSettings() { return m_settings; }
-	const Settings& getSettings() const { return m_settings; }
+  Settings& getSettings() { return m_settings; }
+  const Settings& getSettings() const { return m_settings; }
 
  private:
   Queue m_queue;
   moodycamel::LightweightSemaphore m_workerDeadSem;
-	Settings m_settings;
+  Settings m_settings;
 };
 
 [[nodiscard]] State& getStateInstance() {
@@ -155,10 +147,9 @@ inline static bool isShutdownPayload(const Payload& payload) {
          payload.fileName == nullptr && payload.functionName == nullptr;
 }
 
-inline static void setLevel(Level level)
-{
-	State& state = internal::getStateInstance();
-	state.getSettings().level = level;
+inline static void setLevel(Level level) {
+  State& state = internal::getStateInstance();
+  state.getSettings().level = level;
 }
 
 // ========================================================================== //
@@ -169,28 +160,27 @@ inline static void setLevel(Level level)
 static void printPayload(const Payload& payload, Level level, size_t qSize) {
   const Timestamp now = makeTimestamp();
 #else
- static void printPayload(const Payload& payload, Level level) {
+static void printPayload(const Payload& payload, Level level) {
 #endif
 
-	 if (payload.level >= level) {
-		 if (payload.level != Level::Raw)
-		 {
+  if (payload.level >= level) {
+    if (payload.level != Level::Raw) {
 #if defined(DC_LOG_DEBUG)
-			 const float diff = now.second > payload.timestamp.second
-								? now.second - payload.timestamp.second
-								: now.second + 60.f - payload.timestamp.second;
-			 fmt::print(
-				 "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
-				 payload.timestamp, diff, qSize, payload.level, payload.fileName, payload.lineno,
-				 payload.functionName, payload.msg);
+      const float diff = now.second > payload.timestamp.second
+                             ? now.second - payload.timestamp.second
+                             : now.second + 60.f - payload.timestamp.second;
+      fmt::print(
+          "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
+          payload.timestamp, diff, qSize, payload.level, payload.fileName,
+          payload.lineno, payload.functionName, payload.msg);
 #else
-			 fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", payload.timestamp,
-						payload.level, payload.fileName, payload.lineno, payload.functionName, payload.msg);
+      fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", payload.timestamp,
+                 payload.level, payload.fileName, payload.lineno,
+                 payload.functionName, payload.msg);
 #endif
-		 }
-		 else if (payload.level == Level::Raw)
-			 fmt::print("{}", payload.msg);
-	 }
+    } else if (payload.level == Level::Raw)
+      fmt::print("{}", payload.msg);
+  }
 }
 
 static void workerRun(State& state) {
@@ -247,4 +237,4 @@ inline bool workerShutdown(u64 timeoutUs) {
   return didDieOk;
 }
 
-}  // namespace dc::internal
+}  // namespace dc::log::internal

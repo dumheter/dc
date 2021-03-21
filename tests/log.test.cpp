@@ -4,8 +4,8 @@
 #include <thread>
 
 DTEST(dlog_testing) {
-	dc::log::start();
-    dc::log::setLevel(dc::log::Level::None);
+  dc::log::start();
+  dc::log::setLevel(dc::log::Level::None);
 
   constexpr int threadCount = 5;
   std::thread threads[threadCount];

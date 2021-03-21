@@ -33,40 +33,39 @@
 #include <utility>
 
 // ========================================================================== //
-// Macros
+// API
 // ========================================================================== //
 
 /// Use these macros to dispatch log payloads to the log worker.
-#define DC_VERBOSE(...)                                                      \
-  do {                                                                       \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,            \
-                                 dc::log::Level::Verbose, __VA_ARGS__); \
-  } while (0)
-#define DC_INFO(...)                                                      \
+#define DC_VERBOSE(...)                                                   \
   do {                                                                    \
-	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
-                                 dc::log::Level::Info, __VA_ARGS__); \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,       \
+                                   dc::log::Level::Verbose, __VA_ARGS__); \
   } while (0)
-#define DC_WARNING(...)                                                      \
-  do {                                                                       \
-	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
-                                 dc::log::Level::Warning, __VA_ARGS__); \
+#define DC_INFO(...)                                                   \
+  do {                                                                 \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,    \
+                                   dc::log::Level::Info, __VA_ARGS__); \
   } while (0)
-#define DC_ERROR(...)                                                      \
-  do {                                                                     \
-	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
-                                 dc::log::Level::Error, __VA_ARGS__); \
+#define DC_WARNING(...)                                                   \
+  do {                                                                    \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,       \
+                                   dc::log::Level::Warning, __VA_ARGS__); \
+  } while (0)
+#define DC_ERROR(...)                                                   \
+  do {                                                                  \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,     \
+                                   dc::log::Level::Error, __VA_ARGS__); \
   } while (0)
 
 /// Log the raw string, without payload
-#define DC_RAW(...)                                                      \
-  do {                                                                   \
-	  dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,		\
-                                 dc::log::Level::Raw, __VA_ARGS__); \
+#define DC_RAW(...)                                                   \
+  do {                                                                \
+    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,   \
+                                   dc::log::Level::Raw, __VA_ARGS__); \
   } while (0)
 
-namespace dc::log
-{
+namespace dc::log {
 
 /// Start the log worker. Log will not do anything until this is called.
 void start();
@@ -79,17 +78,17 @@ void start();
 bool stopSafely(u64 timeoutUs = 1'000'000);
 
 enum class Level {
-	Verbose,
-	Info,
-	Warning,
-	Error,
-	Raw,
-	None,
+  Verbose,
+  Info,
+  Warning,
+  Error,
+  Raw,
+  None,
 };
 
 void setLevel(Level level);
 
-}
+}  // namespace dc::log
 
 // ========================================================================== //
 // Internal
@@ -107,14 +106,14 @@ struct [[nodiscard]] Payload {
 };
 
 struct [[nodiscard]] Settings {
-	Level level;
+  Level level;
 };
 
 [[nodiscard]] bool push(Payload&& payload);
 
 template <typename... Args>
 inline void makePayload(const char* fileName, const char* functionName,
-                           int lineno, Level level, Args&&... args) {
+                        int lineno, Level level, Args&&... args) {
   Payload payload;
   payload.fileName = fileName;
   payload.functionName = functionName;
