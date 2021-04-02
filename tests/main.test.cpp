@@ -1,7 +1,4 @@
 #include <dc/dtest.hpp>
+#include <dc/log.hpp>
 
-int main(int, char**) {
-  DTEST_RUN();
-
-  return 0;
-}
+int main(int, char**) { return DTEST_RUN(); }

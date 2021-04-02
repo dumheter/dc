@@ -74,15 +74,15 @@ static inline void FixConsole() {
 #endif
 }
 
-void runTests() {
+int runTests() {
   FixConsole();
   Register& r = getRegister();
 
   const bool vipActive = r.hasVipCategories();
-  printf("___|_ D T E S T _|___\n%sRunning %d test categories.\n",
-         vipActive ? "! VIP Active ! " : "",
-         vipActive ? static_cast<int>(r.vipCount())
-                   : static_cast<int>(r.getTestCategories().size()));
+  LOG_INFO("___|_ D T E S T _|___");
+  LOG_INFO("{}Running {} test categories.", vipActive ? "! VIP Active ! " : "",
+           vipActive ? static_cast<int>(r.vipCount())
+                     : static_cast<int>(r.getTestCategories().size()));
 
   dc::Stopwatch stopwatch;
 
@@ -93,61 +93,64 @@ void runTests() {
     if (vipActive && !r.containsVipCategory(hash)) continue;
 
     testCount += category.tests.size();
-    printf(
-        "----------------------------------------------------------------------"
-        "\n=== %s, running %d tests.\n",
-        Paint(category.name, Color::Magenta).c_str(),
-        static_cast<int>(category.tests.size()));
+    LOG_INFO(
+        "---------------------------------------------------------------------"
+        "-");
+    LOG_INFO("=== {}, running {} tests.",
+             Paint(category.name, Color::Magenta).c_str(),
+             static_cast<int>(category.tests.size()));
 
     int i = 0;
     for (TestCase& test : category.tests) {
-      printf("\t=%d= %s ...... \n", i,
-             Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                 .c_str());
+      LOG_INFO("\t={}= {} ...... ", i,
+               Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                   .c_str());
       test.fn(test.state);
       category.fail += (test.state.fail > 0);
       if (test.state.fail == 0) category.pass++;
       assertCount += test.state.pass + test.state.fail;
       if (test.state.pass + test.state.fail == 0) {
-        printf("\t\t%s\n",
-               Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
+        LOG_INFO("\t\t{}",
+                 Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
-      printf("\t=%d= %s %s\n", i,
-             Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                 .c_str(),
-             !test.state.fail ? Paint("PASSED", Color::Green).c_str()
-                              : Paint("FAILED", Color::Red).c_str());
+      LOG_INFO("\t={}= {} {}", i,
+               Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                   .c_str(),
+               !test.state.fail ? Paint("PASSED", Color::Green).c_str()
+                                : Paint("FAILED", Color::Red).c_str());
       ++i;
     }
 
-    printf("=== %s, %s\n", Paint(category.name, Color::Magenta).c_str(),
-           !category.fail ? Paint("PASSED", Color::Green).c_str()
-                          : Paint("FAILED", Color::Red).c_str());
+    LOG_INFO("=== {}, {}", Paint(category.name, Color::Magenta).c_str(),
+             !category.fail ? Paint("PASSED", Color::Green).c_str()
+                            : Paint("FAILED", Color::Red).c_str());
   }
 
   stopwatch.Stop();
 
-  printf(
+  LOG_INFO(
       "\n--------------------------------------------------------------------"
       "--"
-      "\nSUMMARY:\t(ran %zu tests containing %zu asserts in %.3fs )\n",
+      "\nSUMMARY:\t(ran {} tests containing {} asserts in {:.3f}s )",
       testCount, assertCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {
     if (category.fail) {
       failedCategories += category.fail;
-      printf("%s: %s with %d/%d failed tests.\n",
-             Paint("FAILED", Color::Red).c_str(), category.name, category.fail,
-             category.fail + category.pass);
+      LOG_INFO("{}: {} with {}/{} failed tests.",
+               Paint("FAILED", Color::Red).c_str(), category.name,
+               category.fail, category.fail + category.pass);
     }
   }
   if (failedCategories == 0)
-    printf("ALL %s!\n", Paint("PASSED", Color::Green).c_str());
+    LOG_INFO("ALL {}!", Paint("PASSED", Color::Green).c_str());
   if (warnings)
-    printf("With %i %s\n", warnings,
-           Paint("warning(s)", Color::BrightYellow).c_str());
+    LOG_INFO("With {} {}", warnings,
+             Paint("warning(s)", Color::BrightYellow).c_str());
+
+  return failedCategories;
 }
 
 Paint::Paint(const char* str, Color color) {

@@ -23,11 +23,13 @@
  */
 
 #include <moodycamel/blockingconcurrentqueue.h>
+#include <moodycamel/lightweightsemaphore.h>
 
 #include <dc/core.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <dc/traits.hpp>
+#include <functional>
 #include <thread>
 
 #if defined(DC_PLATFORM_WINDOWS)
@@ -43,93 +45,34 @@
 #include <Windows.h>
 #endif
 
-// ========================================================================== //
-// Implementation
-// ========================================================================== //
-
 namespace dc::log {
 
-namespace internal {
-class State;
-static void fixConsole();
-void workerLaunch();
-[[nodiscard]] bool workerShutdown(u64 timeoutUs);
-[[nodiscard]] State& getStateInstance();
-static void setLevel(Level level);
-}  // namespace internal
-
-void start() {
-  internal::fixConsole();
-  [[maybe_unused]] auto& a = internal::getStateInstance();
-  internal::workerLaunch();
+[[nodiscard]] Worker& getGlobalWorker() {
+  static Worker worker;
+  return worker;
 }
 
-bool stopSafely(u64 timeoutUs) { return internal::workerShutdown(timeoutUs); }
+void init(Worker& worker) { worker.start(); }
 
-void setLevel(Level level) { internal::setLevel(level); }
+bool deinit(u64 timeoutUs, Worker& worker) { return worker.stop(timeoutUs); }
 
-}  // namespace dc::log
-
-// ========================================================================== //
-// Internal
-// ========================================================================== //
-
-namespace dc::log::internal {
-
-static inline void fixConsole() {
-#if defined(DC_PLATFORM_WINDOWS)
-  // Set console encoding
-  SetConsoleOutputCP(CP_UTF8);
-  SetConsoleCP(CP_UTF8);
-
-  // Enable virtual terminal processing
-  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-  DWORD mode;
-  GetConsoleMode(out, &mode);
-  SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-#endif
+void setLevel(Level level, Worker& worker) {
+  worker.getSettings().level = level;
 }
 
 // ========================================================================== //
-// State
+// Worker
 // ========================================================================== //
 
-class State {
- public:
+struct Worker::Data {
   using Queue = moodycamel::BlockingConcurrentQueue<Payload>;
-
-  [[nodiscard]] bool push(Payload&& payload) {
-    return m_queue.enqueue(std::move(payload));
-  }
-
-  [[nodiscard]] Queue& getQueue() { return m_queue; }
-
-  /// Wait on worker dead signal, with timeout.
-  /// Should only be done on one thread, since only one signal will be sent.
-  [[nodiscard]] bool waitOnWorkerDeadTimeoutUs(u64 timeoutUs) {
-    return m_workerDeadSem.wait(timeoutUs);
-  }
-
-  /// Worker call when it dies.
-  void workerDied() { m_workerDeadSem.signal(); }
-
-  Settings& getSettings() { return m_settings; }
-  const Settings& getSettings() const { return m_settings; }
-
- private:
-  Queue m_queue;
-  moodycamel::LightweightSemaphore m_workerDeadSem;
-  Settings m_settings;
+  moodycamel::LightweightSemaphore workerDeadSem;
+  Queue queue;
+  std::vector<Sink> sinks;
 };
 
-[[nodiscard]] State& getStateInstance() {
-  static State state;
-  return state;
-}
-
-[[nodiscard]] bool push(Payload&& payload) {
-  State& state = getStateInstance();
-  return state.push(std::move(payload));
+Worker::Worker() : m_data(std::make_unique<Data>()) {
+  m_data->sinks.push_back(ConsoleSink{});
 }
 
 inline static Payload makeShutdownPayload() {
@@ -147,86 +90,24 @@ inline static bool isShutdownPayload(const Payload& payload) {
          payload.fileName == nullptr && payload.functionName == nullptr;
 }
 
-inline static void setLevel(Level level) {
-  State& state = internal::getStateInstance();
-  state.getSettings().level = level;
-}
-
-// ========================================================================== //
-// Worker
-// ========================================================================== //
-
-#if defined(DC_LOG_DEBUG)
-static void printPayload(const Payload& payload, Level level, size_t qSize) {
-  const Timestamp now = makeTimestamp();
-#else
-static void printPayload(const Payload& payload, Level level) {
-#endif
-
-  if (payload.level >= level) {
-    if (payload.level != Level::Raw) {
-#if defined(DC_LOG_DEBUG)
-      const float diff = now.second > payload.timestamp.second
-                             ? now.second - payload.timestamp.second
-                             : now.second + 60.f - payload.timestamp.second;
-      fmt::print(
-          "[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
-          payload.timestamp, diff, qSize, payload.level, payload.fileName,
-          payload.lineno, payload.functionName, payload.msg);
-#else
-      fmt::print("[{:dp}] [{:7}] [{:16}:{}] [{:10}] {}\n", payload.timestamp,
-                 payload.level, payload.fileName, payload.lineno,
-                 payload.functionName, payload.msg);
-#endif
-    } else if (payload.level == Level::Raw)
-      fmt::print("{}", payload.msg);
-  }
-}
-
-static void workerRun(State& state) {
-  State::Queue& queue = state.getQueue();
-  Payload payload;
-
-  for (;;) {
-    queue.wait_dequeue(payload);
-
-    if (isShutdownPayload(payload)) break;
-
-#if defined(DC_LOG_DEBUG)
-    printPayload(payload, state.getSettings().level, queue.size_approx());
-#else
-    printPayload(payload, state.getSettings().level);
-#endif
-  }
-
-#if defined(DC_LOG_DEBUG)
-  fmt::print(
-      "#\033[93m[{:dp}] ! log worker exit code detected, I die. !\033[0m#\n",
-      makeTimestamp());
-#endif
-  state.workerDied();
-}
-
-inline void workerLaunch() {
-  State& state = getStateInstance();
-  std::thread t(workerRun, dc::MutRef<State>(state));
+void Worker::start() {
+  std::thread t([this] { run(); });
   t.detach();
 }
 
-inline bool workerShutdown(u64 timeoutUs) {
+bool Worker::stop(u64 timeoutUs) {
 #if defined(DC_LOG_DEBUG)
   const auto before = dc::getTimeUsNoReorder();
 #endif
-  State& state = getStateInstance();
 
   bool ok;
   for (int i = 0; i < 5; ++i) {
-    ok = state.push(makeShutdownPayload());
+    ok = enqueue(makeShutdownPayload());
     if (ok) break;
   }
 
   bool didDieOk = false;
-  if (ok) didDieOk = state.waitOnWorkerDeadTimeoutUs(timeoutUs);
+  if (ok) didDieOk = waitOnWorkerDeadTimeoutUs(timeoutUs);
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;
@@ -237,4 +118,101 @@ inline bool workerShutdown(u64 timeoutUs) {
   return didDieOk;
 }
 
-}  // namespace dc::log::internal
+[[nodiscard]] bool Worker::enqueue(Payload&& payload) {
+  return m_data->queue.enqueue(std::move(payload));
+}
+
+[[nodiscard]] bool Worker::waitOnWorkerDeadTimeoutUs(u64 timeoutUs) {
+  return m_data->workerDeadSem.wait(timeoutUs);
+}
+
+void Worker::run() {
+  m_isWorking = true;
+  Payload payload;
+
+  for (;;) {
+    m_data->queue.wait_dequeue(payload);
+
+    if (isShutdownPayload(payload)) break;
+
+    // printPayload(payload, state.getSettings().level, queue.size_approx());
+    for (auto&& sink : m_data->sinks) sink(payload, m_settings.level);
+  }
+
+#if defined(DC_LOG_DEBUG)
+  fmt::print(
+      "#\033[93m[{:dp}] ! log worker exit code detected, I die. !\033[0m#\n",
+      makeTimestamp());
+#endif
+  m_data->workerDeadSem.signal();
+  m_isWorking = false;
+}
+
+// ========================================================================== //
+// Sinks
+// ========================================================================== //
+
+void ConsoleSink::operator()(const Payload& payload, Level level) const {
+  if (payload.level >= level) {
+    // const Timestamp now = makeTimestamp();
+    // const float diff = now.second > payload.timestamp.second
+    // 				   ? now.second - payload.timestamp.second
+    // 				   : now.second + 60.f -
+    // payload.timestamp.second; fmt::print(
+    // 	"[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
+    // 	payload.timestamp, diff, qSize, payload.level, payload.fileName,
+    // 	payload.lineno, payload.functionName, payload.msg);
+
+    if (payload.level != Level::Raw) {
+      fmt::print(
+#if DC_LOG_PREFIX_DATE == 1
+          "[{:dp}] "
+#else
+          "[{:p}] "
+#endif
+#if DC_LOG_PREFIX_LEVEL == 1
+          "[{:7}] "
+#endif
+#if DC_LOG_PREFIX_FILESTAMP == 1
+          "[{:25}:{:<4}] "
+#endif
+#if DC_LOG_PREFIX_FUNCTION == 1
+          "[{:10}] "
+#endif
+          "{}\n",
+          payload.timestamp,
+#if DC_LOG_PREFIX_LEVEL == 1
+          payload.level,
+#endif
+#if DC_LOG_PREFIX_FILESTAMP == 1
+          payload.fileName, payload.lineno,
+#endif
+#if DC_LOG_PREFIX_FUNCTION == 1
+          payload.functionName,
+#endif
+          payload.msg);
+
+    } else if (payload.level == Level::Raw)
+      fmt::print("{}", payload.msg);
+  }
+}
+
+// ========================================================================== //
+// Bonus
+// ========================================================================== //
+
+void windowsFixConsole() {
+#if defined(DC_PLATFORM_WINDOWS)
+  // Set console encoding
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+
+  // Enable virtual terminal processing
+  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode;
+  GetConsoleMode(out, &mode);
+  SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#endif
+}
+
+}  // namespace dc::log

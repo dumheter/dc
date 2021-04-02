@@ -25,6 +25,7 @@
 #pragma once
 
 #include <dc/core.hpp>
+#include <dc/log.hpp>
 #include <dc/misc.hpp>
 #include <dc/traits.hpp>
 #include <functional>
@@ -32,11 +33,9 @@
 #include <unordered_set>
 
 // ========================================================================== //
-// DTEST
+// Quick Start
 // ========================================================================== //
 
-/// How to use:
-///
 /// 1. Put `DTEST_RUN();` in your main() function.
 ///
 /// 2. Create a test file, such as 'integer.test.cpp'.
@@ -52,8 +51,19 @@
 ///   }
 ///   ```
 
+// ========================================================================== //
+// Macros
+// ========================================================================== //
+
 /// Run all registered tests.
-#define DTEST_RUN() dtest::internal::runTests()
+#define DTEST_RUN()                               \
+  [] {                                            \
+    dc::log::windowsFixConsole();                 \
+    dc::log::init();                              \
+    const auto res = dtest::internal::runTests(); \
+    dc::log::deinit();                            \
+    return res;                                   \
+  }()
 
 /// Register a new test.
 #define DTEST(testName) DTEST_REGISTER(testName, DC_FILENAME, __FILE__)
@@ -265,7 +275,7 @@ class Register {
 /// Returnes a static instantitation of Register.
 Register& getRegister();
 
-void runTests();
+int runTests();
 
 template <typename Fn>
 void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
@@ -358,62 +368,62 @@ class Paint {
 // ASSERT MACRCO IMPL
 // ========================================================================== //
 
-#define DASSERT_TRUE_IMPL(expr, line)                                        \
-  do {                                                                       \
-    if (!!(expr)) {                                                          \
-      ++dtestBodyState__you_must_have_an_assert.pass;                        \
-      printf("\t\t+ Assert:%d true " #expr " %s\n", line,                    \
-             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
-                 .c_str());                                                  \
-    } else {                                                                 \
-      ++dtestBodyState__you_must_have_an_assert.fail;                        \
-      printf("\t\t- Assert:%d true " #expr " %s\n", line,                    \
-             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
-                 .c_str());                                                  \
-    }                                                                        \
+#define DASSERT_TRUE_IMPL(expr, line)                                          \
+  do {                                                                         \
+    if (!!(expr)) {                                                            \
+      ++dtestBodyState__you_must_have_an_assert.pass;                          \
+      LOG_INFO("\t\t+ Assert:{} true " #expr " {}", line,                      \
+               dtest::internal::Paint("passed", dtest::internal::Color::Green) \
+                   .c_str());                                                  \
+    } else {                                                                   \
+      ++dtestBodyState__you_must_have_an_assert.fail;                          \
+      LOG_INFO("\t\t- Assert:{} true " #expr " {}", line,                      \
+               dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
+                   .c_str());                                                  \
+    }                                                                          \
   } while (0)
 
-#define DASSERT_FALSE_IMPL(expr, line)                                       \
-  do {                                                                       \
-    if (!(expr)) {                                                           \
-      ++dtestBodyState__you_must_have_an_assert.pass;                        \
-      printf("\t\t+ Assert:%d false " #expr " %s\n", line,                   \
-             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
-                 .c_str());                                                  \
-    } else {                                                                 \
-      ++dtestBodyState__you_must_have_an_assert.fail;                        \
-      printf("\t\t- Assert:%d false " #expr " %s\n", line,                   \
-             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
-                 .c_str());                                                  \
-    }                                                                        \
+#define DASSERT_FALSE_IMPL(expr, line)                                         \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      ++dtestBodyState__you_must_have_an_assert.pass;                          \
+      LOG_INFO("\t\t+ Assert:{} false " #expr " {}", line,                     \
+               dtest::internal::Paint("passed", dtest::internal::Color::Green) \
+                   .c_str());                                                  \
+    } else {                                                                   \
+      ++dtestBodyState__you_must_have_an_assert.fail;                          \
+      LOG_INFO("\t\t- Assert:{} false " #expr " {}", line,                     \
+               dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
+                   .c_str());                                                  \
+    }                                                                          \
   } while (0)
 
-#define DASSERT_EQ_IMPL(a, b, line)                                          \
-  do {                                                                       \
-    if ((a) == (b)) {                                                        \
-      ++dtestBodyState__you_must_have_an_assert.pass;                        \
-      printf("\t\t+ Assert:%d " #a " == " #b " %s\n", line,                  \
-             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
-                 .c_str());                                                  \
-    } else {                                                                 \
-      ++dtestBodyState__you_must_have_an_assert.fail;                        \
-      printf("\t\t- Assert:%d " #a " == " #b " %s\n", line,                  \
-             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
-                 .c_str());                                                  \
-    }                                                                        \
+#define DASSERT_EQ_IMPL(a, b, line)                                            \
+  do {                                                                         \
+    if ((a) == (b)) {                                                          \
+      ++dtestBodyState__you_must_have_an_assert.pass;                          \
+      LOG_INFO("\t\t+ Assert:{} " #a " == " #b " {}", line,                    \
+               dtest::internal::Paint("passed", dtest::internal::Color::Green) \
+                   .c_str());                                                  \
+    } else {                                                                   \
+      ++dtestBodyState__you_must_have_an_assert.fail;                          \
+      LOG_INFO("\t\t- Assert:{} " #a " == " #b " {}", line,                    \
+               dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
+                   .c_str());                                                  \
+    }                                                                          \
   } while (0)
 
-#define DASSERT_NE_IMPL(a, b, line)                                          \
-  do {                                                                       \
-    if ((a) != (b)) {                                                        \
-      ++dtestBodyState__you_must_have_an_assert.pass;                        \
-      printf("\t\t+ Assert:%d " #a " != " #b " %s\n", line,                  \
-             dtest::internal::Paint("passed", dtest::internal::Color::Green) \
-                 .c_str());                                                  \
-    } else {                                                                 \
-      ++dtestBodyState__you_must_have_an_assert.fail;                        \
-      printf("\t\t- Assert:%d " #a " != " #b " %s\n", line,                  \
-             dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
-                 .c_str());                                                  \
-    }                                                                        \
+#define DASSERT_NE_IMPL(a, b, line)                                            \
+  do {                                                                         \
+    if ((a) != (b)) {                                                          \
+      ++dtestBodyState__you_must_have_an_assert.pass;                          \
+      LOG_INFO("\t\t+ Assert:{} " #a " != " #b " {}", line,                    \
+               dtest::internal::Paint("passed", dtest::internal::Color::Green) \
+                   .c_str());                                                  \
+    } else {                                                                   \
+      ++dtestBodyState__you_must_have_an_assert.fail;                          \
+      LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                    \
+               dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
+                   .c_str());                                                  \
+    }                                                                          \
   } while (0)

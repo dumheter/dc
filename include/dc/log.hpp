@@ -29,53 +29,72 @@
 #include <dc/assert.hpp>
 #include <dc/core.hpp>
 #include <dc/time.hpp>
+#include <functional>
 #include <string>
 #include <utility>
 
 // ========================================================================== //
-// API
+// Quick Start
 // ========================================================================== //
 
-/// Use these macros to dispatch log payloads to the log worker.
-#define DC_VERBOSE(...)                                                   \
-  do {                                                                    \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,       \
-                                   dc::log::Level::Verbose, __VA_ARGS__); \
+// TODO cgustafsson: write
+
+// ========================================================================== //
+// Helper Macros
+// ========================================================================== //
+
+/// Log to the global logger.
+#define LOG_VERBOSE(...)                                                      \
+  do {                                                                        \
+    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
+                         dc::log::Level::Verbose, dc::log::getGlobalWorker(), \
+                         __VA_ARGS__);                                        \
   } while (0)
-#define DC_INFO(...)                                                   \
-  do {                                                                 \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,    \
-                                   dc::log::Level::Info, __VA_ARGS__); \
+#define LOG_INFO(...)                                                      \
+  do {                                                                     \
+    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                  \
+                         dc::log::Level::Info, dc::log::getGlobalWorker(), \
+                         __VA_ARGS__);                                     \
   } while (0)
-#define DC_WARNING(...)                                                   \
-  do {                                                                    \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,       \
-                                   dc::log::Level::Warning, __VA_ARGS__); \
+#define LOG_WARNING(...)                                                      \
+  do {                                                                        \
+    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
+                         dc::log::Level::Warning, dc::log::getGlobalWorker(), \
+                         __VA_ARGS__);                                        \
   } while (0)
-#define DC_ERROR(...)                                                   \
-  do {                                                                  \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,     \
-                                   dc::log::Level::Error, __VA_ARGS__); \
+#define LOG_ERROR(...)                                                      \
+  do {                                                                      \
+    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                   \
+                         dc::log::Level::Error, dc::log::getGlobalWorker(), \
+                         __VA_ARGS__);                                      \
   } while (0)
 
 /// Log the raw string, without payload
-#define DC_RAW(...)                                                   \
-  do {                                                                \
-    dc::log::internal::makePayload(DC_FILENAME, __func__, __LINE__,   \
-                                   dc::log::Level::Raw, __VA_ARGS__); \
+#define LOG_RAW(...)                                                           \
+  do {                                                                         \
+    dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Raw, \
+                         dc::log::getGlobalWorker(), __VA_ARGS__);             \
   } while (0)
+
+// ========================================================================== //
+// Log
+// ========================================================================== //
 
 namespace dc::log {
 
-/// Start the log worker. Log will not do anything until this is called.
-void start();
+class Worker;
+[[nodiscard]] Worker& getGlobalWorker();
 
-/// Stop the log worker. It's called safely because not calling it is not safe.
-/// There could be logs lost by not calling it.
+/// Helper function that will call .start() on the worker, a global one is
+/// created / used if none exist.
+void init(Worker& worker = getGlobalWorker());
+
+/// Helper function that will call .stop() on the worker, the global one is
+/// used if none is provided.
 /// @param timeoutUs Specify a maximum time in microseconds, to wait for it to
 /// finish.
-/// @return If the log worker finished all work before dying.
-bool stopSafely(u64 timeoutUs = 1'000'000);
+/// @return If the log worker finished all work and signal its death.
+bool deinit(u64 timeoutUs = 1'000'000, Worker& worker = getGlobalWorker());
 
 enum class Level {
   Verbose,
@@ -86,15 +105,59 @@ enum class Level {
   None,
 };
 
-void setLevel(Level level);
+/// Helper function to set log level.
+/// Example:
+///   Setting Level::Info and verbose log will be ignored.
+void setLevel(Level level, Worker& worker = getGlobalWorker());
 
-}  // namespace dc::log
+struct [[nodiscard]] Settings {
+  Level level = Level::Verbose;
+};
 
 // ========================================================================== //
-// Internal
+// Worker
 // ========================================================================== //
 
-namespace dc::log::internal {
+struct Payload;
+
+class Worker {
+ public:
+  Worker();
+  DC_DELETE_COPY(Worker);
+
+  /// Start a worker thread which will start run() loop.
+  void start();
+
+  /// Exit the run() loop and shutdown the worker thread.
+  bool stop(u64 timeoutUs = 1'000'000);
+
+  /// Enqueue a log payload.
+  [[nodiscard]] bool enqueue(Payload&& payload);
+
+  /// Wait on worker dead signal, with timeout.
+  /// Should only be done on one thread, since only one signal will be sent.
+  [[nodiscard]] bool waitOnWorkerDeadTimeoutUs(u64 timeoutUs);
+
+  Settings& getSettings() { return m_settings; }
+  const Settings& getSettings() const { return m_settings; }
+
+  /// Is the worker thread active?
+  bool isWorking() const { return m_isWorking; }
+
+ private:
+  void run();
+
+ private:
+  bool m_isWorking = false;
+  Settings m_settings;
+
+  struct Data;
+  std::unique_ptr<Data> m_data;
+};
+
+// ========================================================================== //
+// Payload
+// ========================================================================== //
 
 struct [[nodiscard]] Payload {
   const char* fileName;
@@ -105,15 +168,10 @@ struct [[nodiscard]] Payload {
   std::string msg;
 };
 
-struct [[nodiscard]] Settings {
-  Level level;
-};
-
-[[nodiscard]] bool push(Payload&& payload);
-
 template <typename... Args>
 inline void makePayload(const char* fileName, const char* functionName,
-                        int lineno, Level level, Args&&... args) {
+                        int lineno, Level level, Worker& worker,
+                        Args&&... args) {
   Payload payload;
   payload.fileName = fileName;
   payload.functionName = functionName;
@@ -122,12 +180,47 @@ inline void makePayload(const char* fileName, const char* functionName,
   payload.timestamp = makeTimestamp();
   payload.msg = fmt::format(std::forward<Args>(args)...);
 
-  // Can fail if we cannot allocate memory (if needed).
-  const bool res = internal::push(std::move(payload));
+  // Can fail if we cannot allocate memory.
+  const bool res = worker.enqueue(std::move(payload));
   DC_ASSERT(res, "failed to allocate memory");
 }
 
-}  // namespace dc::log::internal
+// ========================================================================== //
+// Sinks
+// ========================================================================== //
+
+using Sink = std::function<void(const Payload&, Level)>;
+
+struct ConsoleSink {
+  void operator()(const Payload&, Level) const;
+};
+
+// ========================================================================== //
+// Log Prefix Settings
+// ========================================================================== //
+
+#if !defined(DC_LOG_PREFIX_DATE)
+#define DC_LOG_PREFIX_DATE 1
+#endif
+#if !defined(DC_LOG_PREFIX_LEVEL)
+#define DC_LOG_PREFIX_LEVEL 1
+#endif
+#if !defined(DC_LOG_PREFIX_FILESTAMP)
+#define DC_LOG_PREFIX_FILESTAMP 1
+#endif
+#if !defined(DC_LOG_PREFIX_FUNCTION)
+#define DC_LOG_PREFIX_FUNCTION 1
+#endif
+
+// ========================================================================== //
+// Bonus
+// ========================================================================== //
+
+/// Will fix the windows console, make it utf8 and enable colors. Noop on non
+/// windows.
+void windowsFixConsole();
+
+}  // namespace dc::log
 
 // ========================================================================== //
 // Fmt specialization

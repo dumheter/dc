@@ -70,6 +70,10 @@ endif ()
 #//////////////////////////////////////////////////////////////////////////////
 #// Declare libraries / executables
 
+target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_DATE=0)
+target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_LEVEL=0)
+target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_FUNCTION=0)
+
 add_executable (${PROJECT_NAME} ${TEST_SOURCES})
 target_link_libraries(${PROJECT_NAME} dc dtest)
 

@@ -24,7 +24,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
 // ========================================================================== //
 // TYPES
@@ -44,10 +45,7 @@ using u64 = uint64_t;
 
 using uint = unsigned int;
 
-using u8_fast = uint_fast8_t;
-using u16_fast = uint_fast16_t;
-using u32_fast = uint_fast32_t;
-using u64_fast = uint_fast64_t;
+using usize = size_t;
 
 using f32 = float;
 using f64 = double;
