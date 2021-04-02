@@ -7,7 +7,7 @@ DTEST(getTimeUs) {
   const u64 afterUs = dc::getTimeUs();
   const u64 net = afterUs - beforeUs;
 
-  DASSERT_TRUE(net > 5000 && net < 25000);
+  DASSERT_TRUE(net > 5'000 && net < 50'000);
 }
 
 DTEST(timestamp) {

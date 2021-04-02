@@ -44,37 +44,46 @@
 // ========================================================================== //
 
 /// Log to the global logger.
-#define LOG_VERBOSE(...)                                                      \
-  do {                                                                        \
-    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
-                         dc::log::Level::Verbose, dc::log::getGlobalLogger(), \
-                         __VA_ARGS__);                                        \
-  } while (0)
-#define LOG_INFO(...)                                                      \
-  do {                                                                     \
-    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                  \
-                         dc::log::Level::Info, dc::log::getGlobalLogger(), \
-                         __VA_ARGS__);                                     \
-  } while (0)
-#define LOG_WARNING(...)                                                      \
-  do {                                                                        \
-    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
-                         dc::log::Level::Warning, dc::log::getGlobalLogger(), \
-                         __VA_ARGS__);                                        \
-  } while (0)
-#define LOG_ERROR(...)                                                      \
-  do {                                                                      \
-    dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                   \
-                         dc::log::Level::Error, dc::log::getGlobalLogger(), \
-                         __VA_ARGS__);                                      \
-  } while (0)
+#define LOG_VERBOSE(...)                                                    \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
+                       dc::log::Level::Verbose, dc::log::getGlobalLogger(), \
+                       __VA_ARGS__)
+#define LOG_INFO(...)                                                         \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Info, \
+                       dc::log::getGlobalLogger(), __VA_ARGS__)
+#define LOG_WARNING(...)                                                    \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
+                       dc::log::Level::Warning, dc::log::getGlobalLogger(), \
+                       __VA_ARGS__)
+#define LOG_ERROR(...)                                                         \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Error, \
+                       dc::log::getGlobalLogger(), __VA_ARGS__)
 
-/// Log the raw string, without payload
-#define LOG_RAW(...)                                                           \
-  do {                                                                         \
-    dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Raw, \
-                         dc::log::getGlobalLogger(), __VA_ARGS__);             \
-  } while (0)
+/// Log the raw string, without prefix
+#define LOG_RAW(...)                                                         \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Raw, \
+                       dc::log::getGlobalLogger(), __VA_ARGS__)
+
+// ========================================================================== //
+
+/// Specify the logger
+#define LLOG_VERBOSE(logger, ...)                       \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, \
+                       dc::log::Level::Verbose, logger, __VA_ARGS__)
+#define LLOG_INFO(logger, ...)                                                \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Info, \
+                       logger, __VA_ARGS__)
+#define LLOG_WARNING(logger, ...)                       \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, \
+                       dc::log::Level::Warning, logger, __VA_ARGS__)
+#define LLOG_ERROR(logger, ...)                                                \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Error, \
+                       logger, __VA_ARGS__)
+
+/// Log the raw string, without prefix
+#define LLOG_RAW(logger, ...)                                                \
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Raw, \
+                       logger, __VA_ARGS__)
 
 // ========================================================================== //
 // Log
@@ -96,8 +105,8 @@ void init(Logger& logger = getGlobalLogger());
 /// @return If the logger finished all work and signal its death.
 bool deinit(u64 timeoutUs = 1'000'000, Logger& logger = getGlobalLogger());
 
-enum class Level {
-  Verbose,
+enum class Level : int {
+  Verbose = 0,
   Info,
   Warning,
   Error,
@@ -109,10 +118,6 @@ enum class Level {
 /// Example:
 ///   Setting Level::Info and verbose log will be ignored.
 void setLevel(Level level, Logger& logger = getGlobalLogger());
-
-struct [[nodiscard]] Settings {
-  Level level = Level::Verbose;
-};
 
 // ========================================================================== //
 // Sinks
@@ -152,8 +157,9 @@ class Logger {
   /// Should only be done on one thread, since only one signal will be sent.
   [[nodiscard]] bool waitOnLoggerDeadTimeoutUs(u64 timeoutUs);
 
-  Settings& getSettings() { return m_settings; }
-  const Settings& getSettings() const { return m_settings; }
+  [[nodiscard]] Level getLevel() const { return m_level; }
+
+  void setLevel(Level level) { m_level = level; }
 
   /// Is the logger thread active?
   bool isActive() const { return m_isActive; }
@@ -173,7 +179,7 @@ class Logger {
 
  private:
   bool m_isActive = false;
-  Settings m_settings;
+  Level m_level = Level::Verbose;
 
   struct Data;
   Data* m_data;
@@ -305,18 +311,18 @@ struct fmt::formatter<dc::Timestamp> {
   template <typename FormatContext>
   auto format(const dc::Timestamp& t, FormatContext& ctx) {
     if (printDate && highPrecisionTime)
-      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:.6f}",
+      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>9.6f}",
                        2000 + t.yearFrom2000, t.month + 1, t.day, t.hour,
                        t.minute, t.second);
     else if (printDate && !highPrecisionTime)
-      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:.0f}",
+      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>6.3f}",
                        2000 + t.yearFrom2000, t.month + 1, t.day, t.hour,
                        t.minute, t.second);
     else if (!printDate && highPrecisionTime)
-      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:.6f}", t.hour, t.minute,
+      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>9.6f}", t.hour, t.minute,
                        t.second);
     else /* if (!printDate && !highPrecisionTime) */
-      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:.0f}", t.hour, t.minute,
+      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>6.3f}", t.hour, t.minute,
                        t.second);
   }
 };

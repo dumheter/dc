@@ -33,6 +33,7 @@
 #include <thread>
 
 #include "dc/misc.hpp"
+#include "dc/time.hpp"
 
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
@@ -58,9 +59,7 @@ void init(Logger& logger) { logger.start(); }
 
 bool deinit(u64 timeoutUs, Logger& logger) { return logger.stop(timeoutUs); }
 
-void setLevel(Level level, Logger& logger) {
-  logger.getSettings().level = level;
-}
+void setLevel(Level level, Logger& logger) { logger.setLevel(level); }
 
 // ========================================================================== //
 // Logger
@@ -120,8 +119,8 @@ bool Logger::stop(u64 timeoutUs) {
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;
-  fmt::print("#\033[93mShutdown in {:.6f} seconds.\033[0m#\n",
-             diff / 1'000'000.f);
+  fmt::print("\033[93m#{:dp}# logger shutdown time: {:.6f}s.\033[0m\n",
+             makeTimestamp(), diff / 1'000'000.f);
 #endif
 
   return didDieOk;
@@ -141,18 +140,27 @@ void Logger::run() {
 
   for (;;) {
     m_data->queue.wait_dequeue(payload);
-
     if (isShutdownPayload(payload)) break;
-
-    // printPayload(payload, state.getSettings().level, queue.size_approx());
     for (auto& taggedSink : m_data->sinks)
-      taggedSink.sink(payload, m_settings.level);
+      if (payload.level >= m_level) taggedSink.sink(payload, m_level);
+  }
+
+  // shutdown payload recieved - drain the log backlog
+  const u64 now = dc::getTimeUs();
+  usize payloadsDrained = 0;
+  while (m_data->queue.wait_dequeue_timed(payload, 0)) {
+    ++payloadsDrained;
+    if (isShutdownPayload(payload))
+      continue;  //< protect from multiple shutdowns
+    for (auto& taggedSink : m_data->sinks) taggedSink.sink(payload, m_level);
   }
 
 #if defined(DC_LOG_DEBUG)
+  const u64 drained = dc::getTimeUs();
   fmt::print(
-      "#\033[93m[{:dp}] ! log logger exit code detected, I die. !\033[0m#\n",
-      makeTimestamp());
+      "\033[93m#{:dp}# logger exit code detected, dying. drainTime: {:.6f}s, "
+      "drainedPayloads: {}\033[0m\n",
+      makeTimestamp(), (drained - now) / 1'000'000.0, payloadsDrained);
 #endif
   m_data->loggerDeadSem.signal();
   m_isActive = false;
@@ -177,15 +185,6 @@ void Logger::detachSink(const char* name) {
 
 void ConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
-    // const Timestamp now = makeTimestamp();
-    // const float diff = now.second > payload.timestamp.second
-    // 				   ? now.second - payload.timestamp.second
-    // 				   : now.second + 60.f -
-    // payload.timestamp.second; fmt::print(
-    // 	"[{:dp}] #\033[93m{:.6f} q{}\033[0m# [{:7}] [{:16}:{}] [{:10}] {}\n",
-    // 	payload.timestamp, diff, qSize, payload.level, payload.fileName,
-    // 	payload.lineno, payload.functionName, payload.msg);
-
     if (payload.level != Level::Raw) {
       fmt::print(
 #if DC_LOG_PREFIX_DATETIME == 1

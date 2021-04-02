@@ -3,51 +3,214 @@
 #include <dc/time.hpp>
 #include <thread>
 
+struct BufferSink {
+  BufferSink(std::string& buf) : m_buf(buf) {}
+  void operator()(const dc::log::Payload& payload, dc::log::Level) {
+    m_buf += payload.msg;
+  }
+  std::string& m_buf;
+};
+
 DTEST(is_logging_correctly) {
-  struct BufferSink {
-    BufferSink(std::string& buf) : m_buf(buf) {}
-
-    void operator()(const dc::log::Payload& payload, dc::log::Level) {
-      m_buf += payload.msg;
-    }
-
-    std::string& m_buf;
-  };
-
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "test sink");
-  dc::log::init(logger);
+  logger.start();
 
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
-                       logger, "you");
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
-                       logger, " are");
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
-                       logger, " awesome!");
+  LLOG_INFO(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_INFO(logger, " awesome!");
 
-  const bool loggerStopOk = dc::log::deinit(100'000, logger);
-  DASSERT_TRUE(loggerStopOk);
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
   DASSERT_EQ(buf, "you are awesome!");
 }
 
+DTEST(level_verbose) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::Verbose);
+  logger.start();
+
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, " :)");
+  LLOG_RAW(logger, " rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_EQ(buf, "you are awesome! :) rawr");
+}
+
+DTEST(level_info) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::Info);
+  logger.start();
+
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, " :)");
+  LLOG_RAW(logger, " rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_EQ(buf, " are awesome! :) rawr");
+}
+
+DTEST(level_warning) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::Warning);
+  logger.start();
+
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, " :)");
+  LLOG_RAW(logger, " rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_EQ(buf, " awesome! :) rawr");
+}
+
+DTEST(level_error) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::Error);
+  logger.start();
+
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, " :)");
+  LLOG_RAW(logger, " rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_EQ(buf, " :) rawr");
+}
+
+DTEST(level_raw) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::Raw);
+  logger.start();
+
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, " :)");
+  LLOG_RAW(logger, " rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_EQ(buf, " rawr");
+}
+
+DTEST(level_none) {
+  std::string buf;
+  dc::log::Logger logger(BufferSink(buf), "buf sink");
+  logger.setLevel(dc::log::Level::None);
+  logger.start();
+  LLOG_VERBOSE(logger, "you");
+  LLOG_INFO(logger, " are");
+  LLOG_WARNING(logger, " awesome!");
+  LLOG_ERROR(logger, ":)");
+  LLOG_RAW(logger, "rawr");
+
+  const bool stopOk = logger.stop(100'000);
+  DASSERT_TRUE(stopOk);
+  DASSERT_TRUE(buf.empty());
+}
+
 DTEST(multithreaded_stress_test) {
-  // constexpr int threadCount = 5;
-  // std::thread threads[threadCount];
-  // for (int t = 0; t < threadCount; t++) {
-  //   threads[t] = std::thread([t]() {
-  //     for (int i = 0; i < 100; ++i) {
-  //       DC_VERBOSE("verbose log, iter {}, t {}", i, t);
-  //       DC_INFO("informative log, iter {}, t {}", i, t);
-  //       DC_WARNING("uh ohe, tier {}, t {}.", i, t);
-  //       DC_ERROR("gg, iter {}, t {}.", i, t);
-  //       DC_RAW("raw log call, iter {}, t {}.\n", i, t);
-  //     }
-  //   });
-  // }
+  constexpr int kIterCount = 1000;
 
-  // for (int t = 0; t < threadCount; t++) {
-  //   threads[t].join();
-  // }
+  struct Data {
+    std::vector<int> verbose;
+    std::vector<int> info;
+    std::vector<int> warning;
+    std::vector<int> error;
+    std::vector<int> raw;
+    bool success = true;
+  };
 
-  DASSERT_TRUE(false);
+  struct CountSink {
+    CountSink(Data& data, int size) : data(data) {
+      data.verbose.resize(size);
+      data.info.resize(size);
+      data.warning.resize(size);
+      data.error.resize(size);
+      data.raw.resize(size);
+    }
+
+    void operator()(const dc::log::Payload& payload, dc::log::Level) {
+      switch (payload.level) {
+        case dc::log::Level::Verbose:
+          ++data.verbose[dc::Clamp(std::atoi(payload.msg.c_str()), 0,
+                                   kIterCount)];
+          break;
+        case dc::log::Level::Info:
+          ++data.info[dc::Clamp(std::atoi(payload.msg.c_str()), 0, kIterCount)];
+          break;
+        case dc::log::Level::Warning:
+          ++data.warning[dc::Clamp(std::atoi(payload.msg.c_str()), 0,
+                                   kIterCount)];
+          break;
+        case dc::log::Level::Error:
+          ++data.error[dc::Clamp(std::atoi(payload.msg.c_str()), 0,
+                                 kIterCount)];
+          break;
+        case dc::log::Level::Raw:
+          ++data.raw[dc::Clamp(std::atoi(payload.msg.c_str()), 0, kIterCount)];
+          break;
+        default:
+          data.success = false;
+      }
+    }
+
+    Data& data;
+  };
+
+  Data data;
+  dc::log::Logger logger(CountSink(data, kIterCount), "test sink");
+  logger.start();
+
+  constexpr int kThreadCount = 8;
+  std::thread threads[kThreadCount];
+
+  for (int t = 0; t < kThreadCount; t++) {
+    threads[t] = std::thread([&logger = logger, k = kIterCount]() {
+      for (int i = 0; i < k; ++i) {
+        LLOG_VERBOSE(logger, "{}", i);
+        LLOG_INFO(logger, "{}", i);
+        LLOG_WARNING(logger, "{}", i);
+        LLOG_ERROR(logger, "{}", i);
+        LLOG_RAW(logger, "{}", i);
+      }
+    });
+  }
+
+  for (int t = 0; t < kThreadCount; t++) {
+    threads[t].join();
+  }
+
+  const bool stopOk = logger.stop(5'000'000);
+  const auto allElementsAreK = [k = kThreadCount](const std::vector<int>& v) {
+    bool correct = true;
+    for (const auto e : v)
+      if (e != k) correct = false;
+    return correct;
+  };
+
+  DASSERT_TRUE(stopOk);
+  DASSERT_TRUE(data.success);
+  DASSERT_TRUE(allElementsAreK(data.verbose));
+  DASSERT_TRUE(allElementsAreK(data.info));
+  DASSERT_TRUE(allElementsAreK(data.warning));
+  DASSERT_TRUE(allElementsAreK(data.error));
+  DASSERT_TRUE(allElementsAreK(data.raw));
 }
