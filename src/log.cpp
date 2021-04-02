@@ -32,6 +32,8 @@
 #include <functional>
 #include <thread>
 
+#include "dc/misc.hpp"
+
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
 #define VC_EXTRALEAN
@@ -64,16 +66,23 @@ void setLevel(Level level, Worker& worker) {
 // Worker
 // ========================================================================== //
 
+struct TaggedSink {
+  Sink sink;
+  u32 tag;
+};
+
 struct Worker::Data {
   using Queue = moodycamel::BlockingConcurrentQueue<Payload>;
   moodycamel::LightweightSemaphore workerDeadSem;
   Queue queue;
-  std::vector<Sink> sinks;
+  std::vector<TaggedSink> sinks;
 };
 
-Worker::Worker() : m_data(std::make_unique<Data>()) {
-  m_data->sinks.push_back(ConsoleSink{});
+Worker::Worker(Sink sink, const char* name) : m_data(new Data) {
+  m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
 }
+
+Worker::~Worker() { delete m_data; }
 
 inline static Payload makeShutdownPayload() {
   Payload payload;
@@ -136,7 +145,8 @@ void Worker::run() {
     if (isShutdownPayload(payload)) break;
 
     // printPayload(payload, state.getSettings().level, queue.size_approx());
-    for (auto&& sink : m_data->sinks) sink(payload, m_settings.level);
+    for (auto& taggedSink : m_data->sinks)
+      taggedSink.sink(payload, m_settings.level);
   }
 
 #if defined(DC_LOG_DEBUG)
@@ -146,6 +156,19 @@ void Worker::run() {
 #endif
   m_data->workerDeadSem.signal();
   m_isWorking = false;
+}
+
+void Worker::attachSink(Sink sink, const char* name) {
+  m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
+}
+
+void Worker::detachSink(const char* name) {
+  const u32 tag = dc::hash32fnv1a(name);
+  m_data->sinks.erase(std::remove_if(m_data->sinks.begin(), m_data->sinks.end(),
+                                     [tag](const TaggedSink& taggedSink) {
+                                       return taggedSink.tag == tag;
+                                     }),
+                      m_data->sinks.end());
 }
 
 // ========================================================================== //

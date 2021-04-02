@@ -85,14 +85,14 @@ namespace dc::log {
 class Worker;
 [[nodiscard]] Worker& getGlobalWorker();
 
-/// Helper function that will call .start() on the worker, a global one is
-/// created / used if none exist.
+/// Helper function to start a worker, equivalent to:
+///   `getGlobalWorker().start()`
 void init(Worker& worker = getGlobalWorker());
 
-/// Helper function that will call .stop() on the worker, the global one is
-/// used if none is provided.
-/// @param timeoutUs Specify a maximum time in microseconds, to wait for it to
-/// finish.
+/// Helper function to stop a worker, equivalent to:
+///   `bool ok = getGlobalWorker().stop(1'000'000)`
+/// @param timeoutUs Specify a maximum time, in microseconds, to wait for the
+/// worker to finish.
 /// @return If the log worker finished all work and signal its death.
 bool deinit(u64 timeoutUs = 1'000'000, Worker& worker = getGlobalWorker());
 
@@ -115,14 +115,28 @@ struct [[nodiscard]] Settings {
 };
 
 // ========================================================================== //
-// Worker
+// Sinks
 // ========================================================================== //
 
 struct Payload;
 
+using Sink = std::function<void(const Payload&, Level)>;
+
+struct ConsoleSink {
+  void operator()(const Payload&, Level) const;
+};
+
+// ========================================================================== //
+// Worker
+// ========================================================================== //
+
 class Worker {
  public:
-  Worker();
+  // Initialize the worker, attach a ConsoleSink called "default".
+  Worker(Sink sink = ConsoleSink(), const char* name = "default");
+
+  ~Worker();
+
   DC_DELETE_COPY(Worker);
 
   /// Start a worker thread which will start run() loop.
@@ -144,6 +158,16 @@ class Worker {
   /// Is the worker thread active?
   bool isWorking() const { return m_isWorking; }
 
+  /// Attach a log sink to the worker. Every log payload will be sent to the
+  /// sink. Note: By default, a ConsoleSink is added at worker construction.
+  /// @param sink
+  /// @param name Name of the sink, used to detach sinks.
+  void attachSink(Sink sink, const char* name);
+
+  /// Detach a log sink by name.
+  /// Note: The default ConsoleSink is called "default".
+  void detachSink(const char* name);
+
  private:
   void run();
 
@@ -152,7 +176,7 @@ class Worker {
   Settings m_settings;
 
   struct Data;
-  std::unique_ptr<Data> m_data;
+  Data* m_data;
 };
 
 // ========================================================================== //
@@ -169,7 +193,7 @@ struct [[nodiscard]] Payload {
 };
 
 template <typename... Args>
-inline void makePayload(const char* fileName, const char* functionName,
+void makePayload(const char* fileName, const char* functionName,
                         int lineno, Level level, Worker& worker,
                         Args&&... args) {
   Payload payload;
@@ -186,37 +210,6 @@ inline void makePayload(const char* fileName, const char* functionName,
 }
 
 // ========================================================================== //
-// Sinks
-// ========================================================================== //
-
-using Sink = std::function<void(const Payload&, Level)>;
-
-struct ConsoleSink {
-  void operator()(const Payload&, Level) const;
-};
-
-// ========================================================================== //
-// Log Prefix Settings
-// ========================================================================== //
-
-#if !defined(DC_LOG_PREFIX_DATETIME)
-/// Datetime 0 : no time nor date
-/// Datetime 1 : date and time with microsecond precision
-/// Datetime 2 : only time with microsecond precision
-/// Datetime 3 : only time
-#define DC_LOG_PREFIX_DATETIME 1
-#endif
-#if !defined(DC_LOG_PREFIX_LEVEL)
-#define DC_LOG_PREFIX_LEVEL 1
-#endif
-#if !defined(DC_LOG_PREFIX_FILESTAMP)
-#define DC_LOG_PREFIX_FILESTAMP 1
-#endif
-#if !defined(DC_LOG_PREFIX_FUNCTION)
-#define DC_LOG_PREFIX_FUNCTION 1
-#endif
-
-// ========================================================================== //
 // Bonus
 // ========================================================================== //
 
@@ -225,6 +218,31 @@ struct ConsoleSink {
 void windowsFixConsole();
 
 }  // namespace dc::log
+
+// ========================================================================== //
+// Log Prefix Settings
+// ========================================================================== //
+
+#if !defined(DC_LOG_PREFIX_DATETIME)
+/// Ex [2021-04-02 14:10:7.710909]
+/// Datetime 0 : no time nor date
+/// Datetime 1 : date and time with microsecond precision
+/// Datetime 2 : only time with microsecond precision
+/// Datetime 3 : only time
+#define DC_LOG_PREFIX_DATETIME 1
+#endif
+#if !defined(DC_LOG_PREFIX_LEVEL)
+/// Ex [warning]
+#define DC_LOG_PREFIX_LEVEL 1
+#endif
+#if !defined(DC_LOG_PREFIX_FILESTAMP)
+/// Ex [log.test.cpp              :42 ]
+#define DC_LOG_PREFIX_FILESTAMP 1
+#endif
+#if !defined(DC_LOG_PREFIX_FUNCTION)
+/// Ex [TestBody      ]
+#define DC_LOG_PREFIX_FUNCTION 1
+#endif
 
 // ========================================================================== //
 // Fmt specialization

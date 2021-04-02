@@ -3,19 +3,34 @@
 #include <dc/time.hpp>
 #include <thread>
 
-DTEST(dlog_testing) {
-  // TODO cgustafsson: make log have changeable log state's
-  // TODO cgustafsson: have dtest use dc:log
-  // TODO cgustafsson: create a new log state, for this function, swap
-  // the dtest/global log state for a local one, and use it to test, then swap
-  // back.
-  // dc::log::init();
+DTEST(is_logging_correctly) {
+  struct BufferSink {
+    BufferSink(std::string& buf) : m_buf(buf) {}
 
-  // dc::log::State* dtestLogState = dc::log::newState();
-  // dc::log::swapStateInstance(dtestLogState);
+    void operator()(const dc::log::Payload& payload, dc::log::Level) {
+      m_buf += payload.msg;
+    }
 
-  // dc::log::setLevel(dc::log::Level::None);
+    std::string& m_buf;
+  };
 
+  std::string buf;
+  dc::log::Worker worker(BufferSink(buf), "test sink");
+  dc::log::init(worker);
+
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
+              "you");
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
+              " are");
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
+              " awesome!");
+
+  const bool workerStopOk = dc::log::deinit(100'000, worker);
+  DASSERT_TRUE(workerStopOk);
+  DASSERT_EQ(buf, "you are awesome!");
+}
+
+DTEST(multithreaded_stress_test) {
   // constexpr int threadCount = 5;
   // std::thread threads[threadCount];
   // for (int t = 0; t < threadCount; t++) {
@@ -34,10 +49,5 @@ DTEST(dlog_testing) {
   //   threads[t].join();
   // }
 
-  // const bool ok = dc::log::deinit(5'000'000);
-  // DASSERT_TRUE(ok);
-
-  // dc::log::swapStateInstance(dtestLogState);
-
-  DASSERT_TRUE(true);
+  DASSERT_TRUE(false);
 }
