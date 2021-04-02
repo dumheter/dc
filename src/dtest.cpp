@@ -100,12 +100,15 @@ int runTests() {
              Paint(category.name, Color::Magenta).c_str(),
              static_cast<int>(category.tests.size()));
 
+    const u64 catBefore = dc::getTimeUs();
     int i = 0;
     for (TestCase& test : category.tests) {
       LOG_INFO("\t={}= {} ...... ", i,
                Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
                    .c_str());
+      const u64 testBefore = dc::getTimeUs();
       test.fn(test.state);
+      const u64 testAfter = dc::getTimeUs();
       category.fail += (test.state.fail > 0);
       if (test.state.fail == 0) category.pass++;
       assertCount += test.state.pass + test.state.fail;
@@ -114,17 +117,21 @@ int runTests() {
                  Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
-      LOG_INFO("\t={}= {} {}", i,
+      LOG_INFO("\t={}= {} {} in {:.6f}s", i,
                Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
                    .c_str(),
                !test.state.fail ? Paint("PASSED", Color::Green).c_str()
-                                : Paint("FAILED", Color::Red).c_str());
+                                : Paint("FAILED", Color::Red).c_str(),
+               (testAfter - testBefore) / 1'000'000.f);
       ++i;
     }
+    const u64 catAfter = dc::getTimeUs();
 
-    LOG_INFO("=== {}, {}", Paint(category.name, Color::Magenta).c_str(),
+    LOG_INFO("=== {} {} in {:.6f}s",
+             Paint(category.name, Color::Magenta).c_str(),
              !category.fail ? Paint("PASSED", Color::Green).c_str()
-                            : Paint("FAILED", Color::Red).c_str());
+                            : Paint("FAILED", Color::Red).c_str(),
+             (catAfter - catBefore) / 1'000'000.f);
   }
 
   stopwatch.Stop();
