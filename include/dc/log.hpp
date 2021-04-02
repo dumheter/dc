@@ -47,25 +47,25 @@
 #define LOG_VERBOSE(...)                                                      \
   do {                                                                        \
     dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
-                         dc::log::Level::Verbose, dc::log::getGlobalWorker(), \
+                         dc::log::Level::Verbose, dc::log::getGlobalLogger(), \
                          __VA_ARGS__);                                        \
   } while (0)
 #define LOG_INFO(...)                                                      \
   do {                                                                     \
     dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                  \
-                         dc::log::Level::Info, dc::log::getGlobalWorker(), \
+                         dc::log::Level::Info, dc::log::getGlobalLogger(), \
                          __VA_ARGS__);                                     \
   } while (0)
 #define LOG_WARNING(...)                                                      \
   do {                                                                        \
     dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                     \
-                         dc::log::Level::Warning, dc::log::getGlobalWorker(), \
+                         dc::log::Level::Warning, dc::log::getGlobalLogger(), \
                          __VA_ARGS__);                                        \
   } while (0)
 #define LOG_ERROR(...)                                                      \
   do {                                                                      \
     dc::log::makePayload(DC_FILENAME, __func__, __LINE__,                   \
-                         dc::log::Level::Error, dc::log::getGlobalWorker(), \
+                         dc::log::Level::Error, dc::log::getGlobalLogger(), \
                          __VA_ARGS__);                                      \
   } while (0)
 
@@ -73,7 +73,7 @@
 #define LOG_RAW(...)                                                           \
   do {                                                                         \
     dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Raw, \
-                         dc::log::getGlobalWorker(), __VA_ARGS__);             \
+                         dc::log::getGlobalLogger(), __VA_ARGS__);             \
   } while (0)
 
 // ========================================================================== //
@@ -82,19 +82,19 @@
 
 namespace dc::log {
 
-class Worker;
-[[nodiscard]] Worker& getGlobalWorker();
+class Logger;
+[[nodiscard]] Logger& getGlobalLogger();
 
-/// Helper function to start a worker, equivalent to:
-///   `getGlobalWorker().start()`
-void init(Worker& worker = getGlobalWorker());
+/// Helper function to start a logger, equivalent to:
+///   `getGlobalLogger().start()`
+void init(Logger& logger = getGlobalLogger());
 
-/// Helper function to stop a worker, equivalent to:
-///   `bool ok = getGlobalWorker().stop(1'000'000)`
+/// Helper function to stop a logger, equivalent to:
+///   `bool ok = getGlobalLogger().stop(1'000'000)`
 /// @param timeoutUs Specify a maximum time, in microseconds, to wait for the
-/// worker to finish.
-/// @return If the log worker finished all work and signal its death.
-bool deinit(u64 timeoutUs = 1'000'000, Worker& worker = getGlobalWorker());
+/// logger to finish.
+/// @return If the logger finished all work and signal its death.
+bool deinit(u64 timeoutUs = 1'000'000, Logger& logger = getGlobalLogger());
 
 enum class Level {
   Verbose,
@@ -108,7 +108,7 @@ enum class Level {
 /// Helper function to set log level.
 /// Example:
 ///   Setting Level::Info and verbose log will be ignored.
-void setLevel(Level level, Worker& worker = getGlobalWorker());
+void setLevel(Level level, Logger& logger = getGlobalLogger());
 
 struct [[nodiscard]] Settings {
   Level level = Level::Verbose;
@@ -127,39 +127,39 @@ struct ConsoleSink {
 };
 
 // ========================================================================== //
-// Worker
+// Logger
 // ========================================================================== //
 
-class Worker {
+class Logger {
  public:
-  // Initialize the worker, attach a ConsoleSink called "default".
-  Worker(Sink sink = ConsoleSink(), const char* name = "default");
+  // Initialize the logger, attach a ConsoleSink called "default".
+  Logger(Sink sink = ConsoleSink(), const char* name = "default");
 
-  ~Worker();
+  ~Logger();
 
-  DC_DELETE_COPY(Worker);
+  DC_DELETE_COPY(Logger);
 
-  /// Start a worker thread which will start run() loop.
+  /// Start a logger thread which will start run() loop.
   void start();
 
-  /// Exit the run() loop and shutdown the worker thread.
+  /// Exit the run() loop and shutdown the logger thread.
   bool stop(u64 timeoutUs = 1'000'000);
 
   /// Enqueue a log payload.
   [[nodiscard]] bool enqueue(Payload&& payload);
 
-  /// Wait on worker dead signal, with timeout.
+  /// Wait on logger dead signal, with timeout.
   /// Should only be done on one thread, since only one signal will be sent.
-  [[nodiscard]] bool waitOnWorkerDeadTimeoutUs(u64 timeoutUs);
+  [[nodiscard]] bool waitOnLoggerDeadTimeoutUs(u64 timeoutUs);
 
   Settings& getSettings() { return m_settings; }
   const Settings& getSettings() const { return m_settings; }
 
-  /// Is the worker thread active?
-  bool isWorking() const { return m_isWorking; }
+  /// Is the logger thread active?
+  bool isActive() const { return m_isActive; }
 
-  /// Attach a log sink to the worker. Every log payload will be sent to the
-  /// sink. Note: By default, a ConsoleSink is added at worker construction.
+  /// Attach a log sink to the logger. Every log payload will be sent to the
+  /// sink. Note: By default, a ConsoleSink is added at logger construction.
   /// @param sink
   /// @param name Name of the sink, used to detach sinks.
   void attachSink(Sink sink, const char* name);
@@ -172,7 +172,7 @@ class Worker {
   void run();
 
  private:
-  bool m_isWorking = false;
+  bool m_isActive = false;
   Settings m_settings;
 
   struct Data;
@@ -193,9 +193,8 @@ struct [[nodiscard]] Payload {
 };
 
 template <typename... Args>
-void makePayload(const char* fileName, const char* functionName,
-                        int lineno, Level level, Worker& worker,
-                        Args&&... args) {
+void makePayload(const char* fileName, const char* functionName, int lineno,
+                 Level level, Logger& logger, Args&&... args) {
   Payload payload;
   payload.fileName = fileName;
   payload.functionName = functionName;
@@ -205,7 +204,7 @@ void makePayload(const char* fileName, const char* functionName,
   payload.msg = fmt::format(std::forward<Args>(args)...);
 
   // Can fail if we cannot allocate memory.
-  const bool res = worker.enqueue(std::move(payload));
+  const bool res = logger.enqueue(std::move(payload));
   DC_ASSERT(res, "failed to allocate memory");
 }
 

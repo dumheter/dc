@@ -15,18 +15,18 @@ DTEST(is_logging_correctly) {
   };
 
   std::string buf;
-  dc::log::Worker worker(BufferSink(buf), "test sink");
-  dc::log::init(worker);
+  dc::log::Logger logger(BufferSink(buf), "test sink");
+  dc::log::init(logger);
 
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
-              "you");
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
-              " are");
-  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose, worker,
-              " awesome!");
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
+                       logger, "you");
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
+                       logger, " are");
+  dc::log::makePayload(DC_FILENAME, __func__, __LINE__, dc::log::Level::Verbose,
+                       logger, " awesome!");
 
-  const bool workerStopOk = dc::log::deinit(100'000, worker);
-  DASSERT_TRUE(workerStopOk);
+  const bool loggerStopOk = dc::log::deinit(100'000, logger);
+  DASSERT_TRUE(loggerStopOk);
   DASSERT_EQ(buf, "you are awesome!");
 }
 

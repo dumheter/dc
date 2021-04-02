@@ -49,21 +49,21 @@
 
 namespace dc::log {
 
-[[nodiscard]] Worker& getGlobalWorker() {
-  static Worker worker;
-  return worker;
+[[nodiscard]] Logger& getGlobalLogger() {
+  static Logger logger;
+  return logger;
 }
 
-void init(Worker& worker) { worker.start(); }
+void init(Logger& logger) { logger.start(); }
 
-bool deinit(u64 timeoutUs, Worker& worker) { return worker.stop(timeoutUs); }
+bool deinit(u64 timeoutUs, Logger& logger) { return logger.stop(timeoutUs); }
 
-void setLevel(Level level, Worker& worker) {
-  worker.getSettings().level = level;
+void setLevel(Level level, Logger& logger) {
+  logger.getSettings().level = level;
 }
 
 // ========================================================================== //
-// Worker
+// Logger
 // ========================================================================== //
 
 struct TaggedSink {
@@ -71,18 +71,18 @@ struct TaggedSink {
   u32 tag;
 };
 
-struct Worker::Data {
+struct Logger::Data {
   using Queue = moodycamel::BlockingConcurrentQueue<Payload>;
-  moodycamel::LightweightSemaphore workerDeadSem;
+  moodycamel::LightweightSemaphore loggerDeadSem;
   Queue queue;
   std::vector<TaggedSink> sinks;
 };
 
-Worker::Worker(Sink sink, const char* name) : m_data(new Data) {
+Logger::Logger(Sink sink, const char* name) : m_data(new Data) {
   m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
 }
 
-Worker::~Worker() { delete m_data; }
+Logger::~Logger() { delete m_data; }
 
 inline static Payload makeShutdownPayload() {
   Payload payload;
@@ -99,12 +99,12 @@ inline static bool isShutdownPayload(const Payload& payload) {
          payload.fileName == nullptr && payload.functionName == nullptr;
 }
 
-void Worker::start() {
+void Logger::start() {
   std::thread t([this] { run(); });
   t.detach();
 }
 
-bool Worker::stop(u64 timeoutUs) {
+bool Logger::stop(u64 timeoutUs) {
 #if defined(DC_LOG_DEBUG)
   const auto before = dc::getTimeUsNoReorder();
 #endif
@@ -116,7 +116,7 @@ bool Worker::stop(u64 timeoutUs) {
   }
 
   bool didDieOk = false;
-  if (ok) didDieOk = waitOnWorkerDeadTimeoutUs(timeoutUs);
+  if (ok) didDieOk = waitOnLoggerDeadTimeoutUs(timeoutUs);
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;
@@ -127,16 +127,16 @@ bool Worker::stop(u64 timeoutUs) {
   return didDieOk;
 }
 
-[[nodiscard]] bool Worker::enqueue(Payload&& payload) {
+[[nodiscard]] bool Logger::enqueue(Payload&& payload) {
   return m_data->queue.enqueue(std::move(payload));
 }
 
-[[nodiscard]] bool Worker::waitOnWorkerDeadTimeoutUs(u64 timeoutUs) {
-  return m_data->workerDeadSem.wait(timeoutUs);
+[[nodiscard]] bool Logger::waitOnLoggerDeadTimeoutUs(u64 timeoutUs) {
+  return m_data->loggerDeadSem.wait(timeoutUs);
 }
 
-void Worker::run() {
-  m_isWorking = true;
+void Logger::run() {
+  m_isActive = true;
   Payload payload;
 
   for (;;) {
@@ -151,18 +151,18 @@ void Worker::run() {
 
 #if defined(DC_LOG_DEBUG)
   fmt::print(
-      "#\033[93m[{:dp}] ! log worker exit code detected, I die. !\033[0m#\n",
+      "#\033[93m[{:dp}] ! log logger exit code detected, I die. !\033[0m#\n",
       makeTimestamp());
 #endif
-  m_data->workerDeadSem.signal();
-  m_isWorking = false;
+  m_data->loggerDeadSem.signal();
+  m_isActive = false;
 }
 
-void Worker::attachSink(Sink sink, const char* name) {
+void Logger::attachSink(Sink sink, const char* name) {
   m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
 }
 
-void Worker::detachSink(const char* name) {
+void Logger::detachSink(const char* name) {
   const u32 tag = dc::hash32fnv1a(name);
   m_data->sinks.erase(std::remove_if(m_data->sinks.begin(), m_data->sinks.end(),
                                      [tag](const TaggedSink& taggedSink) {
