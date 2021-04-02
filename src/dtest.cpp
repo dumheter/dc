@@ -130,10 +130,9 @@ int runTests() {
   stopwatch.Stop();
 
   LOG_INFO(
-      "\n--------------------------------------------------------------------"
-      "--"
-      "\nSUMMARY:\t(ran {} tests containing {} asserts in {:.3f}s )",
-      testCount, assertCount, stopwatch.fs());
+      "----------------------------------------------------------------------");
+  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.3f}s )",
+           testCount, assertCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

@@ -199,8 +199,12 @@ struct ConsoleSink {
 // Log Prefix Settings
 // ========================================================================== //
 
-#if !defined(DC_LOG_PREFIX_DATE)
-#define DC_LOG_PREFIX_DATE 1
+#if !defined(DC_LOG_PREFIX_DATETIME)
+/// Datetime 0 : no time nor date
+/// Datetime 1 : date and time with microsecond precision
+/// Datetime 2 : only time with microsecond precision
+/// Datetime 3 : only time
+#define DC_LOG_PREFIX_DATETIME 1
 #endif
 #if !defined(DC_LOG_PREFIX_LEVEL)
 #define DC_LOG_PREFIX_LEVEL 1
@@ -258,7 +262,7 @@ struct fmt::formatter<dc::Timestamp> {
 
   /// Formatting options:
   ///   'd': Turn on date print.
-  ///   'p': Turn on time print.
+  ///   'p': Turn on microsecond precision time print.
   constexpr auto parse(format_parse_context& ctx) {
     auto it = ctx.begin();
     auto end = ctx.end();

@@ -165,10 +165,12 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
 
     if (payload.level != Level::Raw) {
       fmt::print(
-#if DC_LOG_PREFIX_DATE == 1
+#if DC_LOG_PREFIX_DATETIME == 1
           "[{:dp}] "
-#else
+#elif DC_LOG_PREFIX_DATETIME == 2
           "[{:p}] "
+#elif DC_LOG_PREFIX_DATETIME == 3
+          "[{}] "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
           "[{:7}] "
@@ -180,7 +182,9 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           "[{:10}] "
 #endif
           "{}\n",
+#if DC_LOG_PREFIX_DATETIME > 0
           payload.timestamp,
+#endif
 #if DC_LOG_PREFIX_LEVEL == 1
           payload.level,
 #endif
