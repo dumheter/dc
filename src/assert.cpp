@@ -40,8 +40,8 @@
 
 namespace dc {
 
-void Assert(bool condition, const char* msg, const char* file, const char* func,
-            int line) {
+void dcAssert(bool condition, const char* msg, const char* file,
+              const char* func, int line) {
   if (condition) {
     return;
   }

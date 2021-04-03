@@ -48,16 +48,16 @@ namespace dc {
  * @return If fn was called.
  *
  * Example:
- *   FixedTimeUpdate(30, [](){ std::cout << "tick!\n"; });
+ *   fixedTimeUpdate(30, [](){ std::cout << "tick!\n"; });
  *
  * Example, class method as callback function:
  *   const auto fn =
  *     std::bind(&Class::Method, &instance);
- *  FixedTimeUpdate(32, fn);
+ *  fixedTimeUpdate(32, fn);
  *
  */
 template <typename TFunction, typename... ARGS>
-bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args);
+bool fixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args);
 
 // ============================================================ //
 
@@ -74,7 +74,7 @@ bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args);
  * @retval false fn did not return true within the time limit.
  */
 template <typename TFn, typename... ARGS>
-bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args);
+bool timedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args);
 
 // ============================================================ //
 // Stopwatch
@@ -102,18 +102,18 @@ class Stopwatch {
    * Start tracking time. A second call to Start will overwrite the current
    * start time point.
    */
-  void Start();
+  void start();
 
   /**
    * Stop tracking time.
    */
-  void Stop();
+  void stop();
 
   /**
    * Resume tracking time.
    * @pre Must have called Stop() previously.
    */
-  void Resume();
+  void resume();
 
   /**
    * Get time elapsed from start to stop.
@@ -131,19 +131,19 @@ class Stopwatch {
   /**
    * Get elapsed time since start.
    */
-  s64 now_s() const;
-  s64 now_ms() const;
-  s64 now_us() const;
-  s64 now_ns() const;
+  s64 nowS() const;
+  s64 nowMs() const;
+  s64 nowUs() const;
+  s64 nowNs() const;
 
-  double fnow_s() const;
-  double fnow_ms() const;
-  double fnow_us() const;
-  double fnow_ns() const;
+  double fnowS() const;
+  double fnowMs() const;
+  double fnowUs() const;
+  double fnowNs() const;
 
  private:
-  time_point<clock_type> start_;
-  time_point<clock_type> stop_;
+  time_point<clock_type> m_start;
+  time_point<clock_type> m_stop;
 };
 
 // ============================================================ //
@@ -151,11 +151,11 @@ class Stopwatch {
 // ============================================================ //
 
 template <typename TFunction, typename... ARGS>
-bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
+bool fixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
   static dc::Stopwatch sw{};
-  static f64 timer_ns{sw.fnow_ns()};
+  static f64 timer_ns{sw.fnowNs()};
   const f64 ticks_per_ns = 1000.0 * 1000.0 * 1000.0 / ticks_per_s;
-  if (sw.fnow_ns() - timer_ns > ticks_per_ns) {
+  if (sw.fnowNs() - timer_ns > ticks_per_ns) {
     timer_ns += ticks_per_ns;
     fn(std::forward<ARGS>(args)...);
     return true;
@@ -166,14 +166,14 @@ bool FixedTimeUpdate(const f64 ticks_per_s, TFunction&& fn, ARGS&&... args) {
 // ============================================================ //
 
 template <typename TFn, typename... ARGS>
-bool TimedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
+bool timedCheck(s64 timeout_ms, TFn&& fn, ARGS&&... args) {
   dc::Stopwatch stopwatch{};
-  stopwatch.Start();
+  stopwatch.start();
   bool did_timeout = false;
   bool result = false;
   while (!result) {
     result = fn(std::forward<ARGS>(args)...);
-    if (stopwatch.now_ms() > timeout_ms) {
+    if (stopwatch.nowMs() > timeout_ms) {
       did_timeout = true;
       break;
     }

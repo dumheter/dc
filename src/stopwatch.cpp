@@ -26,76 +26,76 @@
 
 namespace dc {
 
-Stopwatch::Stopwatch() : start_{}, stop_{} { Start(); }
+Stopwatch::Stopwatch() : m_start{}, m_stop{} { start(); }
 
-void Stopwatch::Start() { start_ = clock_type::now(); }
+void Stopwatch::start() { m_start = clock_type::now(); }
 
-void Stopwatch::Stop() { stop_ = clock_type::now(); }
+void Stopwatch::stop() { m_stop = clock_type::now(); }
 
-void Stopwatch::Resume() { start_ = clock_type::now() - (stop_ - start_); }
+void Stopwatch::resume() { m_start = clock_type::now() - (m_stop - m_start); }
 
 s64 Stopwatch::s() const {
-  return duration_cast<seconds>(stop_ - start_).count();
+  return duration_cast<seconds>(m_stop - m_start).count();
 }
 
 s64 Stopwatch::ms() const {
-  return duration_cast<milliseconds>(stop_ - start_).count();
+  return duration_cast<milliseconds>(m_stop - m_start).count();
 }
 
 s64 Stopwatch::us() const {
-  return duration_cast<microseconds>(stop_ - start_).count();
+  return duration_cast<microseconds>(m_stop - m_start).count();
 }
 
 s64 Stopwatch::ns() const {
-  return duration_cast<nanoseconds>(stop_ - start_).count();
+  return duration_cast<nanoseconds>(m_stop - m_start).count();
 }
 
 double Stopwatch::fs() const {
-  return duration<double>{stop_ - start_}.count();
+  return duration<double>{m_stop - m_start}.count();
 }
 
 double Stopwatch::fms() const {
-  return duration<double, std::milli>{stop_ - start_}.count();
+  return duration<double, std::milli>{m_stop - m_start}.count();
 }
 
 double Stopwatch::fus() const {
-  return duration<double, std::micro>{stop_ - start_}.count();
+  return duration<double, std::micro>{m_stop - m_start}.count();
 }
 
 double Stopwatch::fns() const {
-  return duration<double, std::nano>{stop_ - start_}.count();
+  return duration<double, std::nano>{m_stop - m_start}.count();
 }
 
-s64 Stopwatch::now_s() const {
-  return duration_cast<seconds>(clock_type::now() - start_).count();
+s64 Stopwatch::nowS() const {
+  return duration_cast<seconds>(clock_type::now() - m_start).count();
 }
 
-s64 Stopwatch::now_ms() const {
-  return duration_cast<milliseconds>(clock_type::now() - start_).count();
+s64 Stopwatch::nowMs() const {
+  return duration_cast<milliseconds>(clock_type::now() - m_start).count();
 }
 
-s64 Stopwatch::now_us() const {
-  return duration_cast<microseconds>(clock_type::now() - start_).count();
+s64 Stopwatch::nowUs() const {
+  return duration_cast<microseconds>(clock_type::now() - m_start).count();
 }
 
-s64 Stopwatch::now_ns() const {
-  return duration_cast<nanoseconds>(clock_type::now() - start_).count();
+s64 Stopwatch::nowNs() const {
+  return duration_cast<nanoseconds>(clock_type::now() - m_start).count();
 }
 
-double Stopwatch::fnow_s() const {
-  return duration<double>{clock_type::now() - start_}.count();
+double Stopwatch::fnowS() const {
+  return duration<double>{clock_type::now() - m_start}.count();
 }
 
-double Stopwatch::fnow_ms() const {
-  return duration<double, std::milli>{clock_type::now() - start_}.count();
+double Stopwatch::fnowMs() const {
+  return duration<double, std::milli>{clock_type::now() - m_start}.count();
 }
 
-double Stopwatch::fnow_us() const {
-  return duration<double, std::micro>{clock_type::now() - start_}.count();
+double Stopwatch::fnowUs() const {
+  return duration<double, std::micro>{clock_type::now() - m_start}.count();
 }
 
-double Stopwatch::fnow_ns() const {
-  return duration<double, std::nano>{clock_type::now() - start_}.count();
+double Stopwatch::fnowNs() const {
+  return duration<double, std::nano>{clock_type::now() - m_start}.count();
 }
 
 }  // namespace dc

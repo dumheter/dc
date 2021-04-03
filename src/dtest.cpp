@@ -134,7 +134,7 @@ int runTests() {
              (catAfter - catBefore) / 1'000'000.f);
   }
 
-  stopwatch.Stop();
+  stopwatch.stop();
 
   LOG_INFO(
       "----------------------------------------------------------------------");

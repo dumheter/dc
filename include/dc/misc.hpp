@@ -30,17 +30,17 @@ all
 namespace dc {
 
 /**
- * Clamp a value on the range [min-max].
+ * clamp a value on the range [min-max].
  *
  * Examples
- *   Clamp(1, 1, 10)   -> 1
- *   Clamp(10, 1, 10)  -> 10
- *   Clamp(0, 1, 10)   -> 1
- *   Clamp(99, 1, 10)  -> 10
- *   Clamp(5, 1, 10)   -> 5
+ *   clamp(1, 1, 10)   -> 1
+ *   clamp(10, 1, 10)  -> 10
+ *   clamp(0, 1, 10)   -> 1
+ *   clamp(99, 1, 10)  -> 10
+ *   clamp(5, 1, 10)   -> 5
  */
 template <typename T>
-inline T Clamp(const T val, const T min, const T max) {
+inline T clamp(const T val, const T min, const T max) {
   if (val >= min && val <= max)
     return val;
   else if (val < min)
@@ -53,11 +53,11 @@ inline T Clamp(const T val, const T min, const T max) {
  * Is the value on or inside the range [min-max]?
  *
  * Example:
- *   Inside(5, 0, 10) -> true
- *   Inside(11, 0, 10) -> false
+ *   inside(5, 0, 10) -> true
+ *   inside(11, 0, 10) -> false
  */
 template <typename T>
-inline bool Inside(const T val, const T min, const T max) {
+inline bool inside(const T val, const T min, const T max) {
   return val >= min && val <= max;
 }
 
@@ -68,24 +68,22 @@ inline bool Inside(const T val, const T min, const T max) {
  * @pre val must be in range [from_min, from_max].
  *
  * Example:
- *   Map(5, 0, 10, 0, 100)  -> 50
- *   Map(10, 0, 10, 0, 100) -> 100
- *   Map(0, 0, 10, 0, 100)  -> 0
+ *   map(5, 0, 10, 0, 100)  -> 50
+ *   map(10, 0, 10, 0, 100) -> 100
+ *   map(0, 0, 10, 0, 100)  -> 0
  */
 template <typename T>
-inline T Map(T val, T from_min, T from_max, T to_min, T to_max) {
+inline T map(T val, T from_min, T from_max, T to_min, T to_max) {
   return (val - from_min) * (to_max - to_min) / (from_max - from_min) + to_min;
 }
+
+// ========================================================================== //
 
 // FNV1a c++11 constexpr compile time hash functions, 32 and 64 bit
 // str should be a null terminated string literal, value should be left out
 // e.g hash_32_fnv1a_const("example")
 // code license: public domain or equivalent
 // post: https://notes.underscorediscovery.com/constexpr-fnv1a/
-
-// ========================================================================== //
-// hash
-// ========================================================================== //
 
 namespace details::hash {
 
