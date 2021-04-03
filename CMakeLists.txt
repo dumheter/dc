@@ -10,8 +10,9 @@ option(DC_PEDANTIC "Enable extra compiler checks." ON)
 option(DC_WERROR "Warning is error." ON)
 option(DC_STATIC_LIB "Should dc be compiled to a static library?" ON)
 option(DC_PROVIDES_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
-option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." ON)
+option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." OFF)
 option(DC_LOG_DEBUG "Enable extra debugging options for dc::log." OFF)
+option(DC_COPY_COMPILE_COMMANDS "Copy compile_commands file to top level." OFF)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Fmt
@@ -160,11 +161,13 @@ endif ()
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Copy compile_commands.json to project root
-if (WIN32)
-  add_custom_target(
-    copy-compile-commands ALL
-    ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_BINARY_DIR}/compile_commands.json
-    ${CMAKE_CURRENT_LIST_DIR}
-    )
+if (DC_COPY_COMPILE_COMMANDS)
+  if (WIN32)
+    add_custom_target(
+      copy-compile-commands ALL
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_BINARY_DIR}/compile_commands.json
+      ${CMAKE_CURRENT_LIST_DIR}
+      )
+  endif ()
 endif ()

@@ -3,14 +3,6 @@ project(dc_test CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 #//////////////////////////////////////////////////////////////////////////////
-#// Override compile flags
-
-if (WIN32)
-else ()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
-endif ()
-
-#//////////////////////////////////////////////////////////////////////////////
 #// List source files
 
 set(TEST_SOURCES

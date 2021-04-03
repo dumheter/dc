@@ -22,11 +22,7 @@
  * SOFTWARE.
  */
 
-#include <time.h>
-
 #include <atomic>
-#include <chrono>
-#include <cstring>
 #include <dc/assert.hpp>
 #include <dc/platform.hpp>
 #include <dc/time.hpp>
@@ -42,6 +38,10 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#else
+#include <time.h>
+
+#include <chrono>
 #endif
 
 #if defined(DC_PLATFORM_LINUX)
@@ -115,21 +115,36 @@ void sleepMs(u32 timeMs) {
 }
 
 [[nodiscard]] Timestamp makeTimestamp() {
+  dc::Timestamp out;
+#if defined(DC_PLATFORM_WINDOWS)
+  FILETIME fileTime;
+  GetSystemTimePreciseAsFileTime(&fileTime);
+
+  SYSTEMTIME systemTime;
+  const BOOL ok = FileTimeToSystemTime(&fileTime, &systemTime);
+
+  if (!ok) {
+    out.second = -1.f;
+    return out;
+  }
+
+  out.yearFrom2000 = systemTime.wYear - 2'000;
+  out.month = systemTime.wMonth;
+  out.day = systemTime.wDay;
+  out.hour = systemTime.wHour;
+  out.minute = systemTime.wMinute;
+
+  u64 ns = fileTime.dwLowDateTime;
+  ns += (static_cast<u64>(fileTime.dwHighDateTime) << 32);
+  out.second = systemTime.wSecond + ns % 10'000'000 / 10'000'000.f;
+#else
+  // TODO cgustafsson: make a native impl of timestamp on other platforms
   using namespace std::chrono;
 
   const time_point<system_clock> systemNow = system_clock::now();
   const time_t now = system_clock::to_time_t(systemNow);
-
-#if defined(DC_PLATFORM_WINDOWS)
-  tm localTime;
-  tm* time = &localTime;
-  const errno_t err = _localtime64_s(time, &now);
-  if (err != 0) std::memset(static_cast<void*>(time), 0, sizeof(*time));
-#else
   const tm* time = localtime(&now);
-#endif
 
-  dc::Timestamp out;
   out.yearFrom2000 = (time->tm_year + 1'900) - 2'000;
   out.month = time->tm_mon;
   out.day = time->tm_mday;
@@ -141,6 +156,7 @@ void sleepMs(u32 timeMs) {
   const u32 ms = duration_cast<milliseconds>(tp).count() % 1000;
   const u32 us = duration_cast<microseconds>(tp).count() % 1000;
   out.second = s + (ms / 1'000.f) + (us / 1'000'000.f);
+#endif
 
   return out;
 }
