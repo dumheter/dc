@@ -115,7 +115,7 @@ void sleepMs(u32 timeMs) {
 }
 
 [[nodiscard]] Timestamp makeTimestamp() {
-  dc::Timestamp out;
+  Timestamp out;
 #if defined(DC_PLATFORM_WINDOWS)
   FILETIME fileTime;
   GetSystemTimePreciseAsFileTime(&fileTime);
@@ -128,11 +128,11 @@ void sleepMs(u32 timeMs) {
     return out;
   }
 
-  out.yearFrom2000 = systemTime.wYear - 2'000;
-  out.month = systemTime.wMonth;
-  out.day = systemTime.wDay;
-  out.hour = systemTime.wHour;
-  out.minute = systemTime.wMinute;
+  out.year = systemTime.wYear;
+  out.month = static_cast<u8>(systemTime.wMonth);
+  out.day = static_cast<u8>(systemTime.wDay);
+  out.hour = static_cast<u8>(systemTime.wHour);
+  out.minute = static_cast<u8>(systemTime.wMinute);
 
   u64 ns = fileTime.dwLowDateTime;
   ns += (static_cast<u64>(fileTime.dwHighDateTime) << 32);
@@ -145,11 +145,11 @@ void sleepMs(u32 timeMs) {
   const time_t now = system_clock::to_time_t(systemNow);
   const tm* time = localtime(&now);
 
-  out.yearFrom2000 = (time->tm_year + 1'900) - 2'000;
-  out.month = time->tm_mon;
-  out.day = time->tm_mday;
-  out.hour = time->tm_hour;
-  out.minute = time->tm_min;
+  out.year = time->tm_year + 1'900;
+  out.month = static_cast<u8>(time->tm_mon);
+  out.day = static_cast<u8>(time->tm_mday);
+  out.hour = static_cast<u8>(time->tm_hour);
+  out.minute = static_cast<u8>(time->tm_min);
 
   const auto tp = systemNow.time_since_epoch();
   const u32 s = duration_cast<seconds>(tp).count() % 60;
