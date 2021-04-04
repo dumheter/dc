@@ -37,7 +37,7 @@ set(DC_SOURCES
   include/dc/log.hpp
   include/dc/file.hpp
   include/dc/mac.hpp
-  include/dc/misc.hpp
+  include/dc/math.hpp
   include/dc/platform.hpp
   include/dc/queue.hpp
   include/dc/result.hpp

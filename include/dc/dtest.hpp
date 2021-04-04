@@ -26,7 +26,7 @@
 
 #include <dc/core.hpp>
 #include <dc/log.hpp>
-#include <dc/misc.hpp>
+#include <dc/math.hpp>
 #include <dc/traits.hpp>
 #include <functional>
 #include <unordered_map>

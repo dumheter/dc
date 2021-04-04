@@ -27,13 +27,12 @@
 
 #include <dc/core.hpp>
 #include <dc/log.hpp>
+#include <dc/math.hpp>
 #include <dc/platform.hpp>
+#include <dc/time.hpp>
 #include <dc/traits.hpp>
 #include <functional>
 #include <thread>
-
-#include "dc/misc.hpp"
-#include "dc/time.hpp"
 
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
