@@ -9,6 +9,7 @@ set(TEST_SOURCES
   main.test.cpp
   result.result.test.cpp
   result.option.test.cpp
+  result.intrusive_option.test.cpp
   track_lifetime.test.cpp
   log.test.cpp
   time.test.cpp

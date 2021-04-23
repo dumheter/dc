@@ -53,7 +53,7 @@ struct [[nodiscard]] Timestamp {
 [[nodiscard]] Timestamp makeTimestamp();
 
 class [[nodiscard]] Stopwatch {
-  public:
+ public:
   /// Will call start().
   Stopwatch();
 
@@ -64,28 +64,28 @@ class [[nodiscard]] Stopwatch {
   /// Stop the stopwatch.
   void stop();
 
-	/// Get time from start to stop.
-	[[nodiscard]] u64 ns() const;
-	[[nodiscard]] u64 us() const;
-	[[nodiscard]] u64 ms() const;
-	[[nodiscard]] u64 s() const;
+  /// Get time from start to stop.
+  [[nodiscard]] u64 ns() const;
+  [[nodiscard]] u64 us() const;
+  [[nodiscard]] u64 ms() const;
+  [[nodiscard]] u64 s() const;
 
-	/// Get time from start to stop. With full precision in floating point.
-	[[nodiscard]] f64 fs() const;
+  /// Get time from start to stop. With full precision in floating point.
+  [[nodiscard]] f64 fs() const;
 
-	/// Get time from start to now.
-	[[nodiscard]] u64 nowNs() const;
-	[[nodiscard]] u64 nowUs() const;
-	[[nodiscard]] u64 nowMs() const;
-	[[nodiscard]] u64 nowS() const;
+  /// Get time from start to now.
+  [[nodiscard]] u64 nowNs() const;
+  [[nodiscard]] u64 nowUs() const;
+  [[nodiscard]] u64 nowMs() const;
+  [[nodiscard]] u64 nowS() const;
 
-	/// Get time from start to now. With full precision in floating point.
-	[[nodiscard]] f64 nowFs() const;
+  /// Get time from start to now. With full precision in floating point.
+  [[nodiscard]] f64 nowFs() const;
 
-  private:
-	u64 m_start;
-	u64 m_stop;
-	u64 m_freqCache;
+ private:
+  u64 m_start;
+  u64 m_stop;
+  u64 m_freqCache;
 };
 
 }  // namespace dc
