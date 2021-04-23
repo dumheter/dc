@@ -39,7 +39,10 @@ template <typename V>
 struct Some;
 
 template <typename V>
-struct Option;
+class Option;
+
+template <typename V, V noneValue>
+class [[nodiscard]] IntrusiveOption;
 
 template <typename V>
 struct Ok;
@@ -122,11 +125,11 @@ struct [[nodiscard]] Some {
     return value() != other.value();
   }
 
-  [[nodiscard]] constexpr bool operator==(const NoneType other) const noexcept {
+  [[nodiscard]] constexpr bool operator==(const NoneType) const noexcept {
     return false;
   }
 
-  [[nodiscard]] constexpr bool operator!=(const NoneType other) const noexcept {
+  [[nodiscard]] constexpr bool operator!=(const NoneType) const noexcept {
     return true;
   }
 
@@ -136,13 +139,16 @@ struct [[nodiscard]] Some {
   V m_value;
 
   template <typename Vu>
-  friend struct Option;
+  friend class Option;
+
+	template <typename Vu, Vu noneValue>
+	friend class IntrusiveOption;
 };
 
 // ========================================================================== //
 
 template <typename V>
-struct [[nodiscard]] Option {
+class [[nodiscard]] Option {
  public:
   static_assert(isMovable<V>, "Value type 'V' in 'Option<V>' must be movable.");
   static_assert(!isReference<V>,
@@ -337,6 +343,81 @@ struct [[nodiscard]] Option {
   bool m_isSome;
 };
 
+
+// ========================================================================== //
+
+template <typename V, V noneValue>
+class [[nodiscard]] IntrusiveOption
+{
+  public:
+	static_assert(isMovable<V>, "Value type 'V' in 'Option<V>' must be movable.");
+	static_assert(!isReference<V>,
+				  "Value type 'V' in 'Option<V>' cannot be a reference."
+				  " You might want to use dc::Ref, or the stricter "
+				  "dc::ConstRef and dc::MutRef.");
+
+	using value_type = V;
+
+	/////////////////////////
+	// Lifetime
+
+	constexpr IntrusiveOption() noexcept : m_some(noneValue) {}
+	constexpr IntrusiveOption(Some<V>&& value) : m_some(std::forward<V>(value.m_value)) {}
+	constexpr IntrusiveOption(NoneType) noexcept : m_some(noneValue) {}
+
+	IntrusiveOption(IntrusiveOption&& other) {
+		if (other.isSome()) new (&m_some) V(std::move(other.m_some));
+	}
+
+	IntrusiveOption& operator=(IntrusiveOption&& other) {
+		if (isSome() && other.isSome())
+			std::swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
+		// maybe should be removed.
+		else if (isNone() && other.isSome()) {
+			new (&m_some) V(std::move(other.m_some));
+		} else if (isSome() && other.isNone()) {
+			m_some.~V();
+		}
+		/* else // both are none, do nothing */
+
+		return *this;
+	}
+
+	~IntrusiveOption() noexcept {
+		if (isSome()) m_some.~V();
+	}
+
+	DC_DELETE_COPY(IntrusiveOption);
+
+	/////////////////////////
+	// Value Status
+
+	[[nodiscard]] constexpr bool isSome() const { return m_some != noneValue; }
+	[[nodiscard]] constexpr bool isNone() const { return m_some == noneValue; }
+	[[nodiscard]] constexpr operator bool () const { return m_some != noneValue; }
+
+	////////////////////////
+	// Access
+
+	[[nodiscard]] constexpr V& value() & {
+		DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return m_some;
+	}
+	[[nodiscard]] constexpr const V& value() const& {
+		DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return m_some;
+	}
+	[[nodiscard]] constexpr V&& value() && {
+		DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+		return std::move(m_some);
+	}
+
+  private:
+	union {
+		V m_some;
+	};
+};
+
 // ========================================================================== //
 
 template <typename V>
@@ -380,12 +461,12 @@ struct [[nodiscard]] Ok {
   }
 
   template <typename U>
-  [[nodiscard]] constexpr bool operator==(Err<U> const& other) const noexcept {
+  [[nodiscard]] constexpr bool operator==(Err<U> const&) const noexcept {
     return false;
   }
 
   template <typename U>
-  [[nodiscard]] constexpr bool operator!=(Err<U> const& other) const noexcept {
+  [[nodiscard]] constexpr bool operator!=(Err<U> const&) const noexcept {
     return true;
   }
 

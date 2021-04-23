@@ -25,7 +25,7 @@
 #include <cstdio>
 #include <dc/assert.hpp>
 #include <dc/dtest.hpp>
-#include <dc/stopwatch.hpp>
+#include <dc/time.hpp>
 
 #if defined(_MSC_VER)
 #if !defined(MEAN_AND_LEAN)
@@ -86,8 +86,8 @@ int runTests() {
 
   dc::Stopwatch stopwatch;
 
-  size_t testCount = 0;
-  size_t assertCount = 0;
+  usize testCount = 0;
+  usize assertCount = 0;
   int warnings = 0;
   for (auto& [hash, category] : r.getTestCategories()) {
     if (vipActive && !r.containsVipCategory(hash)) continue;
@@ -138,8 +138,11 @@ int runTests() {
 
   LOG_INFO(
       "----------------------------------------------------------------------");
-  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.3f}s )",
+  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.9f}s )",
            testCount, assertCount, stopwatch.fs());
+
+  LOG_INFO("ns: {}, us: {}, ms: {}, s: {}, fs: {}", stopwatch.ns(),
+           stopwatch.us(), stopwatch.ms(), stopwatch.s(), stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

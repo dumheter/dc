@@ -61,7 +61,7 @@ namespace dc {
     freq.QuadPart = 1;
   }
 
-  timeUs = static_cast<u64>(time.QuadPart * 1000'000 / freq.QuadPart);
+  timeUs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -159,6 +159,223 @@ void sleepMs(u32 timeMs) {
 #endif
 
   return out;
+}
+
+Stopwatch::Stopwatch() {
+#if defined(DC_PLATFORM_WINDOWS)
+  LARGE_INTEGER freq;
+  if (!QueryPerformanceFrequency(&freq)) {
+    freq.QuadPart = 1;  //< 1 on failure to guard against divde by zero.
+  }
+  m_freqCache = freq.QuadPart;
+#endif
+  start();
+}
+
+void Stopwatch::start()
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	m_start = time.QuadPart;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		m_start = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		m_start = 0;
+#else
+	DC_ASSERT(false, "not implemented");
+	m_start = 0;
+#endif
+}
+
+void Stopwatch::stop()
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	m_stop = time.QuadPart;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		m_stop = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		m_stop = 0;
+#else
+	DC_ASSERT(false, "not implemented");
+	m_stop = 0;
+#endif
+}
+
+u64 Stopwatch::ns() const
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	return (m_stop - m_start) * 1'000'000'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	return (m_stop - m_start);
+#else
+	DC_ASSERT(false, "not implemented");
+	return 0;
+#endif
+}
+
+u64 Stopwatch::us() const
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	return (m_stop - m_start) * 1'000'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	return (m_stop - m_start) / 1'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	return 0;
+#endif
+}
+
+u64 Stopwatch::ms() const
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	return (m_stop - m_start) * 1'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	return (m_stop - m_start) / 1'000'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	return 0;
+#endif
+}
+
+u64 Stopwatch::s() const
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	return (m_stop - m_start) / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	return (m_stop - m_start) / 1'000'000'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	return 0;
+#endif
+}
+
+f64 Stopwatch::fs() const
+{
+#if defined(DC_PLATFORM_WINDOWS)
+	return (m_stop - m_start) / (1.0 * m_freqCache);
+#elif defined(DC_PLATFORM_LINUX)
+	return (m_stop - m_start) / 1'000'000'000.;
+#else
+	DC_ASSERT(false, "not implemented");
+	return 0.;
+#endif
+}
+
+u64 Stopwatch::nowNs() const
+{
+	u64 now;
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	now = time.QuadPart;
+	return (now - m_start) * 1'000'000'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		now = 0;
+	return (now - m_start);
+#else
+	DC_ASSERT(false, "not implemented");
+	now = 0;
+	return now;
+#endif
+}
+
+u64 Stopwatch::nowUs() const
+{
+	u64 now;
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	now = time.QuadPart;
+	return (now - m_start) * 1'000'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		now = 0;
+	return (now - m_start) / 1'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	now = 0;
+	return now;
+#endif
+}
+
+u64 Stopwatch::nowMs() const
+{
+	u64 now;
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	now = time.QuadPart;
+	return (now - m_start) * 1'000 / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		now = 0;
+	return (now - m_start) / 1'000'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	now = 0;
+	return now;
+#endif
+}
+
+u64 Stopwatch::nowS() const
+{
+	u64 now;
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	now = time.QuadPart;
+	return (now - m_start) / m_freqCache;
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		now = 0;
+	return (now - m_start) / 1'000'000'000;
+#else
+	DC_ASSERT(false, "not implemented");
+	now = 0;
+	return now;
+#endif
+}
+
+f64 Stopwatch::nowFs() const
+{
+	u64 now;
+#if defined(DC_PLATFORM_WINDOWS)
+	LARGE_INTEGER time;
+	if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
+	now = time.QuadPart;
+	return (now - m_start) / static_cast<f64>(m_freqCache);
+#elif defined(DC_PLATFORM_LINUX)
+	timespec time;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
+		now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+	else
+		now = 0;
+	return (now - m_start) / 1'000'000'000.;
+#else
+	DC_ASSERT(false, "not implemented");
+	now = 0;
+	return now;
+#endif
 }
 
 }  // namespace dc

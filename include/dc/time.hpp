@@ -29,14 +29,14 @@
 namespace dc {
 
 /// Get a timestamp from a high resolution clock.
-/// Note: Do not use for any serious benchmark, is not protected from
+/// Note: Use getTimeUsNoReordering when benchmarking things, to ensure no
 /// reordering.
-u64 getTimeUs();
+[[nodiscard]] u64 getTimeUs();
 
 /// Get a timestamp from a high resolution clock. In addition, it has memory
 /// barrieers to protect from reordering.
 // TODO cgustafsson: needs testing
-u64 getTimeUsNoReorder();
+[[nodiscard]] u64 getTimeUsNoReorder();
 
 void sleepMs(u32 timeMs);
 
@@ -51,5 +51,41 @@ struct [[nodiscard]] Timestamp {
 };
 
 [[nodiscard]] Timestamp makeTimestamp();
+
+class [[nodiscard]] Stopwatch {
+  public:
+  /// Will call start().
+  Stopwatch();
+
+  /// Start the stopwatch.
+  /// Note: Called by constructor.
+  void start();
+
+  /// Stop the stopwatch.
+  void stop();
+
+	/// Get time from start to stop.
+	[[nodiscard]] u64 ns() const;
+	[[nodiscard]] u64 us() const;
+	[[nodiscard]] u64 ms() const;
+	[[nodiscard]] u64 s() const;
+
+	/// Get time from start to stop. With full precision in floating point.
+	[[nodiscard]] f64 fs() const;
+
+	/// Get time from start to now.
+	[[nodiscard]] u64 nowNs() const;
+	[[nodiscard]] u64 nowUs() const;
+	[[nodiscard]] u64 nowMs() const;
+	[[nodiscard]] u64 nowS() const;
+
+	/// Get time from start to now. With full precision in floating point.
+	[[nodiscard]] f64 nowFs() const;
+
+  private:
+	u64 m_start;
+	u64 m_stop;
+	u64 m_freqCache;
+};
 
 }  // namespace dc

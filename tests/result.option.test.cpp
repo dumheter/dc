@@ -5,6 +5,56 @@
 using TrackedInt = dtest::TrackLifetime<int>;
 using TrackedString = dtest::TrackLifetime<std::string>;
 
+///////////////////////////////////////////////////////////////////////////////
+// intrusive
+//
+
+dc::IntrusiveOption<int, -1> doStuffOpt(int seed)
+{
+	if (seed == 1337)
+		return dc::Some(1);
+	else
+		return dc::None;
+}
+
+int doStuffInt(int seed)
+{
+	if (seed == 1337)
+		return 1;
+	else if (seed == 1)
+		return 2;
+	else if (seed == 2)
+		return 3;
+	else if (seed == 3)
+		return 4;
+	else if (seed == 4)
+		return 5;
+	else if (seed == 5)
+		return 6;
+	else if (seed == 6)
+		return 7;
+	else if (true)
+	{
+		do {
+			for (;;)
+				if (true)
+					return -1;
+		} while (false);
+	}
+}
+
+DTEST(intrusive) {
+	auto res = doStuffOpt(1337);
+	DASSERT_TRUE(res.isSome());
+	DASSERT_TRUE(res.value() == 123456789);
+
+	auto res2 = doStuffOpt(123);
+	DASSERT_TRUE(res2.isNone());
+
+	dc::IntrusiveOption<int, -1> res3 = dc::Some(-1);
+	DASSERT_FALSE(res2.isSome());
+}
+
 // ========================================================================== //
 // LIFETIME
 // ========================================================================== //

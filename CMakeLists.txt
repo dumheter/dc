@@ -41,7 +41,6 @@ set(DC_SOURCES
   include/dc/platform.hpp
   include/dc/queue.hpp
   include/dc/result.hpp
-  include/dc/stopwatch.hpp
   include/dc/time.hpp
   include/dc/traits.hpp
   include/dc/types.hpp
@@ -49,7 +48,6 @@ set(DC_SOURCES
   src/log.cpp
   src/file.cpp
   src/mac.cpp
-  src/stopwatch.cpp
   src/time.cpp
   )
 
