@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-/// NOTE: Inspired by https://github.com/lamarrr/STX, check it out!
+// NOTE: Inspired by https://github.com/lamarrr/STX, check it out!
 
 #pragma once
 
@@ -55,7 +55,7 @@ struct Err;
 template <typename V, typename E>
 class Result;
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 struct [[nodiscard]] NoneType {
   constexpr NoneType() noexcept = default;
@@ -85,7 +85,7 @@ struct [[nodiscard]] NoneType {
 
 constexpr const NoneType None{};
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename V>
 struct [[nodiscard]] Some {
@@ -147,7 +147,7 @@ struct [[nodiscard]] Some {
   friend class experimental::IntrusiveOption;
 };
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename V>
 class [[nodiscard]] Option {
@@ -345,7 +345,7 @@ class [[nodiscard]] Option {
   bool m_isSome;
 };
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 namespace experimental {
 template <typename V, V noneValue>
@@ -421,7 +421,7 @@ class [[nodiscard]] IntrusiveOption {
 };
 }  // namespace experimental
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename V>
 struct [[nodiscard]] Ok {
@@ -477,7 +477,7 @@ struct [[nodiscard]] Ok {
   V m_value;
 };
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename E>
 struct [[nodiscard]] Err {
@@ -531,7 +531,7 @@ struct [[nodiscard]] Err {
   E m_value;
 };
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 // TODO cgustafsson: remove this
 // namespace internal::result
@@ -879,7 +879,7 @@ class [[nodiscard]] Result {
   bool m_isOk;
 };
 
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename U, typename V, typename E>
 [[nodiscard]] constexpr bool operator==(const Ok<U>& ok,

@@ -39,7 +39,6 @@ set(DC_SOURCES
   include/dc/mac.hpp
   include/dc/math.hpp
   include/dc/platform.hpp
-  include/dc/queue.hpp
   include/dc/result.hpp
   include/dc/time.hpp
   include/dc/traits.hpp

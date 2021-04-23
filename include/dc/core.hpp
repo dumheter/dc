@@ -27,10 +27,6 @@
 #include <dc/assert.hpp>
 #include <dc/types.hpp>
 
-// ========================================================================== //
-// MACROS
-// ========================================================================== //
-
 namespace dc {
 
 /// Returns pointer to past the last slash in the path string.
@@ -51,6 +47,10 @@ constexpr const char* filenameFromPath(const char* path) {
 
 }  // namespace dc
 
+///////////////////////////////////////////////////////////////////////////////
+// Misc
+//
+
 #define DC_FILENAME dc::filenameFromPath(__FILE__)
 
 #define DC_UNUSED(variable) (void)variable
@@ -64,3 +64,23 @@ constexpr const char* filenameFromPath(const char* path) {
 #define DC_FORCE_INLINE __forceinline
 
 #define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
+
+///////////////////////////////////////////////////////////////////////////////
+// ctor & dtor
+//
+
+#define DC_DELETE_COPY(ClassName)             \
+  ClassName(const ClassName& other) = delete; \
+  ClassName& operator=(const ClassName& other) = delete
+
+#define DC_DEFAULT_COPY(ClassName)             \
+  ClassName(const ClassName& other) = default; \
+  ClassName& operator=(const ClassName& other) = default
+
+#define DC_DELETE_MOVE(ClassName)        \
+  ClassName(ClassName&& other) = delete; \
+  ClassName& operator=(ClassName&& other) = delete
+
+#define DC_DEFAULT_MOVE(ClassName)        \
+  ClassName(ClassName&& other) = default; \
+  ClassName& operator=(ClassName&& other) = default

@@ -29,9 +29,7 @@
 
 namespace dc {
 
-/**
- * Call by using the macro DC_ASSERT
- */
+/// Call by using the macro DC_ASSERT
 void dcAssert(bool condition, const char* msg, const char* file,
               const char* func, int line);
 

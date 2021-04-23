@@ -35,9 +35,12 @@ namespace dc {
 
 /// Get a timestamp from a high resolution clock. In addition, it has memory
 /// barrieers to protect from reordering.
-// TODO cgustafsson: needs testing
 [[nodiscard]] u64 getTimeUsNoReorder();
 
+/// Yield execution back to the operating system.
+/// @param timeMs Hint to the os at the time until execution should be given
+/// back.
+///               The os may take less or more time.
 void sleepMs(u32 timeMs);
 
 /// fmt formatting code exists in dlog.hpp

@@ -27,9 +27,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// ========================================================================== //
-// TYPES
-// ========================================================================== //
+///////////////////////////////////////////////////////////////////////////////
+// Types
+//
 
 using char8 = char;
 static_assert(sizeof(char8) == 1, "char8 is not 8-bits large");
@@ -51,23 +51,3 @@ using f32 = float;
 using f64 = double;
 static_assert(sizeof(f32) == 4, "f32 is not 32-bits large");
 static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
-
-// ========================================================================== //
-// CTOR & DTOR
-// ========================================================================== //
-
-#define DC_DELETE_COPY(ClassName)             \
-  ClassName(const ClassName& other) = delete; \
-  ClassName& operator=(const ClassName& other) = delete
-
-#define DC_DEFAULT_COPY(ClassName)             \
-  ClassName(const ClassName& other) = default; \
-  ClassName& operator=(const ClassName& other) = default
-
-#define DC_DELETE_MOVE(ClassName)        \
-  ClassName(ClassName&& other) = delete; \
-  ClassName& operator=(ClassName&& other) = delete
-
-#define DC_DEFAULT_MOVE(ClassName)        \
-  ClassName(ClassName&& other) = default; \
-  ClassName& operator=(ClassName&& other) = default
