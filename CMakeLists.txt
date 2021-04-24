@@ -33,6 +33,7 @@ include_directories(${PROJECT_NAME} thirdparty/moodycamel/include)
 
 set(DC_SOURCES
   include/dc/assert.hpp
+  include/dc/callstack.hpp
   include/dc/core.hpp
   include/dc/log.hpp
   include/dc/file.hpp
@@ -44,6 +45,7 @@ set(DC_SOURCES
   include/dc/traits.hpp
   include/dc/types.hpp
   src/assert.cpp
+  src/callstack.cpp
   src/log.cpp
   src/file.cpp
   src/mac.cpp

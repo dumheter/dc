@@ -13,6 +13,7 @@ set(TEST_SOURCES
   track_lifetime.test.cpp
   log.test.cpp
   time.test.cpp
+  callstack.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////

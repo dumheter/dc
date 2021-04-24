@@ -590,7 +590,7 @@ class [[nodiscard]] Result {
       new (&m_err) E(std::move(other.m_err));
       m_isOk = false;
     } else if (isErr() && other.isOk()) {
-      m_err.~V();
+      m_err.~E();
       new (&m_value) V(std::move(other.m_value));
       m_isOk = true;
     } else {
@@ -650,6 +650,17 @@ class [[nodiscard]] Result {
   }
 
   // TODO cgustafsson: map
+  template <typename Fn>
+  [[nodiscard]] constexpr auto map(
+      Fn&& op) && -> Result<InvokeResult<Fn&&, V&&>, E> {
+    static_assert(isInvocable<Fn&&, V&&>,
+                  "Cannot call 'Fn', is it a function with argument 'V&&'?");
+    if (isOk())
+      return Ok<InvokeResult<Fn&&, V&&>>(
+          std::forward<Fn&&>(op)(std::move(valueRef())));
+    else
+      return Err<E>(std::move(errRef()));
+  }
 
   [[nodiscard]] V& value() & noexcept {
     DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
