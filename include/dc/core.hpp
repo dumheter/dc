@@ -65,7 +65,7 @@ constexpr const char* filenameFromPath(const char* path) {
 
 #define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
 
-#define DC_DISABLE_OPTIMIZATIONS #pragma optimize("", off)
+#define DC_DISABLE_OPTIMIZATIONS _Pragma("optimize(\"\", off)")
 
 ///////////////////////////////////////////////////////////////////////////////
 // ctor & dtor

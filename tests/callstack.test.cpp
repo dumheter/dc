@@ -4,6 +4,8 @@
 
 DTEST(callstackFromFunctionCall) {
   dc::Result<dc::Callstack, dc::CallstackErr> callstack = dc::buildCallstack();
+  if (callstack.isErr())
+	  LOG_INFO("Error in callstack.cpp:{} with msg: {}", callstack.errValue().getLine(), callstack.errValue().getErrMessage());
   DASSERT_TRUE(callstack.isOk());
   LOG_INFO("\n{}", callstack.value().toString());
 }

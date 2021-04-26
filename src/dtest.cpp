@@ -141,9 +141,6 @@ int runTests() {
   LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.9f}s )",
            testCount, assertCount, stopwatch.fs());
 
-  LOG_INFO("ns: {}, us: {}, ms: {}, s: {}, fs: {}", stopwatch.ns(),
-           stopwatch.us(), stopwatch.ms(), stopwatch.s(), stopwatch.fs());
-
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {
     if (category.fail) {

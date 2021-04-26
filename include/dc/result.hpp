@@ -28,7 +28,7 @@
 
 #include <dc/assert.hpp>
 #include <dc/traits.hpp>
-#include <dc/types.hpp>
+#include <dc/core.hpp>
 #include <utility>
 
 namespace dc {

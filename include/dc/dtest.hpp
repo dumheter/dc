@@ -380,6 +380,7 @@ class Paint {
       LOG_INFO("\t\t- Assert:{} true " #expr " {}", line,                      \
                dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                    .c_str());                                                  \
+	  return;															\
     }                                                                          \
   } while (0)
 
@@ -395,6 +396,7 @@ class Paint {
       LOG_INFO("\t\t- Assert:{} false " #expr " {}", line,                     \
                dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                    .c_str());                                                  \
+	  return;															\
     }                                                                          \
   } while (0)
 
@@ -410,6 +412,7 @@ class Paint {
       LOG_INFO("\t\t- Assert:{} " #a " == " #b " {}", line,                    \
                dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                    .c_str());                                                  \
+	  return;															\
     }                                                                          \
   } while (0)
 
@@ -425,5 +428,6 @@ class Paint {
       LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                    \
                dtest::internal::Paint("failed", dtest::internal::Color::Red)   \
                    .c_str());                                                  \
+	  return;															\
     }                                                                          \
   } while (0)

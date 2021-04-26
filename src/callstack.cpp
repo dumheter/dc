@@ -75,17 +75,19 @@ struct ModuleInfo {
   void* baseAddr;
   DWORD loadSize;
 
-  static ModuleInfo create(HANDLE process, HMODULE module);
+	static Result<ModuleInfo, CallstackErr> create(HANDLE process, HMODULE module);
 };
 
 // TODO cgustafsson: This function can only be called from one thread, should
 // have a mutex or something to protect.
-ModuleInfo ModuleInfo::create(HANDLE process, HMODULE module) {
+Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process, HMODULE module) {
   ModuleInfo out;
 
   MODULEINFO moduleInfo;
   bool ok =
       GetModuleInformation(process, module, &moduleInfo, sizeof(moduleInfo));
+  if (!ok)
+	  return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   DC_ASSERT(ok, "failed to get module information");
   out.baseAddr = moduleInfo.lpBaseOfDll;
   out.loadSize = moduleInfo.SizeOfImage;
@@ -94,25 +96,29 @@ ModuleInfo ModuleInfo::create(HANDLE process, HMODULE module) {
   std::vector<char> img(bufSize);
   DWORD len = GetModuleFileNameEx(process, module, img.data(),
                                   static_cast<DWORD>(img.size()));
-  DC_ASSERT(len > 0, "failed to get module file name");
+  if (len == 0)
+	  return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   img.resize(len);
   out.imageName = img.data();
 
   std::vector<char> mod(bufSize);
   len = GetModuleBaseName(process, module, mod.data(),
                           static_cast<DWORD>(mod.size()));
-  DC_ASSERT(len > 0, "failed to get module base name");
+  if (len == 0)
+	  return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   mod.resize(len);
   out.moduleName = mod.data();
 
   HANDLE file = NULL;               //< no file
   PMODLOAD_DATA headerData = NULL;  //< extra header info, not needed
   DWORD flags = 0;                  //< no extra flags
-  SymLoadModuleEx(process, file, img.data(), mod.data(),
+  DWORD64 okLoad = SymLoadModuleEx(process, file, img.data(), mod.data(),
                   reinterpret_cast<DWORD64>(out.baseAddr), out.loadSize,
                   headerData, flags);
+  if (okLoad == 0)
+	  return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
-  return out;
+  return Ok(std::move(out));
 };
 
 class Symbol {
@@ -128,7 +134,7 @@ class Symbol {
     if (ok)
       return Ok(std::move(symbol));
     else
-      return Err(CallstackErr{static_cast<u64>(GetLastError())});
+		return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   }
 
   Symbol(Symbol&& other) : m_sym(other.m_sym) { other.m_sym = nullptr; }
@@ -151,7 +157,7 @@ class Symbol {
         UnDecorateSymbolName(m_sym->Name, &name[0],
                              static_cast<DWORD>(name.size()), UNDNAME_COMPLETE);
     if (bytesWritten == 0)
-      return Err(CallstackErr{static_cast<u64>(GetLastError())});
+      return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
     name.resize(bytesWritten);
     return Ok<std::string>(std::move(name));
@@ -191,7 +197,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
   Result<Callstack, CallstackErr> out =
       SymInitialize(process, NULL, false)
           ? buildCallstackAux(process, thread, &context)
-          : Err(CallstackErr{static_cast<u64>(GetLastError())});
+          : Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
   SymCleanup(process);
 
@@ -206,7 +212,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   Result<Callstack, CallstackErr> out = Ok(Callstack());
 
   if (!SymInitialize(process, NULL, false))
-    return Err(CallstackErr{static_cast<u64>(GetLastError())});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
   DWORD symOptions = SymGetOptions();
   symOptions |= SYMOPT_LOAD_LINES | SYMOPT_UNDNAME;
@@ -217,7 +223,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   bool ok = EnumProcessModules(
       process, moduleHandles.data(),
       static_cast<DWORD>(moduleHandles.size() * sizeof(HMODULE)), &bytesNeeded);
-  if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError())});
+  if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
   if (bytesNeeded > 0) {
     moduleHandles.resize(bytesNeeded / sizeof(HMODULE));
@@ -225,16 +231,22 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
         process, moduleHandles.data(),
         static_cast<DWORD>(moduleHandles.size() * sizeof(HMODULE)),
         &bytesNeeded);
-    if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError())});
+    if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   }
 
   std::vector<ModuleInfo> modules;
   for (HMODULE module : moduleHandles)
-    modules.push_back(ModuleInfo::create(process, module));
+  {
+	  auto res = ModuleInfo::create(process, module);
+	  if (res.isOk())
+		  modules.push_back(std::move(res).unwrap());
+	  else
+		  return std::move(res).map([](ModuleInfo&&){ return Callstack();});
+  }
 
   void* base = modules[0].baseAddr;
   IMAGE_NT_HEADERS* imageHeader = ImageNtHeader(base);
-  if (!imageHeader) return Err(CallstackErr{static_cast<u64>(GetLastError())});
+  if (!imageHeader) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   const DWORD machineType = imageHeader->FileHeader.Machine;
 
 #if defined(_M_X64)
@@ -266,39 +278,40 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   DWORD offsetFromSymbol = 0;
 
   do {
-    if (frame.AddrPC.Offset != 0) {
-      Result<Symbol, CallstackErr> symbol =
-          Symbol::create(process, frame.AddrPC.Offset);
-      if (symbol.isErr())
-        return std::move(symbol).map([](Symbol&&) { return Callstack(); });
+	  if (frame.AddrPC.Offset != 0) {
+		  Result<Symbol, CallstackErr> symbol =
+				  Symbol::create(process, frame.AddrPC.Offset);
 
-      Result<std::string, CallstackErr> fnName =
-          symbol.value().undecoratedName();
-      if (fnName.isErr())
-        return std::move(fnName).map([](std::string&&) { return Callstack(); });
+		  Result<std::string, CallstackErr> fnName =
+				  symbol.match([](const Symbol& symbol) { return symbol.undecoratedName(); },
+							   [frame](const CallstackErr&) -> Result<std::string, CallstackErr> { return Ok<std::string>(fmt::format("{:#08x}", frame.AddrPC.Offset)); });
 
-      // TODO cgustafsson: how to handle RaiseException
-      if (fnName.value() != "RaiseException") {
-        fmt::format_to(std::back_inserter(buffer), "{}", fnName.value());
-        if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
-                                 &offsetFromSymbol, &line))
-          fmt::format_to(std::back_inserter(buffer), " [{}:{}]\n",
-                         line.FileName, line.LineNumber);
-        else
-          fmt::format_to(std::back_inserter(buffer), " [-]\n");
-      }
+		  fmt::format_to(std::back_inserter(buffer), "{}",
+						 fnName.match([](const std::string& s){return s;},
+									  [](const CallstackErr&){return std::string("?fn?");})
+						 );
 
-      if (fnName.value() == "main") break;
-    } else
-      fmt::format_to(std::back_inserter(buffer),
-                     "(No symbols: AddrPC.Offset == 0)");
+		  if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
+								   &offsetFromSymbol, &line))
+			  fmt::format_to(std::back_inserter(buffer), " [{}:{}]\n",
+							 line.FileName, line.LineNumber);
+		  else
+			  fmt::format_to(std::back_inserter(buffer), " [-:-]\n");
 
-    if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
-                     SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-      break;
+		  // TODO cgustafsson: how to handle RaiseException
+		  if (fnName.isOk() && fnName.value() == "RaiseException") break;
 
-    if (++n > 10)  // TODO cgustafsson: remove this limit?
-      break;
+		  if (fnName.isOk() && fnName.value() == "main") break;
+	  } else
+		  fmt::format_to(std::back_inserter(buffer),
+						 "(No symbols: AddrPC.Offset == 0)");
+
+	  if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
+					   SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+		  break;
+
+	  if (++n > 10)  // TODO cgustafsson: remove this limit?
+		  break;
 
   } while (frame.AddrReturn.Offset != 0);
 

@@ -71,7 +71,7 @@ class Callstack {
 
 class CallstackErr {
  public:
-  CallstackErr(u64 err) : m_err(err) {}
+	CallstackErr(u64 err, int line) : m_err(err), m_line(line) {}
 
   ~CallstackErr() = default;
 
@@ -79,8 +79,11 @@ class CallstackErr {
 
   std::string getErrMessage() const;
 
+	int getLine() const { return m_line; }
+
  private:
   u64 m_err;
+	int m_line;
 };
 
 }  // namespace dc
