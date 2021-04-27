@@ -65,7 +65,23 @@ constexpr const char* filenameFromPath(const char* path) {
 
 #define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
 
+#if defined(_MSC_VER)
+#define DC_COMPILER_MSVC
+#elif defined(__clang__)
+#define DC_COMPILER_CLANG
+#elif defined(__GNUC__)
+#define DC_COMPILER_GCC
+#endif
+
+#if defined(DC_COMPILER_MSVC)
 #define DC_DISABLE_OPTIMIZATIONS _Pragma("optimize(\"\", off)")
+#elif defined(DC_COMPILER_CLANG)
+#define DC_DISABLE_OPTIMIZATIONS _Pragma("clang optimize off")
+#elif defined(DC_COMPILER_GCC)
+#define DC_DISABLE_OPTIMIZATIONS //< todo
+#else
+#define DC_DISABLE_OPTIMIZATIONS
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // ctor & dtor

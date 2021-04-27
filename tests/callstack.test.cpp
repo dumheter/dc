@@ -1,13 +1,14 @@
 #include <dc/callstack.hpp>
 #include <dc/dtest.hpp>
 #include <dc/log.hpp>
+#include <dc/core.hpp>
 
 DTEST(callstackFromFunctionCall) {
   dc::Result<dc::Callstack, dc::CallstackErr> callstack = dc::buildCallstack();
   if (callstack.isErr())
 	  LOG_INFO("Error in callstack.cpp:{} with msg: {}", callstack.errValue().getLine(), callstack.errValue().getErrMessage());
   DASSERT_TRUE(callstack.isOk());
-  LOG_INFO("\n{}", callstack.value().toString());
+  LOG_RAW("{}", callstack.value().toString());
 }
 
 // TODO cgustafsson:

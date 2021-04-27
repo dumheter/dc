@@ -197,7 +197,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           "[{:7}] "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          "[{:25}:{:<4}] "
+          "[{:<26}] "
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           "[{:10}] "
@@ -210,7 +210,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.level,
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          payload.fileName, payload.lineno,
+          fmt::format("{}:{}", payload.fileName, payload.lineno),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,

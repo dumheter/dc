@@ -286,17 +286,20 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 				  symbol.match([](const Symbol& symbol) { return symbol.undecoratedName(); },
 							   [frame](const CallstackErr&) -> Result<std::string, CallstackErr> { return Ok<std::string>(fmt::format("{:#08x}", frame.AddrPC.Offset)); });
 
-		  fmt::format_to(std::back_inserter(buffer), "{}",
-						 fnName.match([](const std::string& s){return s;},
-									  [](const CallstackErr&){return std::string("?fn?");})
-						 );
+		  if (fnName.isOk() && fnName.value() != "dc::buildCallstack")
+		  {
+			  fmt::format_to(std::back_inserter(buffer), "{}",
+							 fnName.match([](const std::string& s){return s;},
+										  [](const CallstackErr&){return std::string("?fn?");})
+							 );
 
-		  if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
-								   &offsetFromSymbol, &line))
-			  fmt::format_to(std::back_inserter(buffer), " [{}:{}]\n",
-							 line.FileName, line.LineNumber);
-		  else
-			  fmt::format_to(std::back_inserter(buffer), " [-:-]\n");
+			  if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
+									   &offsetFromSymbol, &line))
+				  fmt::format_to(std::back_inserter(buffer), " [{}:{}]\n",
+								 line.FileName, line.LineNumber);
+			  else
+				  fmt::format_to(std::back_inserter(buffer), " [?:?]\n");
+		  }
 
 		  // TODO cgustafsson: how to handle RaiseException
 		  if (fnName.isOk() && fnName.value() == "RaiseException") break;
