@@ -78,7 +78,7 @@ constexpr const char* filenameFromPath(const char* path) {
 #elif defined(DC_COMPILER_CLANG)
 #define DC_DISABLE_OPTIMIZATIONS _Pragma("clang optimize off")
 #elif defined(DC_COMPILER_GCC)
-#define DC_DISABLE_OPTIMIZATIONS //< todo
+#define DC_DISABLE_OPTIMIZATIONS  //< todo
 #else
 #define DC_DISABLE_OPTIMIZATIONS
 #endif

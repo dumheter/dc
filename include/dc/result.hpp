@@ -27,8 +27,8 @@
 #pragma once
 
 #include <dc/assert.hpp>
-#include <dc/traits.hpp>
 #include <dc/core.hpp>
+#include <dc/traits.hpp>
 #include <utility>
 
 namespace dc {
