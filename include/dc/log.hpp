@@ -153,6 +153,9 @@ class Logger {
   /// Enqueue a log payload.
   [[nodiscard]] bool enqueue(Payload&& payload);
 
+  /// Try to find out how many payloads are in queue, may not be accurate.
+  [[nodiscard]] usize approxPayloadsInQueue() const;
+
   /// Wait on logger dead signal, with timeout.
   /// Should only be done on one thread, since only one signal will be sent.
   [[nodiscard]] bool waitOnLoggerDeadTimeoutUs(u64 timeoutUs);

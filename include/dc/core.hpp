@@ -74,13 +74,33 @@ constexpr const char* filenameFromPath(const char* path) {
 #endif
 
 #if defined(DC_COMPILER_MSVC)
-#define DC_DISABLE_OPTIMIZATIONS _Pragma("optimize(\"\", off)")
+#define DC_DISABLE_OPTIMIZATIONS __pragma("optimize(\"\", off)")
 #elif defined(DC_COMPILER_CLANG)
 #define DC_DISABLE_OPTIMIZATIONS _Pragma("clang optimize off")
 #elif defined(DC_COMPILER_GCC)
-#define DC_DISABLE_OPTIMIZATIONS  //< todo
+#define DC_DISABLE_OPTIMIZATIONS _Pragma("GCC optimize off")
 #else
 #define DC_DISABLE_OPTIMIZATIONS
+#endif
+
+#if defined(DC_COMPILER_MSVC)
+#define DC_NOINLINE __declspec(noinline)
+#elif defined(DC_COMPILER_CLANG)
+#define DC_NOINLINE __attribute__((noinline))
+#elif defined(DC_COMPILER_GCC)
+#define DC_NOINLINE __attribute__((noinline))
+#else
+#error "DC_NOINLINE not defined for your compiler"
+#endif
+
+#if defined(DC_COMPILER_MSVC)
+#define DC_INLINE __forceinline
+#elif defined(DC_COMPILER_CLANG)
+#define DC_INLINE __attribute__((always_inline))
+#elif defined(DC_COMPILER_GCC)
+#define DC_INLINE __attribute__((always_inline))
+#else
+#error "DC_INLINE not defined for your compiler"
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////

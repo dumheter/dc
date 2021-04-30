@@ -25,12 +25,18 @@
 #pragma once
 
 #define DC_ASSERT(condition, msg) \
-  dc::dcAssert(!!(condition), msg, __FILE__, __func__, __LINE__)
+  dc::details::dcAssert(!!(condition), msg, __FILE__, __func__, __LINE__)
 
-namespace dc {
+#define DC_FATAL_ASSERT(condition, msg) \
+  dc::details::dcFatalAssert(!!(condition), msg, __FILE__, __func__, __LINE__)
+
+namespace dc::details {
 
 /// Call by using the macro DC_ASSERT
 void dcAssert(bool condition, const char* msg, const char* file,
               const char* func, int line);
 
-}  // namespace dc
+void dcFatalAssert(bool condition, const char* msg, const char* file,
+                   const char* func, int line);
+
+}  // namespace dc::details

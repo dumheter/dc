@@ -22,7 +22,6 @@
  * SOFTWARE.
  */
 
-#include <dc/assert.hpp>
 #include <dc/callstack.hpp>
 #include <dc/core.hpp>
 #include <dc/log.hpp>
@@ -89,7 +88,6 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
   bool ok =
       GetModuleInformation(process, module, &moduleInfo, sizeof(moduleInfo));
   if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
-  DC_ASSERT(ok, "failed to get module information");
   out.baseAddr = moduleInfo.lpBaseOfDll;
   out.loadSize = moduleInfo.SizeOfImage;
 
@@ -175,8 +173,8 @@ class Symbol {
   SYMBOL_INFO* m_sym;
 };
 
-// DWORD callstack(HANDLE thread, CONTEXT* context);
-
+// TODO do we want to be able to catch SEH exceptions? see gtest.cc:2588
+// https://github.com/google/googletest/blob/f16d43cd38e9f2e41357dba8445f9d3a32d4e83d/googletest/src/gtest.cc
 // DWORD callstackFromException(_EXCEPTION_POINTERS* ep)
 // {
 // 	HANDLE thread = GetCurrentThread();
@@ -195,6 +193,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
   CONTEXT context;
   RtlCaptureContext(&context);
 
+  // TODO cgustafsson: make thread safe, symInitialize is not thread safe
   Result<Callstack, CallstackErr> out =
       SymInitialize(process, NULL, false)
           ? buildCallstackAux(process, thread, &context)
@@ -236,13 +235,13 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   }
 
+  // TODO cgustafsson: why load all modules when only using 1?
   std::vector<ModuleInfo> modules;
   for (HMODULE module : moduleHandles) {
     auto res = ModuleInfo::create(process, module);
-    if (res.isOk())
-      modules.push_back(std::move(res).unwrap());
-    else
-      return std::move(res).map([](ModuleInfo&&) { return Callstack(); });
+    if (res.isOk()) modules.push_back(std::move(res).unwrap());
+    // else
+    //   return std::move(res).map([](ModuleInfo&&) { return Callstack(); });
   }
 
   void* base = modules[0].baseAddr;
@@ -271,7 +270,6 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 #error "platform not supported"
 #endif
 
-  int n = 0;
   std::vector<char> buffer;
   buffer.reserve(2048);
 
@@ -316,20 +314,19 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
     if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
                      SymFunctionTableAccess64, SymGetModuleBase64, NULL))
       break;
-
-    if (++n > 10)  // TODO cgustafsson: remove this limit?
-      break;
-
   } while (frame.AddrReturn.Offset != 0);
 
   Callstack cs;
   cs.setCallstack(buffer.begin(), buffer.end());
   out = Ok(std::move(cs));
 
+  for (const ModuleInfo& module : modules)
+    SymUnloadModule64(process, (DWORD64)module.baseAddr);
+
   return out;
 }
 
-std::string CallstackErr::getErrMessage() const {
+std::string CallstackErr::toString() const {
   LPVOID lpMsgBuf;
 
   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |

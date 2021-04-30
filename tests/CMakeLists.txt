@@ -6,14 +6,15 @@ set(CMAKE_CXX_STANDARD 17)
 #// List source files
 
 set(TEST_SOURCES
-  main.test.cpp
-  result.result.test.cpp
-  result.option.test.cpp
-  result.intrusive_option.test.cpp
-  track_lifetime.test.cpp
-  log.test.cpp
-  time.test.cpp
+  assert.test.cpp
   callstack.test.cpp
+  log.test.cpp
+  main.test.cpp
+  result.intrusive_option.test.cpp
+  result.option.test.cpp
+  result.result.test.cpp
+  time.test.cpp
+  track_lifetime.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////

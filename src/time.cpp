@@ -41,7 +41,7 @@
 #else
 #include <time.h>
 
-#include <chrono>
+#include <chrono>  // TODO cgustafsson: remove after making native impl on all platforms
 #endif
 
 #if defined(DC_PLATFORM_LINUX)

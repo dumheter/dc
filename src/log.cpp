@@ -129,6 +129,10 @@ bool Logger::stop(u64 timeoutUs) {
   return m_data->queue.enqueue(std::move(payload));
 }
 
+[[nodiscard]] usize Logger::approxPayloadsInQueue() const {
+  return m_data->queue.size_approx();
+}
+
 [[nodiscard]] bool Logger::waitOnLoggerDeadTimeoutUs(u64 timeoutUs) {
   return m_data->loggerDeadSem.wait(timeoutUs);
 }

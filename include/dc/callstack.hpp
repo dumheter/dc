@@ -36,15 +36,14 @@ class CallstackErr;
 
 Result<Callstack, CallstackErr> buildCallstack();
 
-#define TRAP_
-
 ///////////////////////////////////////////////////////////////////////////////
 
 class Callstack {
  public:
-  Callstack() = default;
+  Callstack() {}
 
-  Callstack(Callstack&& other) : m_callstack(std::move(other.m_callstack)) {}
+  Callstack(Callstack&& other) noexcept
+      : m_callstack(std::move(other.m_callstack)) {}
 
   Callstack& operator=(Callstack&& other) {
     if (this != &other) m_callstack = std::move(other.m_callstack);
@@ -79,7 +78,7 @@ class CallstackErr {
 
   u64 getErrCode() const { return m_err; }
 
-  std::string getErrMessage() const;
+  std::string toString() const;
 
   int getLine() const { return m_line; }
 

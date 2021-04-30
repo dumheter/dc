@@ -11,7 +11,7 @@ struct BufferSink {
   std::string& m_buf;
 };
 
-DTEST(is_logging_correctly) {
+DTEST(isLoggingCorrectly) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "test sink");
   logger.start();
@@ -25,7 +25,7 @@ DTEST(is_logging_correctly) {
   DASSERT_EQ(buf, "you are awesome!");
 }
 
-DTEST(level_verbose) {
+DTEST(levelVerbose) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Verbose);
@@ -42,7 +42,7 @@ DTEST(level_verbose) {
   DASSERT_EQ(buf, "you are awesome! :) rawr");
 }
 
-DTEST(level_info) {
+DTEST(levelInfo) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Info);
@@ -59,7 +59,7 @@ DTEST(level_info) {
   DASSERT_EQ(buf, " are awesome! :) rawr");
 }
 
-DTEST(level_warning) {
+DTEST(levelWarning) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Warning);
@@ -76,7 +76,7 @@ DTEST(level_warning) {
   DASSERT_EQ(buf, " awesome! :) rawr");
 }
 
-DTEST(level_error) {
+DTEST(levelError) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Error);
@@ -93,7 +93,7 @@ DTEST(level_error) {
   DASSERT_EQ(buf, " :) rawr");
 }
 
-DTEST(level_raw) {
+DTEST(levelRaw) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Raw);
@@ -110,7 +110,7 @@ DTEST(level_raw) {
   DASSERT_EQ(buf, " rawr");
 }
 
-DTEST(level_none) {
+DTEST(levelNone) {
   std::string buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::None);
@@ -126,7 +126,7 @@ DTEST(level_none) {
   DASSERT_TRUE(buf.empty());
 }
 
-DTEST(multithreaded_stress_test) {
+DTEST(multithreadedStressTest) {
   constexpr int kIterCount = 1000;
 
   struct Data {
@@ -213,4 +213,35 @@ DTEST(multithreaded_stress_test) {
   DASSERT_TRUE(allElementsAreK(data.warning));
   DASSERT_TRUE(allElementsAreK(data.error));
   DASSERT_TRUE(allElementsAreK(data.raw));
+}
+
+static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
+  int c = 0;
+  while (logger.approxPayloadsInQueue()) {
+    dc::sleepMs(1);
+    if (c++ > timeoutMs) break;
+  }
+  dc::sleepMs(1);  //< give the logger extra time to stabilize
+  return c <= timeoutMs;
+}
+
+DTEST(canAttachSinkToGlobalLoggerAndDetach) {
+  dc::log::Logger& logger = dc::log::getGlobalLogger();
+  DASSERT_TRUE(drainLogger(logger));
+
+  std::string buf;
+  logger.attachSink(BufferSink(buf), "bufferSink");
+
+  LOG_INFO("you");
+  LOG_INFO(" are");
+  LOG_INFO(" awesome!");
+  DASSERT_TRUE(drainLogger(logger));
+
+  DASSERT_EQ(buf, "you are awesome!");
+  logger.detachSink("bufferSink");
+
+  LOG_INFO("this is not added to bufferSink");
+  DASSERT_TRUE(drainLogger(logger));
+
+  DASSERT_EQ(buf, "you are awesome!");
 }
