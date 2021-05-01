@@ -5,6 +5,13 @@
 
 #pragma once
 
+#if defined(__clang__)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuseless-cast"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
 #include <cstddef> // For std::size_t
 #include <atomic>
 #include <type_traits> // For std::make_signed<T>
@@ -409,3 +416,8 @@ public:
 };
 
 }   // end namespace moodycamel
+
+#if defined(__clang__)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

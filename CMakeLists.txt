@@ -90,7 +90,7 @@ endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(PEDANTIC_COMPILE_FLAGS -Wall -Wextra -pedantic -Wconversion -Wundef
       -Wdeprecated -Wweak-vtables -Wshadow)
-  check_cxx_compiler_flag(-Wzero-as-null-pointer-constant HAS_NULLPTR_WARNING)
+  #check_cxx_compiler_flag(-Wzero-as-null-pointer-constant HAS_NULLPTR_WARNING)
   if (HAS_NULLPTR_WARNING)
     set(PEDANTIC_COMPILE_FLAGS ${PEDANTIC_COMPILE_FLAGS}
         -Wzero-as-null-pointer-constant)
@@ -124,7 +124,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}>)
 
-target_link_libraries(${PROJECT_NAME} fmt)
+if (WIN32)
+  target_link_libraries(${PROJECT_NAME} fmt)
+else ()
+  target_link_libraries(${PROJECT_NAME} fmt pthread)
+endif ()
 
 if (DC_BUILD_TESTS)
   if (DC_ENABLE_LIB_DTEST)

@@ -25,6 +25,7 @@
 #pragma once
 
 #include <dc/core.hpp>
+#include <dc/platform.hpp>
 
 namespace dc {
 
@@ -50,7 +51,7 @@ struct [[nodiscard]] Timestamp {
   u8 day;        //< [0, 32), starts at 1
   u8 hour;       //< [0, 32)
   u8 minute;     //< [0, 64)
-  float second;  //< underlying precision is 100 nanoseconds.
+  f32 second;  //< underlying precision is 100 nanoseconds.
 };
 
 [[nodiscard]] Timestamp makeTimestamp();
@@ -88,7 +89,9 @@ class [[nodiscard]] Stopwatch {
  private:
   u64 m_start;
   u64 m_stop;
+#if defined(DC_PLATFORM_WINDOWS)
   u64 m_freqCache;
+#endif
 };
 
 }  // namespace dc

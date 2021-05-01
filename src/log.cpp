@@ -134,7 +134,7 @@ bool Logger::stop(u64 timeoutUs) {
 }
 
 [[nodiscard]] bool Logger::waitOnLoggerDeadTimeoutUs(u64 timeoutUs) {
-  return m_data->loggerDeadSem.wait(timeoutUs);
+  return m_data->loggerDeadSem.wait(static_cast<s64>(timeoutUs));
 }
 
 void Logger::run() {
@@ -149,7 +149,9 @@ void Logger::run() {
   }
 
   // shutdown payload recieved - drain the log backlog
+#if defined(DC_LOG_DEBUG)
   const u64 now = dc::getTimeUs();
+#endif
   usize payloadsDrained = 0;
   while (m_data->queue.wait_dequeue_timed(payload, 0)) {
     ++payloadsDrained;

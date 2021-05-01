@@ -518,12 +518,12 @@ struct [[nodiscard]] Err {
   }
 
   template <typename U>
-  [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const noexcept {
+  [[nodiscard]] constexpr bool operator==(Ok<U> const&) const noexcept {
     return false;
   }
 
   template <typename U>
-  [[nodiscard]] constexpr bool operator!=(Ok<U> const& other) const noexcept {
+  [[nodiscard]] constexpr bool operator!=(Ok<U> const&) const noexcept {
     return true;
   }
 

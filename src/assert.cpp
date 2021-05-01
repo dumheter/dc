@@ -64,7 +64,7 @@ static void dcDoAssert(const char* msg, const char* file, const char* func,
   auto callstackResult = buildCallstack();
   std::string callstack =
       std::move(callstackResult)
-          .match([](Callstack&& callstack) { return callstack.toString(); },
+          .match([](Callstack&& cs) { return cs.toString(); },
                  [](CallstackErr&& err) { return err.toString(); });
 
   if (callstack[callstack.size() - 1] == '\n')  //< remove last newline

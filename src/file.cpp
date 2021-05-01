@@ -22,9 +22,15 @@
  * SOFTWARE.
  */
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-include-dirs"
+#endif
+
 #include <cstdlib>
 #include <dc/file.hpp>
 #include <dc/platform.hpp>
+
 
 namespace dc {
 
@@ -81,7 +87,7 @@ template <typename TBuffer>
 static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
 
-  if (file != NULL) {
+  if (file != nullptr) {
     int res = fseek(file, 0, SEEK_END);
     constexpr int SEEK_SUCCESS = 0;
     if (res == SEEK_SUCCESS) {
@@ -90,10 +96,10 @@ static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
       if (size != FTELL_FAIL) {
         rewind(file);
 
-        buffer.resize(size + 1);  // extra for null termination
-        const size_t bytes = fread(buffer.data(), 1, size, file);
+        buffer.resize(static_cast<usize>(size + 1));  // extra for null termination
+        const size_t bytes = fread(buffer.data(), 1, static_cast<usize>(size), file);
         if (bytes == static_cast<size_t>(size)) {
-          buffer[size] = 0;  // ensure null termination
+          buffer[static_cast<usize>(size)] = 0;  // ensure null termination
         } else {
           result = File::Result::kFailedToRead;
         }
@@ -135,7 +141,7 @@ File::Result File::Load(std::vector<u8>& buffer) {
 template <typename TBuffer>
 static File::Result WriteToFile(std::FILE* file, const TBuffer& buffer) {
   File::Result result = File::Result::kSuccess;
-  if (file != NULL) {
+  if (file != nullptr) {
     const size_t written =
         std::fwrite(buffer.data(), sizeof(typename TBuffer::value_type),
                     buffer.size(), file);
@@ -260,3 +266,7 @@ bool File::FileExists(const std::string& path) {
 }
 
 }  // namespace dc
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

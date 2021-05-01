@@ -38,14 +38,11 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
-#else
+#elif defined(DC_PLATFORM_LINUX)
 #include <time.h>
-
-#include <chrono>  // TODO cgustafsson: remove after making native impl on all platforms
-#endif
-
-#if defined(DC_PLATFORM_LINUX)
 #include <unistd.h>
+#include <limits>
+#include <dc/math.hpp>
 #endif
 
 namespace dc {
@@ -65,7 +62,7 @@ namespace dc {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    timeUs = time.tv_sec * 1000000 + time.tv_nsec / 1000;
+    timeUs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec / 1'000);
   else
     timeUs = 0;
 #else
@@ -87,14 +84,14 @@ namespace dc {
   }
   std::atomic_signal_fence(std::memory_order_seq_cst);
 
-  timeUs = static_cast<u64>(time.QuadPart * 1000'000 / freq.QuadPart);
+  timeUs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   std::atomic_signal_fence(std::memory_order_seq_cst);
   const auto res = clock_gettime(CLOCK_MONOTONIC_RAW, &time);
   std::atomic_signal_fence(std::memory_order_seq_cst);
   if (res == 0)
-    timeUs = time.tv_sec * 1000000 + time.tv_nsec / 1000;
+    timeUs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec / 1'000);
   else
     timeUs = 0;
 #else
@@ -108,7 +105,8 @@ void sleepMs(u32 timeMs) {
 #if defined(DC_PLATFORM_WINDOWS)
   Sleep(static_cast<DWORD>(timeMs));
 #elif defined(DC_PLATFORM_LINUX)
-  usleep(static_cast<unsigned int>(timeMs * 1000));
+  const u32 safeTimeMs = clamp(timeMs, 0u, std::numeric_limits<u32>::max() / 1'000u);
+  usleep(safeTimeMs * 1'000);
 #else
   DC_ASSERT(false, "not implemented");
 #endif
@@ -137,25 +135,26 @@ void sleepMs(u32 timeMs) {
   u64 ns = fileTime.dwLowDateTime;
   ns += (static_cast<u64>(fileTime.dwHighDateTime) << 32);
   out.second = systemTime.wSecond + ns % 10'000'000 / 10'000'000.f;
-#else
-  // TODO cgustafsson: make a native impl of timestamp on other platforms
-  using namespace std::chrono;
+#elif defined(DC_PLATFORM_LINUX)
+  timespec time;
+  if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) != 0)
+  {
+    // make sure we are 0 if call fails
+    time.tv_sec = 0;
+    time.tv_nsec = 0;
+  }
 
-  const time_point<system_clock> systemNow = system_clock::now();
-  const time_t now = system_clock::to_time_t(systemNow);
-  const tm* time = localtime(&now);
+  const u64 ns = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
+  tm datetime;
+  gmtime_r(&time.tv_sec, &datetime);
 
-  out.year = time->tm_year + 1'900;
-  out.month = static_cast<u8>(time->tm_mon);
-  out.day = static_cast<u8>(time->tm_mday);
-  out.hour = static_cast<u8>(time->tm_hour);
-  out.minute = static_cast<u8>(time->tm_min);
+  out.year = static_cast<u32>(datetime.tm_year);
+  out.month = static_cast<u8>(datetime.tm_mon);
+  out.day = static_cast<u8>(datetime.tm_mday);
+  out.hour = static_cast<u8>(datetime.tm_hour);
+  out.minute = static_cast<u8>(datetime.tm_min);
 
-  const auto tp = systemNow.time_since_epoch();
-  const u32 s = duration_cast<seconds>(tp).count() % 60;
-  const u32 ms = duration_cast<milliseconds>(tp).count() % 1000;
-  const u32 us = duration_cast<microseconds>(tp).count() % 1000;
-  out.second = s + (ms / 1'000.f) + (us / 1'000'000.f);
+  out.second = f32(ns) / 1'000'000'000.f;
 #endif
 
   return out;
@@ -180,7 +179,7 @@ void Stopwatch::start() {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    m_start = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    m_start = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     m_start = 0;
 #else
@@ -197,7 +196,7 @@ void Stopwatch::stop() {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    m_stop = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    m_stop = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     m_stop = 0;
 #else
@@ -254,7 +253,7 @@ f64 Stopwatch::fs() const {
 #if defined(DC_PLATFORM_WINDOWS)
   return (m_stop - m_start) / (1.0 * m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
-  return (m_stop - m_start) / 1'000'000'000.;
+  return f64(m_stop - m_start) / 1'000'000'000.;
 #else
   DC_ASSERT(false, "not implemented");
   return 0.;
@@ -271,7 +270,7 @@ u64 Stopwatch::nowNs() const {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    now = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     now = 0;
   return (now - m_start);
@@ -292,7 +291,7 @@ u64 Stopwatch::nowUs() const {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    now = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     now = 0;
   return (now - m_start) / 1'000;
@@ -313,7 +312,7 @@ u64 Stopwatch::nowMs() const {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    now = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     now = 0;
   return (now - m_start) / 1'000'000;
@@ -334,7 +333,7 @@ u64 Stopwatch::nowS() const {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    now = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     now = 0;
   return (now - m_start) / 1'000'000'000;
@@ -355,10 +354,10 @@ f64 Stopwatch::nowFs() const {
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    now = time.tv_sec * 1'000'000'000 + time.tv_nsec;
+    now = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   else
     now = 0;
-  return (now - m_start) / 1'000'000'000.;
+  return f64(now - m_start) / 1'000'000'000.;
 #else
   DC_ASSERT(false, "not implemented");
   now = 0;
