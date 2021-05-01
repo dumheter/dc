@@ -21,8 +21,8 @@ DTEST(isLoggingCorrectly) {
   LLOG_INFO(logger, " awesome!");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, "you are awesome!");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, "you are awesome!");
 }
 
 DTEST(levelVerbose) {
@@ -38,8 +38,8 @@ DTEST(levelVerbose) {
   LLOG_RAW(logger, " rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, "you are awesome! :) rawr");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, "you are awesome! :) rawr");
 }
 
 DTEST(levelInfo) {
@@ -55,8 +55,8 @@ DTEST(levelInfo) {
   LLOG_RAW(logger, " rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, " are awesome! :) rawr");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, " are awesome! :) rawr");
 }
 
 DTEST(levelWarning) {
@@ -72,8 +72,8 @@ DTEST(levelWarning) {
   LLOG_RAW(logger, " rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, " awesome! :) rawr");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, " awesome! :) rawr");
 }
 
 DTEST(levelError) {
@@ -89,8 +89,8 @@ DTEST(levelError) {
   LLOG_RAW(logger, " rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, " :) rawr");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, " :) rawr");
 }
 
 DTEST(levelRaw) {
@@ -106,8 +106,8 @@ DTEST(levelRaw) {
   LLOG_RAW(logger, " rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_EQ(buf, " rawr");
+  ASSERT_TRUE(stopOk);
+  ASSERT_EQ(buf, " rawr");
 }
 
 DTEST(levelNone) {
@@ -122,8 +122,8 @@ DTEST(levelNone) {
   LLOG_RAW(logger, "rawr");
 
   const bool stopOk = logger.stop(100'000);
-  DASSERT_TRUE(stopOk);
-  DASSERT_TRUE(buf.empty());
+  ASSERT_TRUE(stopOk);
+  ASSERT_TRUE(buf.empty());
 }
 
 DTEST(multithreadedStressTest) {
@@ -206,13 +206,13 @@ DTEST(multithreadedStressTest) {
     return correct;
   };
 
-  DASSERT_TRUE(stopOk);
-  DASSERT_TRUE(data.success);
-  DASSERT_TRUE(allElementsAreK(data.verbose));
-  DASSERT_TRUE(allElementsAreK(data.info));
-  DASSERT_TRUE(allElementsAreK(data.warning));
-  DASSERT_TRUE(allElementsAreK(data.error));
-  DASSERT_TRUE(allElementsAreK(data.raw));
+  ASSERT_TRUE(stopOk);
+  ASSERT_TRUE(data.success);
+  ASSERT_TRUE(allElementsAreK(data.verbose));
+  ASSERT_TRUE(allElementsAreK(data.info));
+  ASSERT_TRUE(allElementsAreK(data.warning));
+  ASSERT_TRUE(allElementsAreK(data.error));
+  ASSERT_TRUE(allElementsAreK(data.raw));
 }
 
 static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
@@ -227,7 +227,7 @@ static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
 
 DTEST(canAttachSinkToGlobalLoggerAndDetach) {
   dc::log::Logger& logger = dc::log::getGlobalLogger();
-  DASSERT_TRUE(drainLogger(logger));
+  ASSERT_TRUE(drainLogger(logger));
 
   std::string buf;
   logger.attachSink(BufferSink(buf), "bufferSink");
@@ -235,13 +235,13 @@ DTEST(canAttachSinkToGlobalLoggerAndDetach) {
   LOG_INFO("you");
   LOG_INFO(" are");
   LOG_INFO(" awesome!");
-  DASSERT_TRUE(drainLogger(logger));
+  ASSERT_TRUE(drainLogger(logger));
 
-  DASSERT_EQ(buf, "you are awesome!");
+  ASSERT_EQ(buf, "you are awesome!");
   logger.detachSink("bufferSink");
 
   LOG_INFO("this is not added to bufferSink");
-  DASSERT_TRUE(drainLogger(logger));
+  ASSERT_TRUE(drainLogger(logger));
 
-  DASSERT_EQ(buf, "you are awesome!");
+  ASSERT_EQ(buf, "you are awesome!");
 }

@@ -10,7 +10,7 @@ DTEST(getTimeUs) {
   const u64 afterUs = dc::getTimeUs();
   const u64 net = afterUs - beforeUs;
 
-  DASSERT_TRUE(net > 0);
+  ASSERT_TRUE(net > 0);
 }
 
 DTEST(getTimeUsNoReorder) {
@@ -21,7 +21,7 @@ DTEST(getTimeUsNoReorder) {
   const u64 afterUs = dc::getTimeUsNoReorder();
   const u64 net = afterUs - beforeUs;
 
-  DASSERT_TRUE(net > 0);
+  ASSERT_TRUE(net > 0);
 }
 
 DTEST(timestamp) {
@@ -30,7 +30,7 @@ DTEST(timestamp) {
       std::memory_order_seq_cst);  //< prevent beforeUs from being reordered
   dc::sleepMs(1);
   const auto b = dc::makeTimestamp();
-  DASSERT_TRUE(a.second < b.second);
+  ASSERT_TRUE(a.second < b.second);
 }
 
 DTEST(stopwatch) {
@@ -40,6 +40,6 @@ DTEST(stopwatch) {
   dc::sleepMs(1);
   const u64 nowUs = s.nowUs();
   s.stop();
-  DASSERT_TRUE(nowUs > 0);
-  DASSERT_TRUE(s.us() > 0);
+  ASSERT_TRUE(nowUs > 0);
+  ASSERT_TRUE(s.us() > 0);
 }

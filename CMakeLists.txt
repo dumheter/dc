@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 option(DC_BUILD_TESTS "Should the test build be generated?" OFF)
 option(DC_PEDANTIC "Enable extra compiler checks." ON)
-option(DC_WERROR "Warning is error." ON)
+option(DC_WERROR "Compiler warning is error." ON)
 option(DC_STATIC_LIB "Should dc be compiled to a static library?" ON)
 option(DC_PROVIDES_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." OFF)
@@ -146,17 +146,6 @@ endif ()
 if (DC_LOG_DEBUG)
   target_compile_options(${PROJECT_NAME} PRIVATE -DDC_LOG_DEBUG)
 endif ()
-
-#//////////////////////////////////////////////////////////////////////////////
-#// Copy compile_commands.json to project root
-
-## if (NOT DC_STATIC_LIB)
-##   include(GNUInstallDirs)
-##
-##   install(TARGETS ${PROJECT_NAME}
-##     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-##
-## endif ()
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Copy compile_commands.json to project root

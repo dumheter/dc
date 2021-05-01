@@ -46,8 +46,8 @@
 ///    ```cpp
 ///   DTEST(integer_test)
 ///   {
-///      DASSERT_TRUE(1 == 1);
-///      DASSERT_NE(1, 2);
+///      ASSERT_TRUE(1 == 1);
+///      ASSERT_NE(1, 2);
 ///   }
 ///   ```
 
@@ -69,10 +69,10 @@
 #define DTEST(testName) DTEST_REGISTER(testName, DC_FILENAME, __FILE__)
 
 /// Asserts
-#define DASSERT_TRUE(expr) DASSERT_TRUE_IMPL(expr, __LINE__)
-#define DASSERT_FALSE(expr) DASSERT_FALSE_IMPL(expr, __LINE__)
-#define DASSERT_EQ(a, b) DASSERT_EQ_IMPL(a, b, __LINE__)
-#define DASSERT_NE(a, b) DASSERT_NE_IMPL(a, b, __LINE__)
+#define ASSERT_TRUE(expr) ASSERT_TRUE_IMPL(expr, __LINE__)
+#define ASSERT_FALSE(expr) ASSERT_FALSE_IMPL(expr, __LINE__)
+#define ASSERT_EQ(a, b) ASSERT_EQ_IMPL(a, b, __LINE__)
+#define ASSERT_NE(a, b) ASSERT_NE_IMPL(a, b, __LINE__)
 
 /// Mark a test file as VIP, if a VIP is marked, only it and other VIP's will
 /// run.
@@ -368,7 +368,7 @@ class Paint {
 // Assert Macro Impl
 //
 
-#define DASSERT_TRUE_IMPL(expr, line)                                        \
+#define ASSERT_TRUE_IMPL(expr, line)                                         \
   do {                                                                       \
     if (!!(expr)) {                                                          \
       ++dtestBodyState__you_must_have_an_assert.pass;                        \
@@ -381,7 +381,7 @@ class Paint {
     }                                                                        \
   } while (0)
 
-#define DASSERT_FALSE_IMPL(expr, line)                                       \
+#define ASSERT_FALSE_IMPL(expr, line)                                        \
   do {                                                                       \
     if (!(expr)) {                                                           \
       ++dtestBodyState__you_must_have_an_assert.pass;                        \
@@ -394,7 +394,7 @@ class Paint {
     }                                                                        \
   } while (0)
 
-#define DASSERT_EQ_IMPL(a, b, line)                                          \
+#define ASSERT_EQ_IMPL(a, b, line)                                           \
   do {                                                                       \
     if ((a) == (b)) {                                                        \
       ++dtestBodyState__you_must_have_an_assert.pass;                        \
@@ -407,7 +407,7 @@ class Paint {
     }                                                                        \
   } while (0)
 
-#define DASSERT_NE_IMPL(a, b, line)                                          \
+#define ASSERT_NE_IMPL(a, b, line)                                           \
   do {                                                                       \
     if ((a) != (b)) {                                                        \
       ++dtestBodyState__you_must_have_an_assert.pass;                        \
