@@ -2,7 +2,7 @@
 #include <dc/dtest.hpp>
 #include <dc/log.hpp>
 
-struct BufferSink {
+struct [[nodiscard]] BufferSink {
   BufferSink(std::string& buf) : m_buf(buf) {}
   void operator()(const dc::log::Payload& payload, dc::log::Level) {
     m_buf += payload.msg;
@@ -10,7 +10,7 @@ struct BufferSink {
   std::string& m_buf;
 };
 
-static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
+[[nodiscard]] static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
   int c = 0;
   while (logger.approxPayloadsInQueue()) {
     dc::sleepMs(1);
