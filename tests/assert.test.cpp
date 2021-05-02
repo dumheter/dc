@@ -34,7 +34,6 @@ DTEST(assertFalseWillLogCallstack) {
   logger.detachSink("bufferSink");
   ASSERT_TRUE(drainLogger(logger));
 
-  ASSERT_TRUE(buf.find("assertFalseWillLogCallstack") != std::string::npos ||
-              buf.find("dtest::internal::TestBodyState") != std::string::npos ||
+  ASSERT_TRUE(buf.find("dc::details::dcDoAssert") != std::string::npos ||
               buf.find(" [?:?]") != std::string::npos);
 }

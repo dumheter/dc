@@ -356,6 +356,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
   constexpr usize fnBufferSize = 512;
   char* fnBuffer = new char[fnBufferSize];
 
+  // TODO cgustafsson: find file name and line number.
   for (int i = 0; i < size; ++i) {
     Dl_info symInfo;
     int res = dladdr(static_cast<const void*>(fnRetAddr[i]), &symInfo);
@@ -380,6 +381,8 @@ Result<Callstack, CallstackErr> buildCallstack() {
         fmt::format_to(std::back_inserter(out), "{} in [{}]\n",
                        fnName ? fnName : symInfo.dli_sname,
                        symInfo.dli_fname ? symInfo.dli_fname : "?");
+      else
+        fmt::format_to(std::back_inserter(out), "{} in [?:?]\n", fnRetAddr[i]);
 
 #endif
 
