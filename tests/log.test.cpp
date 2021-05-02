@@ -153,32 +153,32 @@ DTEST(multithreadedStressTest) {
       switch (payload.level) {
         case dc::log::Level::Verbose:
           ++data.verbose[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         case dc::log::Level::Info:
           ++data.info[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         case dc::log::Level::Warning:
           ++data.warning[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         case dc::log::Level::Error:
           ++data.error[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         case dc::log::Level::Raw:
           ++data.raw[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         case dc::log::Level::None:
           ++data.none[dc::clamp(
-              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              static_cast<usize>(std::atoi(payload.msg.c_str())), usize(0),
               kIterCount)];
           break;
         default:
