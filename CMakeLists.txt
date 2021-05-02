@@ -127,7 +127,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 if (WIN32)
   target_link_libraries(${PROJECT_NAME} fmt)
 else ()
-  target_link_libraries(${PROJECT_NAME} fmt pthread)
+  target_link_libraries(${PROJECT_NAME} fmt pthread dl)
+
+  # TODO: bad idea? Forcing extra linker stuff in the exe for better callstack?
+  target_link_options(${PROJECT_NAME} PUBLIC -rdynamic)
 endif ()
 
 if (DC_BUILD_TESTS)

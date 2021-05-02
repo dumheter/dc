@@ -41,8 +41,9 @@
 #elif defined(DC_PLATFORM_LINUX)
 #include <time.h>
 #include <unistd.h>
-#include <limits>
+
 #include <dc/math.hpp>
+#include <limits>
 #endif
 
 namespace dc {
@@ -105,7 +106,8 @@ void sleepMs(u32 timeMs) {
 #if defined(DC_PLATFORM_WINDOWS)
   Sleep(static_cast<DWORD>(timeMs));
 #elif defined(DC_PLATFORM_LINUX)
-  const u32 safeTimeMs = clamp(timeMs, 0u, std::numeric_limits<u32>::max() / 1'000u);
+  const u32 safeTimeMs =
+      clamp(timeMs, 0u, std::numeric_limits<u32>::max() / 1'000u);
   usleep(safeTimeMs * 1'000);
 #else
   DC_ASSERT(false, "not implemented");
@@ -137,8 +139,7 @@ void sleepMs(u32 timeMs) {
   out.second = systemTime.wSecond + ns % 10'000'000 / 10'000'000.f;
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
-  if (clock_gettime(CLOCK_REALTIME, &time) != 0)
-  {
+  if (clock_gettime(CLOCK_REALTIME, &time) != 0) {
     // make sure we are 0 if call fails
     time.tv_sec = 0;
     time.tv_nsec = 0;
@@ -153,7 +154,8 @@ void sleepMs(u32 timeMs) {
   out.hour = static_cast<u8>(datetime.tm_hour);
   out.minute = static_cast<u8>(datetime.tm_min);
 
-  const u64 ns = static_cast<u64>((time.tv_sec % 60) * 1'000'000'000 + time.tv_nsec);
+  const u64 ns =
+      static_cast<u64>((time.tv_sec % 60) * 1'000'000'000 + time.tv_nsec);
   out.second = f32(ns) / 1'000'000'000.f;
 #endif
 

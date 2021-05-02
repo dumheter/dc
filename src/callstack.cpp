@@ -51,7 +51,9 @@
 #pragma comment(lib, "dbghelp.lib")
 
 #else
-// TODO
+#include <execinfo.h>
+#include <cxxabi.h>
+#include <dlfcn.h>
 #endif
 
 namespace dc {
@@ -341,16 +343,69 @@ std::string CallstackErr::toString() const {
 #elif defined(DC_PLATFORM_LINUX)
 
 Result<Callstack, CallstackErr> buildCallstack() {
-	// TODO cgustafsson:
   Result<Callstack, CallstackErr> r = Err(CallstackErr(0, __LINE__));
 
-  return  r;
+  constexpr usize fnRetAddrSize = 64;
+  void* fnRetAddr[fnRetAddrSize];
+  int size = backtrace(reinterpret_cast<void**>(&fnRetAddr),
+                       sizeof(fnRetAddr) * fnRetAddrSize);
+
+  std::vector<char> out;
+  out.reserve(2048);
+
+  constexpr usize fnBufferSize = 512;
+  char* fnBuffer = new char[fnBufferSize];
+
+  for (int i = 0; i < size; ++i) {
+    Dl_info symInfo;
+    int res = dladdr(static_cast<const void*>(fnRetAddr[i]), &symInfo);
+    if (res != 0) {
+      int status;
+      usize fnBufferLen = fnBufferSize;
+      fnBuffer[0] = 0;
+      char* fnName = abi::__cxa_demangle(symInfo.dli_sname, fnBuffer,
+                                         &fnBufferLen, &status);
+
+#if 0
+			fmt::format_to(std::back_inserter(out), "fn: {}\nstatus: {}\nfunction return address: {}\nfname: {}\nfbase: {}\nsaddr: {}\noffset: {:#x}\n",
+						   fnName ? fnName : fnBuffer,
+						   status,
+						   fnRetAddr[i],
+						   symInfo.dli_fname ? symInfo.dli_fname : "null",
+						   symInfo.dli_fbase,
+						   symInfo.dli_saddr,
+						   reinterpret_cast<intptr_t>(fnRetAddr[i]) - reinterpret_cast<intptr_t>(symInfo.dli_saddr));
+#else
+      if (status == 0 || status == -2)
+        fmt::format_to(std::back_inserter(out), "{} in [{}]\n",
+                       fnName ? fnName : symInfo.dli_sname,
+                       symInfo.dli_fname ? symInfo.dli_fname : "?");
+
+#endif
+
+    } else {
+      LOG_WARNING("failed to dladdr");
+      symInfo.dli_fname = nullptr;
+      symInfo.dli_sname = nullptr;
+      fmt::format_to(std::back_inserter(out), "{:#x}", fnRetAddr[i]);
+    }
+
+    // fmt::format_to(std::back_inserter(out), "\n");
+  }
+
+  delete[] fnBuffer;
+
+  if (!out.empty()) out.resize(out.size() - 1);  //< remove last newline
+
+  Callstack cs;
+  cs.setCallstack(out.begin(), out.end());
+
+  return Ok(std::move(cs));
 }
 
-std::string CallstackErr::toString() const
-{
-	// TODO cgustafsson:
-	return "todo";
+std::string CallstackErr::toString() const {
+  // TODO cgustafsson:
+  return "todo";
 }
 
 #endif

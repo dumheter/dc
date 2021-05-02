@@ -24,9 +24,8 @@
 
 #pragma once
 
-#include <string>
-
 #include <dc/types.hpp>
+#include <string>
 
 namespace dc {
 

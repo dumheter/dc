@@ -152,27 +152,36 @@ DTEST(multithreadedStressTest) {
     void operator()(const dc::log::Payload& payload, dc::log::Level) {
       switch (payload.level) {
         case dc::log::Level::Verbose:
-          ++data.verbose[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
-                                   kIterCount)];
+          ++data.verbose[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
         case dc::log::Level::Info:
-          ++data.info[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul, kIterCount)];
+          ++data.info[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
         case dc::log::Level::Warning:
-          ++data.warning[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
-                                   kIterCount)];
+          ++data.warning[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
         case dc::log::Level::Error:
-          ++data.error[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
-                                 kIterCount)];
+          ++data.error[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
         case dc::log::Level::Raw:
-          ++data.raw[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul, kIterCount)];
+          ++data.raw[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
-      case dc::log::Level::None:
-        ++data.none[dc::clamp(static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul, kIterCount)];
+        case dc::log::Level::None:
+          ++data.none[dc::clamp(
+              static_cast<usize>(std::atoi(payload.msg.c_str())), 0ul,
+              kIterCount)];
           break;
-      default:
+        default:
           data.success = false;
       }
     }
@@ -220,7 +229,8 @@ DTEST(multithreadedStressTest) {
   ASSERT_TRUE(allElementsAreK(data.raw));
 }
 
-[[nodiscard]] static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
+[[nodiscard]] static bool drainLogger(dc::log::Logger& logger,
+                                      int timeoutMs = 1'000) {
   int c = 0;
   while (logger.approxPayloadsInQueue()) {
     dc::sleepMs(1);

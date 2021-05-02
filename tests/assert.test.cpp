@@ -10,7 +10,8 @@ struct [[nodiscard]] BufferSink {
   std::string& m_buf;
 };
 
-[[nodiscard]] static bool drainLogger(dc::log::Logger& logger, int timeoutMs = 1'000) {
+[[nodiscard]] static bool drainLogger(dc::log::Logger& logger,
+                                      int timeoutMs = 1'000) {
   int c = 0;
   while (logger.approxPayloadsInQueue()) {
     dc::sleepMs(1);

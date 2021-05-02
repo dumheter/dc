@@ -31,7 +31,6 @@
 #include <dc/file.hpp>
 #include <dc/platform.hpp>
 
-
 namespace dc {
 
 File::~File() { Close(); }
@@ -96,8 +95,10 @@ static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
       if (size != FTELL_FAIL) {
         rewind(file);
 
-        buffer.resize(static_cast<usize>(size + 1));  // extra for null termination
-        const size_t bytes = fread(buffer.data(), 1, static_cast<usize>(size), file);
+        buffer.resize(
+            static_cast<usize>(size + 1));  // extra for null termination
+        const size_t bytes =
+            fread(buffer.data(), 1, static_cast<usize>(size), file);
         if (bytes == static_cast<size_t>(size)) {
           buffer[static_cast<usize>(size)] = 0;  // ensure null termination
         } else {
