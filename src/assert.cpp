@@ -56,8 +56,8 @@
 
 namespace dc::details {
 
-static void dcDoAssert(const char* msg, const char* file, const char* func,
-                       int line) {
+DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
+                            int line) {
   // TODO cgustafsson: we are allocating in this function, maybe reseve static
   // memory, such that asserts can always do something, even when low on memory.
 
@@ -111,10 +111,8 @@ static void dcDoAssert(const char* msg, const char* file, const char* func,
 #endif
 }
 
-[[noreturn]] DC_NOINLINE static void dcDoFatalAssert(const char* msg,
-                                                     const char* file,
-                                                     const char* func,
-                                                     int line) {
+[[noreturn]] DC_NOINLINE void dcDoFatalAssert(const char* msg, const char* file,
+                                              const char* func, int line) {
   dcDoAssert(msg, file, func, line);
 
 #if defined(DC_PLATFORM_WINDOWS)
