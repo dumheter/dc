@@ -74,8 +74,6 @@ class CallstackErr {
  public:
   CallstackErr(u64 err, int line) : m_err(err), m_line(line) {}
 
-  ~CallstackErr() = default;
-
   u64 getErrCode() const { return m_err; }
 
   std::string toString() const;

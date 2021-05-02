@@ -137,23 +137,23 @@ void sleepMs(u32 timeMs) {
   out.second = systemTime.wSecond + ns % 10'000'000 / 10'000'000.f;
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
-  if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) != 0)
+  if (clock_gettime(CLOCK_REALTIME, &time) != 0)
   {
     // make sure we are 0 if call fails
     time.tv_sec = 0;
     time.tv_nsec = 0;
   }
 
-  const u64 ns = static_cast<u64>(time.tv_sec * 1'000'000'000 + time.tv_nsec);
   tm datetime;
   gmtime_r(&time.tv_sec, &datetime);
 
-  out.year = static_cast<u32>(datetime.tm_year);
-  out.month = static_cast<u8>(datetime.tm_mon);
-  out.day = static_cast<u8>(datetime.tm_mday);
+  out.year = 1900 + static_cast<u32>(datetime.tm_year);
+  out.month = 1 + static_cast<u8>(datetime.tm_mon);
+  out.day = 1 + static_cast<u8>(datetime.tm_mday);
   out.hour = static_cast<u8>(datetime.tm_hour);
   out.minute = static_cast<u8>(datetime.tm_min);
 
+  const u64 ns = static_cast<u64>((time.tv_sec % 60) * 1'000'000'000 + time.tv_nsec);
   out.second = f32(ns) / 1'000'000'000.f;
 #endif
 

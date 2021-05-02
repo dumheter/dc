@@ -30,10 +30,7 @@
 #include <string>
 #include <vector>
 
-////////////////////////
-// Windows
 #if defined(DC_PLATFORM_WINDOWS)
-
 #if !defined(VC_EXTRALEAN)
 #define VC_EXTRALEAN
 #endif
@@ -43,20 +40,16 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
-
 // clang-format off
 #include <Windows.h> //< windows first or pain
 #include <Psapi.h>
 // clang-format on
-
 #pragma pack(push, before_imagehlp, 8)
 #include <imagehlp.h>
 #pragma pack(pop, before_imagehlp)
-
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
-////////////////////////
-// Linux
+
 #else
 // TODO
 #endif
@@ -345,8 +338,21 @@ std::string CallstackErr::toString() const {
 // Linux
 //
 
-#else
-// TODO
+#elif defined(DC_PLATFORM_LINUX)
+
+Result<Callstack, CallstackErr> buildCallstack() {
+	// TODO cgustafsson:
+  Result<Callstack, CallstackErr> r = Err(CallstackErr(0, __LINE__));
+
+  return  r;
+}
+
+std::string CallstackErr::toString() const
+{
+	// TODO cgustafsson:
+	return "todo";
+}
+
 #endif
 
 }  // namespace dc

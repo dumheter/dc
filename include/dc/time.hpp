@@ -46,12 +46,12 @@ void sleepMs(u32 timeMs);
 
 /// fmt formatting code exists in dlog.hpp
 struct [[nodiscard]] Timestamp {
-  u32 year;      //< [0, 4096]
-  u8 month;      //< [0, 16), starts at 1
-  u8 day;        //< [0, 32), starts at 1
-  u8 hour;       //< [0, 32)
-  u8 minute;     //< [0, 64)
-  f32 second;  //< underlying precision is 100 nanoseconds.
+  u32 year;   // [0, ...]
+  u8 month;   // [1, 12]
+  u8 day;     // [1, 31]
+  u8 hour;    // [0, 23]
+  u8 minute;  // [0, 59]
+  f32 second; // underlying precision is ~100 nanosecond ticks.
 };
 
 [[nodiscard]] Timestamp makeTimestamp();
