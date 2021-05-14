@@ -24,11 +24,28 @@
 
 #pragma once
 
+/// Assert the condition, with msg.
+/// If condition check fails,
+///   * log the assert via dc::log
+///   * show message box if 'DC_ASSERT_DIALOG' is defined
+/// @param condition Condition to assert.
+/// @param msg Message to be included in assert notifications.
 #define DC_ASSERT(condition, msg) \
   dc::details::dcAssert(!!(condition), msg, __FILE__, __func__, __LINE__)
 
+/// Assert the condition, with msg.
+/// If condition check fails,
+///   * call debugbreak
+///   * log the assert via dc::log
+///   * show message box if 'DC_ASSERT_DIALOG' is defined
+///   * pump the log queue
+///   * exit the program with code '1'.
+/// @param condition Condition to assert.
+/// @param msg Message to be included in assert notifications.
 #define DC_FATAL_ASSERT(condition, msg) \
   dc::details::dcFatalAssert(!!(condition), msg, __FILE__, __func__, __LINE__)
+
+///////////////////////////////////////////////////////////////////////////////
 
 namespace dc::details {
 

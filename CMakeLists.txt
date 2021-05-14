@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD 17)
 option(DC_BUILD_TESTS "Should the test build be generated?" OFF)
 option(DC_PEDANTIC "Enable extra compiler checks." ON)
 option(DC_WERROR "Compiler warning is error." ON)
-option(DC_STATIC_LIB "Should dc be compiled to a static library?" ON)
 option(DC_PROVIDES_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." OFF)
 option(DC_LOG_DEBUG "Enable extra debugging options for dc::log." OFF)
@@ -90,7 +89,6 @@ endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(PEDANTIC_COMPILE_FLAGS -Wall -Wextra -pedantic -Wconversion -Wundef
       -Wdeprecated -Wweak-vtables -Wshadow)
-  #check_cxx_compiler_flag(-Wzero-as-null-pointer-constant HAS_NULLPTR_WARNING)
   if (HAS_NULLPTR_WARNING)
     set(PEDANTIC_COMPILE_FLAGS ${PEDANTIC_COMPILE_FLAGS}
         -Wzero-as-null-pointer-constant)
@@ -104,14 +102,9 @@ if (MSVC)
 endif ()
 
 #//////////////////////////////////////////////////////////////////////////////
-#// Declare libraries / executables
+#// Libraries / Executables
 
-if (DC_STATIC_LIB)
-  add_library(${PROJECT_NAME} STATIC ${DC_SOURCES})
-else ()
-  ##target_compile_definitions(${PROJECT_NAME} PRIVATE DC_DO_EXPORT)
-  add_library(${PROJECT_NAME} SHARED ${DC_SOURCES})
-endif ()
+add_library(${PROJECT_NAME} STATIC ${DC_SOURCES})
 
 if (DC_ENABLE_LIB_DTEST)
   add_library(dtest STATIC ${DTEST_SOURCES})

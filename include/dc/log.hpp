@@ -37,7 +37,20 @@
 // Quick Start
 //
 
-// TODO cgustafsson: write
+/// Usage:
+///
+/// ```cpp
+/// #include <dc/log.hpp>
+///
+/// int main(int, char**) {
+///   dc::log::init();
+///
+///   LOG_INFO("Hello from {}!", "DC");
+///
+///   const bool logDeinitOk = dc::log::deinit();
+///   return !logDeinitOk;
+/// }
+/// ```
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper Macros
@@ -118,6 +131,31 @@ enum class Level : int {
 /// Example:
 ///   Setting Level::Info and verbose log will be ignored.
 void setLevel(Level level, Logger& logger = getGlobalLogger());
+
+///////////////////////////////////////////////////////////////////////////////
+// Log Prefix Settings
+//
+
+#if !defined(DC_LOG_PREFIX_DATETIME)
+/// Ex [2021-04-02 14:10:7.710909]
+/// Datetime 0 : no time nor date
+/// Datetime 1 : date and time with microsecond precision
+/// Datetime 2 : only time with microsecond precision
+/// Datetime 3 : only time
+#define DC_LOG_PREFIX_DATETIME 1
+#endif
+#if !defined(DC_LOG_PREFIX_LEVEL)
+/// Ex [warning]
+#define DC_LOG_PREFIX_LEVEL 1
+#endif
+#if !defined(DC_LOG_PREFIX_FILESTAMP)
+/// Ex [log.test.cpp              :42 ]
+#define DC_LOG_PREFIX_FILESTAMP 1
+#endif
+#if !defined(DC_LOG_PREFIX_FUNCTION)
+/// Ex [TestBody      ]
+#define DC_LOG_PREFIX_FUNCTION 1
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Sinks
@@ -226,31 +264,6 @@ void makePayload(const char* fileName, const char* functionName, int lineno,
 void windowsFixConsole();
 
 }  // namespace dc::log
-
-///////////////////////////////////////////////////////////////////////////////
-// Log Prefix Settings
-//
-
-#if !defined(DC_LOG_PREFIX_DATETIME)
-/// Ex [2021-04-02 14:10:7.710909]
-/// Datetime 0 : no time nor date
-/// Datetime 1 : date and time with microsecond precision
-/// Datetime 2 : only time with microsecond precision
-/// Datetime 3 : only time
-#define DC_LOG_PREFIX_DATETIME 1
-#endif
-#if !defined(DC_LOG_PREFIX_LEVEL)
-/// Ex [warning]
-#define DC_LOG_PREFIX_LEVEL 1
-#endif
-#if !defined(DC_LOG_PREFIX_FILESTAMP)
-/// Ex [log.test.cpp              :42 ]
-#define DC_LOG_PREFIX_FILESTAMP 1
-#endif
-#if !defined(DC_LOG_PREFIX_FUNCTION)
-/// Ex [TestBody      ]
-#define DC_LOG_PREFIX_FUNCTION 1
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Fmt specialization

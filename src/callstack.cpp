@@ -27,7 +27,6 @@
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <iterator>
-#include <string>
 #include <vector>
 
 #if defined(DC_PLATFORM_WINDOWS)

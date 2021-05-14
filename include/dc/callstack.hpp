@@ -27,7 +27,6 @@
 #include <dc/core.hpp>
 #include <dc/result.hpp>
 #include <string>
-#include <vector>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Quickstart
