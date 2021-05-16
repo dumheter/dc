@@ -70,23 +70,21 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
   if (callstack[callstack.size() - 1] == '\n')  //< remove last newline
     callstack[callstack.size() - 1] = '\0';
 
-  LOG_ERROR(
-      "assertion failed with msg: [{}] @ [{}:{}] in fuction [{}], "
-      "callstack:\n{}",
+  std::string fmt = fmt::format(
+      "Assertion failed: [{}] in [{}:{} @ {}]. "
+      "Callstack:\n{}",
       msg, file, line, func, callstack.c_str());
 
+  LOG_ERROR("{}", fmt);
+
 #if defined(DC_ASSERT_DIALOG)
-  constexpr size_t strlen = 2048;
-  char str[strlen];
-  snprintf(str, strlen,
-           "assertion failed with msg: [%s] @ [%s:%d] in fuction [%s], callstack:\n%s\n", msg,
-           file, line, func, callstack.c_str();
 #if defined(DC_PLATFORM_WINDOWS)
+  constexpr size_t strlen = 2048;
   wchar_t wstr[strlen];
   memset(wstr, 0, strlen * 2);
   char* p = reinterpret_cast<char*>(wstr);
   for (int i = 0; i < strlen; i++) {
-    *(p + i * 2) = str[i];
+    *(p + i * 2) = fmt[i];
   }
   MessageBoxW(nullptr, (LPCWSTR)wstr, (LPCWSTR)L"Assertion Failed",
               MB_OK | MB_APPLMODAL | MB_ICONERROR);
@@ -96,16 +94,16 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
   }
 
   GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  GtkWidget* dialog =
-      gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL,
-                             GTK_MESSAGE_ERROR, GTK_BUTTONS_CANCEL, "%s", str);
+  GtkWidget* dialog = gtk_message_dialog_new(
+      GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR,
+      GTK_BUTTONS_CANCEL, "%s", fmt.c_str());
   gtk_window_set_title(GTK_WINDOW(dialog), "Assertion Failed");
   gtk_dialog_run(GTK_DIALOG(dialog));
 
   gtk_widget_destroy(GTK_WIDGET(window));
   gtk_widget_destroy(GTK_WIDGET(dialog));
 
-  while (g_main_context_iteration(nullptr, false)) { //< Run event loop
+  while (g_main_context_iteration(nullptr, false)) {  //< Run event loop
   }
 #endif
 #endif

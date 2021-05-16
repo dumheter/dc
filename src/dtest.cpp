@@ -39,6 +39,9 @@
 
 namespace dtest::internal {
 
+using Paint = dc::log::Paint<100>;
+using Color = dc::log::Color;
+
 void Register::addTest(TestFunction fn, const char* testName,
                        const char* fileName, u64 filePathHash) {
   TestCategory& category = m_testCategories[filePathHash];
@@ -157,15 +160,5 @@ int runTests() {
 
   return failedCategories;
 }
-
-Paint::Paint(const char* str, Color color) {
-  DC_ASSERT(strlen(str) < Paint::kStrLen,
-            "Trying to paint a too large string.");
-  const auto res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
-                            static_cast<ColorType>(color), str);
-  DC_ASSERT(res >= 0, "Failed to copy string");
-}
-
-const char* Paint::c_str() const { return m_str; }
 
 }  // namespace dtest::internal

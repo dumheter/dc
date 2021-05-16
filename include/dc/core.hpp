@@ -51,17 +51,13 @@ constexpr const char* filenameFromPath(const char* path) {
 // Misc
 //
 
+/// Strips the path of '__FILE__', leaving only the filename plus extension.
+///
+/// Example:
+///   'd:/dev/dc/include/dc/core.hpp' -> 'core.hpp'
 #define DC_FILENAME dc::filenameFromPath(__FILE__)
 
 #define DC_UNUSED(variable) (void)variable
-
-#if defined(DC_STATIC_LIB)
-#define DC_EXPORT
-#else
-#define DC_EXPORT __declspec(dllexport)
-#endif
-
-#define DC_FORCE_INLINE __forceinline
 
 #define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
 

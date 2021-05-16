@@ -171,17 +171,19 @@ void Logger::run() {
   m_isActive = false;
 }
 
-void Logger::attachSink(Sink sink, const char* name) {
+Logger& Logger::attachSink(Sink sink, const char* name) {
   m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
+  return *this;
 }
 
-void Logger::detachSink(const char* name) {
+Logger& Logger::detachSink(const char* name) {
   const u32 tag = dc::hash32fnv1a(name);
   m_data->sinks.erase(std::remove_if(m_data->sinks.begin(), m_data->sinks.end(),
                                      [tag](const TaggedSink& taggedSink) {
                                        return taggedSink.tag == tag;
                                      }),
                       m_data->sinks.end());
+  return *this;
 }
 
 // ========================================================================== //
@@ -192,28 +194,90 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
       fmt::print(
+          "["
 #if DC_LOG_PREFIX_DATETIME == 1
-          "[{:dp}] "
+          "{:dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "[{:p}] "
+          "{:d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "[{}] "
+          "{:p} "
+#elif DC_LOG_PREFIX_DATETIME == 4
+          "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "[{:7}] "
+          "{:7} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          "[{:<26}] "
+          "{}"
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
-          "[{:10}] "
+          "{:10}"
 #endif
-          "{}\n",
+          "] {}\n",
 #if DC_LOG_PREFIX_DATETIME > 0
           payload.timestamp,
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
           payload.level,
+#endif
+#if DC_LOG_PREFIX_FILESTAMP == 1
+          fmt::format("{}:{}", payload.fileName, payload.lineno),
+#endif
+#if DC_LOG_PREFIX_FUNCTION == 1
+          payload.functionName,
+#endif
+          payload.msg);
+
+    } else if (payload.level == Level::Raw)
+      fmt::print("{}", payload.msg);
+  }
+}
+
+static Color colorFromLevel(Level level) {
+  switch (level) {
+    case Level::Verbose:
+      return Color::Gray;
+    case Level::Info:
+      return Color::White;
+    case Level::Warning:
+      return Color::BrightYellow;
+    case Level::Error:
+      return Color::BrightRed;
+    default:
+      return Color::Magenta;
+  }
+}
+
+void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
+  if (payload.level >= level) {
+    if (payload.level != Level::Raw) {
+      fmt::print(
+          "["
+#if DC_LOG_PREFIX_DATETIME == 1
+          "{:dp} "
+#elif DC_LOG_PREFIX_DATETIME == 2
+          "{:d} "
+#elif DC_LOG_PREFIX_DATETIME == 3
+          "{:p} "
+#elif DC_LOG_PREFIX_DATETIME == 4
+          "{} "
+#endif
+#if DC_LOG_PREFIX_LEVEL == 1
+          "{:16} "
+#endif
+#if DC_LOG_PREFIX_FILESTAMP == 1
+          "{}"
+#endif
+#if DC_LOG_PREFIX_FUNCTION == 1
+          "{}"
+#endif
+          "] {}\n",
+#if DC_LOG_PREFIX_DATETIME > 0
+          payload.timestamp,
+#endif
+#if DC_LOG_PREFIX_LEVEL == 1
+          Paint<17>(fmt::format("{}", payload.level).c_str(),
+                    colorFromLevel(payload.level)),
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           fmt::format("{}:{}", payload.fileName, payload.lineno),

@@ -37,13 +37,33 @@
 // Quick Start
 //
 
-/// Usage:
+/// -----------
+/// Basic Usage:
 ///
 /// ```cpp
 /// #include <dc/log.hpp>
 ///
 /// int main(int, char**) {
 ///   dc::log::init();
+///
+///   LOG_INFO("Hello from {}!", "DC");
+///
+///   const bool logDeinitOk = dc::log::deinit();
+///   return !logDeinitOk;
+/// }
+/// ```
+///
+/// -------------------
+/// Change default sink:
+///
+/// ```cpp
+/// #include <dc/log.hpp>
+///
+/// int main(int, char**) {
+///   dc::log::init();
+///   dc::log::getGlobalLogger()
+///     .detachLogger("default")
+///     .attachLogger(ColoredConsoleLogger, "colored logger");
 ///
 ///   LOG_INFO("Hello from {}!", "DC");
 ///
@@ -138,10 +158,14 @@ void setLevel(Level level, Logger& logger = getGlobalLogger());
 
 #if !defined(DC_LOG_PREFIX_DATETIME)
 /// Ex [2021-04-02 14:10:7.710909]
+///     ^          ^       ^
+///     date       time    precision
+///
 /// Datetime 0 : no time nor date
 /// Datetime 1 : date and time with microsecond precision
-/// Datetime 2 : only time with microsecond precision
-/// Datetime 3 : only time
+/// Datetime 2 : date and time with millisecond precision
+/// Datetime 3 : only time with microsecond precision
+/// Datetime 4 : only time with millisecond precision
 #define DC_LOG_PREFIX_DATETIME 1
 #endif
 #if !defined(DC_LOG_PREFIX_LEVEL)
@@ -166,6 +190,10 @@ struct Payload;
 using Sink = std::function<void(const Payload&, Level)>;
 
 struct ConsoleSink {
+  void operator()(const Payload&, Level) const;
+};
+
+struct ColoredConsoleSink {
   void operator()(const Payload&, Level) const;
 };
 
@@ -209,11 +237,11 @@ class Logger {
   /// sink. Note: By default, a ConsoleSink is added at logger construction.
   /// @param sink
   /// @param name Name of the sink, used to detach sinks.
-  void attachSink(Sink sink, const char* name);
+  Logger& attachSink(Sink sink, const char* name);
 
   /// Detach a log sink by name.
   /// Note: The default ConsoleSink is called "default".
-  void detachSink(const char* name);
+  Logger& detachSink(const char* name);
 
  private:
   void run();
@@ -262,6 +290,52 @@ void makePayload(const char* fileName, const char* functionName, int lineno,
 /// Will fix the windows console, make it utf8 and enable colors. Noop on non
 /// windows.
 void windowsFixConsole();
+
+/// Note, it's common to "theme" the terminal, changing the presented color of
+/// these following colors. Thus, the color "kYellow" might appear as some
+/// other color, for some users.
+using ColorType = int;
+enum class Color : ColorType {
+  Gray = 90,
+  BrightRed = 91,
+  BrightGreen = 92,
+  BrightYellow = 93,
+  BrightBlue = 94,
+  Magenta = 95,
+  Teal = 96,
+  White = 97,
+
+  Black = 30,
+  Red = 31,
+  Green = 32,
+  Yellow = 33,
+  DarkBlue = 34,
+  Purple = 35,
+  Blue = 36,
+  BrightGray = 37,
+};
+
+template <usize kStrLen>
+class Paint {
+  static_assert(kStrLen > 8, "Must be large enough to hold the coloring.");
+
+ public:
+  Paint(const char* str, Color color) {
+    DC_ASSERT(strlen(str) < kStrLen, "Trying to paint a too large string.");
+    const int res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
+                             static_cast<ColorType>(color), str);
+    DC_ASSERT(res < kStrLen, "Too small buffer.");
+    DC_ASSERT(res >= 0, "Encoding error from snprintf.");
+    m_currentStrLen = res >= 0 ? res : 0;
+  }
+  const char* c_str() const { return m_str; }
+  const usize size() const { return m_currentStrLen; }
+  DC_DELETE_COPY(Paint);
+
+ private:
+  usize m_currentStrLen = 0;
+  char m_str[kStrLen];
+};
 
 }  // namespace dc::log
 
@@ -338,5 +412,14 @@ struct fmt::formatter<dc::Timestamp> {
     else /* if (!printDate && !highPrecisionTime) */
       return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>6.3f}", t.hour, t.minute,
                        t.second);
+  }
+};
+
+template <usize kStrLen>
+struct fmt::formatter<dc::log::Paint<kStrLen>> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(const dc::log::Paint<kStrLen>& paint, FormatContext& ctx) {
+    string_view str(paint.c_str(), paint.size());
+    return formatter<string_view>::format(str, ctx);
   }
 };
