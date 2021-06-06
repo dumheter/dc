@@ -113,13 +113,7 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
                                               const char* func, int line) {
   dcDoAssert(msg, file, func, line);
 
-#if defined(DC_PLATFORM_WINDOWS)
-  DebugBreak();
-#elif defined(DC_PLATFORM_LINUX)
-  asm("int3");  //< software interrupt to set code breakpoint
-#else
-  *static_cast<volatile int*>(nullptr) = 1;  //< crash
-#endif
+  debugBreak();
   log::deinit();  //< ensure the log queue + the assert message gets logged.
   exit(1);        //< program ends here
 }
@@ -136,6 +130,16 @@ void dcFatalAssert(bool condition, const char* msg, const char* file,
   if (condition) return;
 
   dcDoFatalAssert(msg, file, func, line);
+}
+
+void debugBreak() {
+#if defined(DC_PLATFORM_WINDOWS)
+  DebugBreak();
+#elif defined(DC_PLATFORM_LINUX)
+  asm("int3");  //< software interrupt to set code breakpoint
+#else
+  *static_cast<volatile int*>(nullptr) = 1;  //< crash
+#endif
 }
 
 }  // namespace dc::details

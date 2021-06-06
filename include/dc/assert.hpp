@@ -56,4 +56,6 @@ void dcAssert(bool condition, const char* msg, const char* file,
 void dcFatalAssert(bool condition, const char* msg, const char* file,
                    const char* func, int line);
 
+void debugBreak();
+
 }  // namespace dc::details
