@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,29 +26,35 @@
 
 #include <dc/core.hpp>
 
-namespace dc
-{
+namespace dc {
 
-class IAllocator
-{
-  public:
-	virtual ~IAllocator() = default;
+// TODO cgustafsson: allow to return a larger set of memory than requested
+class IAllocator {
+ public:
+  virtual ~IAllocator() = default;
 
-	virtual void* alloc(usize count) = 0;
+  static constexpr usize kMinimumAlignment = sizeof(void*);
 
-	virtual void* realloc(void* data, usize count, usize align) = 0;
+  virtual void* alloc(usize count, usize align = kMinimumAlignment) = 0;
 
-	virtual void free(void* data);
+  virtual void* realloc(void* data, usize count,
+                        usize align = kMinimumAlignment) = 0;
+
+  virtual void free(void* data) = 0;
 };
 
-class GeneralAllocator : public IAllocator
-{
-  public:
-	virtual void* alloc(usize count) override;
+IAllocator& getDefaultAllocator();
 
-	virtual void* realloc(void* data, usize count, usize align) override;
+/// @return Old allocator
+// IAllocator* setDefaultAllocator(IAllocator* newDefaultAllocator);
 
-	virtual void free(void* data) override;
+class GeneralAllocator : public IAllocator {
+ public:
+  virtual void* alloc(usize count, usize align) override;
+
+  virtual void* realloc(void* data, usize count, usize align) override;
+
+  virtual void free(void* data) override;
 };
 
-}
+}  // namespace dc

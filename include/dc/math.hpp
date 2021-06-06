@@ -39,7 +39,7 @@ namespace dc {
 ///   clamp(5, 1, 10)   -> 5
 ///
 template <typename T>
-inline T clamp(const T val, const T min, const T max) {
+inline constexpr T clamp(const T val, const T min, const T max) {
   if (val >= min && val <= max)
     return val;
   else if (val < min)
@@ -55,7 +55,7 @@ inline T clamp(const T val, const T min, const T max) {
 ///   inside(11, 0, 10) -> false
 ///
 template <typename T>
-inline bool inside(const T val, const T min, const T max) {
+inline constexpr bool inside(const T val, const T min, const T max) {
   return val >= min && val <= max;
 }
 
@@ -69,8 +69,16 @@ inline bool inside(const T val, const T min, const T max) {
 ///   map(10, 0, 10, 0, 100) -> 100
 ///   map(0, 0, 10, 0, 100)  -> 0
 template <typename T>
-inline T map(T val, T from_min, T from_max, T to_min, T to_max) {
+inline constexpr T map(T val, T from_min, T from_max, T to_min, T to_max) {
   return (val - from_min) * (to_max - to_min) / (from_max - from_min) + to_min;
+}
+
+/// Procted from unsigned wrapp-around, if subtrahend is larger than minuend,
+/// return 0.
+///   minuend - subtrahend = difference
+template <typename T>
+inline constexpr T uSafeSubtract(T minuend, T subtrahend) {
+  return minuend < subtrahend ? minuend - subtrahend : 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

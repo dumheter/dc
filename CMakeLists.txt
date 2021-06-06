@@ -31,6 +31,7 @@ include_directories(${PROJECT_NAME} thirdparty/moodycamel/include)
 #// List source files
 
 set(DC_SOURCES
+  include/dc/allocator.hpp
   include/dc/assert.hpp
   include/dc/callstack.hpp
   include/dc/core.hpp
@@ -40,14 +41,18 @@ set(DC_SOURCES
   include/dc/math.hpp
   include/dc/platform.hpp
   include/dc/result.hpp
+  include/dc/string.hpp
   include/dc/time.hpp
   include/dc/traits.hpp
   include/dc/types.hpp
+  include/dc/vector.hpp
+  src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp
   src/log.cpp
   src/file.cpp
   src/mac.cpp
+  src/string.cpp
   src/time.cpp
   )
 
