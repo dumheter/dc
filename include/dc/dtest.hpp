@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <dc/assert.hpp>
 #include <dc/core.hpp>
 #include <dc/log.hpp>
 #include <dc/math.hpp>
@@ -339,6 +340,7 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} true " #expr " {}", line,                  \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -351,6 +353,7 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} false " #expr " {}", line,                 \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -363,6 +366,7 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} " #a " == " #b " {}", line,                \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -375,6 +379,7 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
   } while (0)
