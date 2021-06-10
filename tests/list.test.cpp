@@ -1,23 +1,23 @@
 #include <dc/dtest.hpp>
-#include <dc/vector.hpp>
+#include <dc/list.hpp>
 
 DTEST_VIP;
 
 DTEST(canAdd) {
-  dc::Vector<int> v(1);
+  dc::List<int> v(1);
   v.add(1337);
   ASSERT_EQ(v.size(), 1);
   ASSERT_EQ(v.capacity(), 1);
   ASSERT_EQ(v[0], 1337);
 }
 
-DTEST(emptyDefaultVectorIsEmpty) {
-  dc::Vector<int> v;
+DTEST(emptyDefaultListIsEmpty) {
+  dc::List<int> v;
   ASSERT_EQ(v.size(), 0);
 }
 
 DTEST(growWhenOOM) {
-  dc::Vector<float> v(1);
+  dc::List<float> v(1);
 
   v.add(10);
   ASSERT_EQ(v.size(), 1);
@@ -29,7 +29,7 @@ DTEST(growWhenOOM) {
 }
 
 DTEST(remove) {
-  dc::Vector<int> v;
+  dc::List<int> v;
 
   v.add(10);
   v.add(20);
@@ -41,7 +41,7 @@ DTEST(remove) {
 }
 
 DTEST(find) {
-  dc::Vector<int> v;
+  dc::List<int> v;
 
   v.add(10);
   v.add(11);
@@ -60,13 +60,13 @@ DTEST(find) {
 }
 
 DTEST(clone) {
-  dc::Vector<int> v;
+  dc::List<int> v;
 
   v.add(10);
   v.add(20);
   v.add(30);
 
-  dc::Vector<int> clone = v.clone();
+  dc::List<int> clone = v.clone();
   ASSERT_EQ(clone[0], 10);
   ASSERT_EQ(clone[1], 20);
   ASSERT_EQ(clone[2], 30);
@@ -74,7 +74,7 @@ DTEST(clone) {
 }
 
 DTEST(constIterator) {
-  dc::Vector<int> v;
+  dc::List<int> v;
 
   v.add(1);
   v.add(2);
@@ -87,7 +87,7 @@ DTEST(constIterator) {
 }
 
 DTEST(mutableIterator) {
-  dc::Vector<int> v;
+  dc::List<int> v;
 
   v.add(1);
   v.add(2);

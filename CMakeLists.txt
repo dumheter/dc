@@ -35,6 +35,7 @@ set(DC_SOURCES
   include/dc/assert.hpp
   include/dc/callstack.hpp
   include/dc/core.hpp
+  include/dc/list.hpp
   include/dc/log.hpp
   include/dc/file.hpp
   include/dc/mac.hpp
@@ -45,7 +46,6 @@ set(DC_SOURCES
   include/dc/time.hpp
   include/dc/traits.hpp
   include/dc/types.hpp
-  include/dc/vector.hpp
   src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp

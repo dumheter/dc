@@ -32,9 +32,12 @@
 
 namespace dc {
 
+/// This is an array list, a block of contigeous memory.
 template <typename T>
-class [[nodiscard]] Vector {
+class [[nodiscard]] List {
  public:
+
+	/// Support for range loops. Not used for anything else.
   class [[nodiscard]] Iterator {
    public:
     Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}
@@ -59,19 +62,19 @@ class [[nodiscard]] Vector {
   };
 
  public:
-  Vector(IAllocator& allocator = getDefaultAllocator());
-  Vector(usize capacity, IAllocator& allocator = getDefaultAllocator());
+  List(IAllocator& allocator = getDefaultAllocator());
+  List(usize capacity, IAllocator& allocator = getDefaultAllocator());
 
   // explicitly use clone()
-  Vector(const Vector& other) = delete;
-  Vector& operator=(const Vector& other) = delete;
+  List(const List& other) = delete;
+  List& operator=(const List& other) = delete;
 
-  Vector(Vector&& other) noexcept;
-  Vector& operator=(Vector&& other) noexcept;
+  List(List&& other) noexcept;
+  List& operator=(List&& other) noexcept;
 
-  ~Vector();
+  ~List();
 
-  [[nodiscard]] Vector clone() const;
+  [[nodiscard]] List clone() const;
 
   /// Grow the memory usage. Leave at 0 to let grow figure out the new capacity.
   void grow(usize newCapacity = 0);
@@ -79,7 +82,7 @@ class [[nodiscard]] Vector {
   /// Reserve a capacity. If newCapacity is less than current capacity, noop.
   void reserve(usize newCapacity);
 
-  /// Add an element to the back of the vector. May grow the vector if at
+  /// Add an element to the back of the list. May grow the list if at
   /// capacity.
   void add(T elem);
   [[nodiscard]] T& add();
@@ -126,16 +129,16 @@ class [[nodiscard]] Vector {
 //
 
 template <typename T>
-Vector<T>::Vector(IAllocator& allocator) : Vector(8, allocator) {}
+List<T>::List(IAllocator& allocator) : List(8, allocator) {}
 
 template <typename T>
-Vector<T>::Vector(usize capacity, IAllocator& allocator)
+List<T>::List(usize capacity, IAllocator& allocator)
     : m_allocator(allocator), m_size(0), m_capacity(capacity) {
   m_data = (T*)m_allocator.alloc(sizeof(T) * capacity);
 }
 
 template <typename T>
-Vector<T>::Vector(Vector<T>&& other) noexcept
+List<T>::List(List<T>&& other) noexcept
     : m_allocator(other.m_allocator),
       m_data(other.m_data),
       m_size(other.m_size),
@@ -146,7 +149,7 @@ Vector<T>::Vector(Vector<T>&& other) noexcept
 }
 
 template <typename T>
-Vector<T>& Vector<T>::operator=(Vector<T>&& other) noexcept {
+List<T>& List<T>::operator=(List<T>&& other) noexcept {
   if (this != &other) {
     free();
 
@@ -163,13 +166,13 @@ Vector<T>& Vector<T>::operator=(Vector<T>&& other) noexcept {
 }
 
 template <typename T>
-Vector<T>::~Vector<T>() {
+List<T>::~List<T>() {
   free();
 }
 
 template <typename T>
-Vector<T> Vector<T>::clone() const {
-  Vector<T> out(capacity());
+List<T> List<T>::clone() const {
+  List<T> out(capacity());
   // TODO cgustafsson: will not work for non pod types
   memcpy((void*)out.m_data, (void*)m_data, sizeof(T) * m_size);
   out.m_size = m_size;
@@ -177,7 +180,7 @@ Vector<T> Vector<T>::clone() const {
 }
 
 template <typename T>
-void Vector<T>::grow(usize newCapacity) {
+void List<T>::grow(usize newCapacity) {
   if (newCapacity == 0) newCapacity = capacity() * 2;
 
   if (newCapacity < capacity()) return;
@@ -189,7 +192,7 @@ void Vector<T>::grow(usize newCapacity) {
 }
 
 template <typename T>
-void Vector<T>::reserve(usize newCapacity) {
+void List<T>::reserve(usize newCapacity) {
   if (newCapacity < capacity()) return;
 
   void* ptr = m_allocator.realloc((void*)m_data, sizeof(T) * newCapacity);
@@ -199,7 +202,7 @@ void Vector<T>::reserve(usize newCapacity) {
 }
 
 template <typename T>
-void Vector<T>::add(T elem) {
+void List<T>::add(T elem) {
   if (size() == capacity()) grow();
 
   m_data[m_size] = elem;
@@ -207,7 +210,7 @@ void Vector<T>::add(T elem) {
 }
 
 template <typename T>
-T& Vector<T>::add() {
+T& List<T>::add() {
   if (size() == capacity()) grow();
 
   T& out = m_data[m_size];
@@ -216,7 +219,7 @@ T& Vector<T>::add() {
 }
 
 template <typename T>
-void Vector<T>::remove(usize pos) {
+void List<T>::remove(usize pos) {
   DC_ASSERT(pos < size(), "trying to erase an element outside of bounds");
 
   T& elem = m_data[pos];
@@ -230,7 +233,7 @@ void Vector<T>::remove(usize pos) {
 }
 
 template <typename T>
-Option<usize> Vector<T>::find(const T& elem) const {
+Option<usize> List<T>::find(const T& elem) const {
   for (usize i = 0; i < m_size; ++i) {
     if (m_data[i] == elem) return makeSome(i);
   }
@@ -238,19 +241,19 @@ Option<usize> Vector<T>::find(const T& elem) const {
 }
 
 template <typename T>
-constexpr const T& Vector<T>::operator[](usize pos) const {
+constexpr const T& List<T>::operator[](usize pos) const {
   DC_ASSERT(pos < size(), "trying to access an element outside of bounds");
   return m_data[pos];
 }
 
 template <typename T>
-constexpr T& Vector<T>::operator[](usize pos) {
+constexpr T& List<T>::operator[](usize pos) {
   DC_ASSERT(pos < size(), "trying to access an element outside of bounds");
   return m_data[pos];
 }
 
 template <typename T>
-void Vector<T>::free() {
+void List<T>::free() {
   for (T& elem : *this) {
     elem.~T();
   }
