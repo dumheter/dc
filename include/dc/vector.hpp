@@ -27,11 +27,10 @@
 #include <dc/allocator.hpp>
 #include <dc/assert.hpp>
 #include <dc/core.hpp>
+#include <dc/result.hpp>
 #include <utility>
 
 namespace dc {
-
-///////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 class [[nodiscard]] Vector {
@@ -39,10 +38,13 @@ class [[nodiscard]] Vector {
   class [[nodiscard]] Iterator {
    public:
     Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}
-    T& operator*() { return *m_data; }
-    const T& operator*() const { return *m_data; }
-    T* operator->() { return m_data; }
-    const T* operator->() const { return m_data; }
+
+    T& operator*() { return m_data[m_pos]; }
+    const T& operator*() const { return m_data[m_pos]; }
+
+    T* operator->() { return &(m_data[m_pos]); }
+    const T* operator->() const { return &(m_data[m_pos]); }
+
     constexpr bool operator==(const Iterator& other) const {
       return m_data == other.m_data && m_pos == other.m_pos;
     }
@@ -77,11 +79,20 @@ class [[nodiscard]] Vector {
   /// Reserve a capacity. If newCapacity is less than current capacity, noop.
   void reserve(usize newCapacity);
 
-  /// Append an element to the vector. May grow the vector if at capacity.
-  void append(T elem);
-  [[nodiscard]] T& append();
+  /// Add an element to the back of the vector. May grow the vector if at
+  /// capacity.
+  void add(T elem);
+  [[nodiscard]] T& add();
 
-  void removeAt(usize pos);
+  /// Remove the element at position.
+  void remove(usize pos);
+
+  // TODO cgustafsson:
+  template <typename Fn>
+  void removeIf(Fn fn);
+
+  /// find the first element that equals elem
+  [[nodiscard]] Option<usize> find(const T& elem) const;
 
   [[nodiscard]] constexpr const T& operator[](usize pos) const;
   [[nodiscard]] constexpr T& operator[](usize pos);
@@ -188,7 +199,7 @@ void Vector<T>::reserve(usize newCapacity) {
 }
 
 template <typename T>
-void Vector<T>::append(T elem) {
+void Vector<T>::add(T elem) {
   if (size() == capacity()) grow();
 
   m_data[m_size] = elem;
@@ -196,7 +207,7 @@ void Vector<T>::append(T elem) {
 }
 
 template <typename T>
-T& Vector<T>::append() {
+T& Vector<T>::add() {
   if (size() == capacity()) grow();
 
   T& out = m_data[m_size];
@@ -205,7 +216,7 @@ T& Vector<T>::append() {
 }
 
 template <typename T>
-void Vector<T>::removeAt(usize pos) {
+void Vector<T>::remove(usize pos) {
   DC_ASSERT(pos < size(), "trying to erase an element outside of bounds");
 
   T& elem = m_data[pos];
@@ -216,6 +227,14 @@ void Vector<T>::removeAt(usize pos) {
       m_data[i - 1] = std::move(m_data[i]);
   }
   --m_size;
+}
+
+template <typename T>
+Option<usize> Vector<T>::find(const T& elem) const {
+  for (usize i = 0; i < m_size; ++i) {
+    if (m_data[i] == elem) return makeSome(i);
+  }
+  return None;
 }
 
 template <typename T>
