@@ -94,7 +94,7 @@ class [[nodiscard]] String {
     SmallString = 1,
   };
   static constexpr uintptr_t kFlagStateBit = 0;
-	static constexpr uintptr_t kFlagStateMask = 1;
+  static constexpr uintptr_t kFlagStateMask = 1;
 
  private:
   [[nodiscard]] State getState() const;

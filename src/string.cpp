@@ -41,9 +41,9 @@ String::String(const char* str, usize size, IAllocator& allocator)
     : m_allocator(&allocator) {
   if (size >= SmallString::kSize) {
     m_bigString = BigString();
-    m_bigString.string = static_cast<u8*>(m_allocator->alloc(size+1));
+    m_bigString.string = static_cast<u8*>(m_allocator->alloc(size + 1));
     memcpy(m_bigString.string, str, size);
-	m_bigString.string[size] = 0;
+    m_bigString.string[size] = 0;
     m_bigString.size = size;
     m_bigString.capacity = size;
     setState(State::BigString);
@@ -77,13 +77,13 @@ void String::operator=(const char* str) {
     if (size < m_bigString.capacity) {
       // big -> big (fits in capacity)
       memcpy(m_bigString.string, str, size);
-	  m_bigString.string[size] = 0;
+      m_bigString.string[size] = 0;
       m_bigString.size = size;
     } else {
       // big -> big (need realloc)
       m_bigString.string =
-          static_cast<u8*>(m_allocator->realloc(m_bigString.string, size+1));
-	  m_bigString.string[size] = 0;
+          static_cast<u8*>(m_allocator->realloc(m_bigString.string, size + 1));
+      m_bigString.string[size] = 0;
       m_bigString.size = size;
       m_bigString.capacity = size;
     }
@@ -92,8 +92,8 @@ void String::operator=(const char* str) {
       // small -> big
       setState(State::BigString);
       m_bigString = BigString();
-      m_bigString.string = static_cast<u8*>(m_allocator->alloc(size+1));
-	  m_bigString.string[size] = 0;
+      m_bigString.string = static_cast<u8*>(m_allocator->alloc(size + 1));
+      m_bigString.string[size] = 0;
       m_bigString.size = size;
       m_bigString.capacity = size;
     } else {
