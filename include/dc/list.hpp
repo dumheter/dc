@@ -36,8 +36,7 @@ namespace dc {
 template <typename T>
 class [[nodiscard]] List {
  public:
-
-	/// Support for range loops. Not used for anything else.
+  /// Support for range loops. Not used for anything else.
   class [[nodiscard]] Iterator {
    public:
     Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}

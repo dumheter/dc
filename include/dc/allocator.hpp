@@ -35,6 +35,7 @@ class IAllocator {
 
   static constexpr usize kMinimumAlignment = sizeof(void*);
 
+  /// @param Number of bytes to allocate. Note that size = count * sizeof(type)
   virtual void* alloc(usize count, usize align = kMinimumAlignment) = 0;
 
   virtual void* realloc(void* data, usize count,

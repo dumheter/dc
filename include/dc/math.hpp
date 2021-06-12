@@ -81,6 +81,15 @@ inline constexpr T uSafeSubtract(T minuend, T subtrahend) {
   return minuend < subtrahend ? minuend - subtrahend : 0;
 }
 
+/// Set a specific bit in value to bitValue
+///
+/// Example:
+///   setBit(7, 1, false) -> 6
+template <typename T>
+inline constexpr T setBit(T value, usize bit, bool bitValue) {
+  return (value & ~(T(1) << bit)) | (T(bitValue) << bit);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 // FNV1a c++11 constexpr compile time hash functions, 32 and 64 bit

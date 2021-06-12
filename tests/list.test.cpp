@@ -1,8 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/list.hpp>
 
-DTEST_VIP;
-
 DTEST(canAdd) {
   dc::List<int> v(1);
   v.add(1337);
