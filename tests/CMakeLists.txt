@@ -8,11 +8,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(TEST_SOURCES
   assert.test.cpp
   callstack.test.cpp
+  list.test.cpp
   log.test.cpp
   main.test.cpp
   result.intrusive_option.test.cpp
   result.option.test.cpp
   result.result.test.cpp
+  string.test.cpp
   time.test.cpp
   track_lifetime.test.cpp
   )
