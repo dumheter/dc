@@ -30,11 +30,58 @@
 
 namespace dc {
 
-/// String with (soon) UTF-8 support.
+/// String
 ///
 /// Has small string optimization. It may start as small string, but if it needs
 /// to allocate, it will never be small again.
 class [[nodiscard]] String {
+ public:
+  class [[nodiscard]] Iterator {
+   public:
+    Iterator(u8* data, usize pos) : m_pos(pos), m_data(data) {}
+
+    [[nodiscard]] u8& operator*() { return m_data[m_pos]; }
+    [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
+
+    [[nodiscard]] u8* operator->() { return &m_data[m_pos]; }
+    [[nodiscard]] const u8* operator->() const { return &m_data[m_pos]; }
+
+    [[nodiscard]] constexpr bool operator==(const Iterator& other) const {
+      return m_data == other.m_data && m_pos == other.m_pos;
+    }
+    [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
+      return m_data != other.m_data || m_pos != other.m_pos;
+    }
+
+    [[nodiscard]] constexpr void operator++() { ++m_pos; }
+
+   private:
+    u8* m_data;
+    usize m_pos;
+  };
+
+  class [[nodiscard]] CIterator {
+   public:
+    CIterator(const u8* data, usize pos) : m_pos(pos), m_data(data) {}
+
+    [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
+
+    [[nodiscard]] const u8* operator->() const { return &m_data[m_pos]; }
+
+    [[nodiscard]] constexpr bool operator==(const CIterator& other) const {
+      return m_data == other.m_data && m_pos == other.m_pos;
+    }
+    [[nodiscard]] constexpr bool operator!=(const CIterator& other) const {
+      return m_data != other.m_data || m_pos != other.m_pos;
+    }
+
+    [[nodiscard]] constexpr void operator++() { ++m_pos; }
+
+   private:
+    const u8* m_data;
+    usize m_pos;
+  };
+
  public:
   String(IAllocator& = getDefaultAllocator());
   String(const char* str, IAllocator& = getDefaultAllocator());
@@ -65,6 +112,13 @@ class [[nodiscard]] String {
 
   [[nodiscard]] constexpr bool operator==(const char* other) const;
   [[nodiscard]] constexpr bool operator!=(const char* other) const;
+
+  [[nodiscard]] Iterator begin() { return Iterator(data(), 0); }
+
+  [[nodiscard]] Iterator end() { return Iterator(data(), getSize()); }
+
+  [[nodiscard]] CIterator cbegin() const { return CIterator(data(), 0); }
+  [[nodiscard]] CIterator cend() const { return CIterator(data(), getSize()); }
 
  private:
   struct [[nodiscard]] BigString {

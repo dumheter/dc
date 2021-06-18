@@ -122,6 +122,18 @@ const char* String::c_str() const {
   return reinterpret_cast<const char*>(data);
 }
 
+const u8* String::data() const {
+  const u8* data = getState() == State::BigString ? m_bigString.string
+                                                  : &m_smallString.string[0];
+  return data;
+}
+
+u8* String::data() {
+  u8* data = getState() == State::BigString ? m_bigString.string
+                                            : &m_smallString.string[0];
+  return data;
+}
+
 void String::SmallString::setSize(usize newSize) {
   DC_ASSERT(newSize <= kSize, "tried to set a size larger than the capacity");
   string[kSize - 1] = static_cast<u8>(kSize - newSize);

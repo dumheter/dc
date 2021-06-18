@@ -1,8 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/string.hpp>
 
-DTEST_VIP;
-
 DTEST(empty) {
   dc::String nothing("");
   ASSERT_TRUE(nothing.isEmpty());
@@ -49,4 +47,14 @@ DTEST(isSameAsCStringLooong) {
   dc::String str = "abc, abc, abc, abc, abc, abc, ";
 
   ASSERT_TRUE(strcmp(cstr, str.c_str()) == 0);
+}
+
+DTEST(canIterate) {
+  dc::String str = "The quick brown fox jumps over the fence.";
+  int i = 0;
+  for (u8 c : str) {
+    (void)c;
+    ++i;
+  }
+  ASSERT_EQ(i, str.getSize());
 }

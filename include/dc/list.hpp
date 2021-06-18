@@ -41,19 +41,19 @@ class [[nodiscard]] List {
    public:
     Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}
 
-    T& operator*() { return m_data[m_pos]; }
-    const T& operator*() const { return m_data[m_pos]; }
+    [[nodiscard]] T& operator*() { return m_data[m_pos]; }
+    [[nodiscard]] const T& operator*() const { return m_data[m_pos]; }
 
-    T* operator->() { return &(m_data[m_pos]); }
-    const T* operator->() const { return &(m_data[m_pos]); }
+    [[nodiscard]] T* operator->() { return &(m_data[m_pos]); }
+    [[nodiscard]] const T* operator->() const { return &(m_data[m_pos]); }
 
-    constexpr bool operator==(const Iterator& other) const {
+    [[nodiscard]] constexpr bool operator==(const Iterator& other) const {
       return m_data == other.m_data && m_pos == other.m_pos;
     }
-    constexpr bool operator!=(const Iterator& other) const {
+    [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
       return m_data != other.m_data || m_pos != other.m_pos;
     }
-    constexpr void operator++() { ++m_pos; }
+    [[nodiscard]] constexpr void operator++() { ++m_pos; }
 
    private:
     T* m_data;
