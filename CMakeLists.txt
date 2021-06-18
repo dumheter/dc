@@ -106,7 +106,7 @@ endif ()
 
 add_library(${PROJECT_NAME} STATIC ${DC_SOURCES})
 
-if (DC_ENABLE_LIB_DTEST)
+if (DC_ENABLE_LIB_DTEST OR DC_BUILD_TESTS)
   add_library(dtest STATIC ${DTEST_SOURCES})
 endif ()
 
@@ -127,12 +127,8 @@ else ()
 endif ()
 
 if (DC_BUILD_TESTS)
-  if (DC_ENABLE_LIB_DTEST)
     target_include_directories(dtest INTERFACE include PRIVATE include)
     add_subdirectory(tests)
-  else ()
-    message(FATAL_ERROR "Unable to build tests when the testing library 'dtest' is disabled")
-  endif ()
 endif ()
 
 if (DC_PEDANTIC)

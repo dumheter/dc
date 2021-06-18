@@ -402,10 +402,10 @@ struct fmt::formatter<dc::Timestamp> {
   auto format(const dc::Timestamp& t, FormatContext& ctx) {
     if (printDate && highPrecisionTime)
       return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>9.6f}",
-                       t.year, t.month + 1, t.day, t.hour, t.minute, t.second);
+                       t.year, t.month, t.day, t.hour, t.minute, t.second);
     else if (printDate && !highPrecisionTime)
       return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>6.3f}",
-                       t.year, t.month + 1, t.day, t.hour, t.minute, t.second);
+                       t.year, t.month, t.day, t.hour, t.minute, t.second);
     else if (!printDate && highPrecisionTime)
       return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>9.6f}", t.hour, t.minute,
                        t.second);
