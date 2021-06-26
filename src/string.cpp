@@ -106,16 +106,6 @@ void String::operator=(const char* str) {
   }
 }
 
-usize String::getSize() const {
-  return getState() == State::BigString ? m_bigString.size
-                                        : m_smallString.getSize();
-}
-
-bool String::isEmpty() const {
-  return getState() == State::BigString ? m_bigString.size == 0
-                                        : m_smallString.isEmpty();
-}
-
 const char* String::c_str() const {
   const u8* data = getState() == State::BigString ? m_bigString.string
                                                   : &m_smallString.string[0];
@@ -134,6 +124,80 @@ u8* String::data() {
   return data;
 }
 
+usize String::getSize() const {
+  return getState() == State::BigString ? m_bigString.size
+                                        : m_smallString.getSize();
+}
+
+usize String::getLength() const { return getSize(); }
+
+usize String::getCapacity() const {
+  return getState() == State::BigString ? m_bigString.capacity
+                                        : m_smallString.getCapacity();
+}
+
+bool String::isEmpty() const {
+  return getState() == State::BigString ? m_bigString.size == 0
+                                        : m_smallString.isEmpty();
+}
+
+bool String::operator==(const String& other) const {
+  return getSize() == other.getSize() &&
+         memcmp(data(), other.data(), getSize()) == 0;
+}
+
+bool String::operator!=(const String& other) const { return !(*this == other); }
+
+bool String::operator==(const char* other) const {
+  return getSize() == strlen(other) && memcmp(data(), other, getSize()) == 0;
+}
+
+bool String::operator!=(const char* other) const { return !(*this == other); }
+
+void String::insert(const u8* str, usize size, usize offset) {
+  if (getCapacity() > size + offset) /* > includes the null terminator */ {
+    memcpy(data() + offset, str, size);
+
+    const usize newSize = max(getSize(), size + offset);
+    m_smallString.setSize(newSize);
+    data()[newSize] = 0;
+  } else {
+    const usize newSize = offset + size + 1 /* null termniator */;
+
+    if (getState() == State::BigString) {
+      // big -> big (realloc)
+      m_bigString.string =
+          static_cast<u8*>(m_allocator->realloc(m_bigString.string, newSize));
+    } else {
+      // small -> big (alloc)
+      u8 temp[m_smallString.kSize];
+      memcpy(temp, m_smallString.string, m_smallString.kSize);
+      setState(State::BigString);
+      m_bigString = BigString();
+      m_bigString.string = static_cast<u8*>(m_allocator->alloc(newSize));
+      memcpy(m_bigString.string, temp, m_smallString.kSize);
+    }
+
+    memcpy(m_bigString.string + offset, str, size);
+    m_bigString.string[offset + size] = 0;
+    m_bigString.size = offset + size;
+    m_bigString.capacity = newSize;
+  }
+}
+
+void String::insert(const char* str, usize offset) {
+  const usize size = strlen(str);
+  insert(reinterpret_cast<const u8*>(str), size, offset);
+}
+
+void String::append(const u8* str, usize len) { insert(str, len, getSize()); }
+
+void String::operator+=(u8 codePoint) { append(&codePoint, 1); }
+
+void String::operator+=(const char* str) {
+  append(reinterpret_cast<const u8*>(str), strlen(str));
+}
+
 void String::SmallString::setSize(usize newSize) {
   DC_ASSERT(newSize <= kSize, "tried to set a size larger than the capacity");
   string[kSize - 1] = static_cast<u8>(kSize - newSize);
@@ -141,7 +205,7 @@ void String::SmallString::setSize(usize newSize) {
 
 void String::SmallString::clear() {
   string[0] = 0;
-  setSize(kSize);
+  setSize(0);
 }
 
 String::State String::getState() const {
@@ -188,5 +252,7 @@ void String::take(String&& other) {
     m_smallString.clear();
   }
 }
+
+bool operator==(const char* a, const dc::String& b) { return b.operator==(a); }
 
 }  // namespace dc

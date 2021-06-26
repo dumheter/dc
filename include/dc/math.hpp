@@ -29,6 +29,20 @@ all
 
 namespace dc {
 
+/// Simple max function.
+/// NOTE: will copy params, so only use when copy is cheap.
+template <typename T>
+inline constexpr T max(const T a, const T b) {
+  return a > b ? a : b;
+}
+
+/// Simple min function.
+/// NOTE: will copy params, so only use when copy is cheap.
+template <typename T>
+inline constexpr T min(const T a, const T b) {
+  return a < b ? a : b;
+}
+
 /// clamp a value on the range [min-max].
 ///
 /// Examples

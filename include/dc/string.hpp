@@ -105,13 +105,19 @@ class [[nodiscard]] String {
   [[nodiscard]] u8* data();
 
   [[nodiscard]] usize getSize() const;
+  [[nodiscard]] usize getLength() const;
+  [[nodiscard]] usize getCapacity() const;
+
   [[nodiscard]] bool isEmpty() const;
 
-  [[nodiscard]] constexpr bool operator==(const String& other) const;
-  [[nodiscard]] constexpr bool operator!=(const String& other) const;
+  [[nodiscard]] bool operator==(const String& other) const;
+  [[nodiscard]] bool operator!=(const String& other) const;
 
-  [[nodiscard]] constexpr bool operator==(const char* other) const;
-  [[nodiscard]] constexpr bool operator!=(const char* other) const;
+  [[nodiscard]] bool operator==(const char* other) const;
+  [[nodiscard]] bool operator!=(const char* other) const;
+
+  void operator+=(u8 codePoint);
+  void operator+=(const char* str);
 
   [[nodiscard]] Iterator begin() { return Iterator(data(), 0); }
 
@@ -119,6 +125,15 @@ class [[nodiscard]] String {
 
   [[nodiscard]] CIterator cbegin() const { return CIterator(data(), 0); }
   [[nodiscard]] CIterator cend() const { return CIterator(data(), getSize()); }
+
+  /// Append to the back of the string.
+  void append(const u8* str, usize size);
+
+  /// Insert into the string, may allocate if needed. Will overwrite if not
+  /// at end of string.
+  /// @param size Byte size of str, without the null termination.
+  void insert(const u8* str, usize size, usize offset);
+  void insert(const char* str, usize offset);
 
  private:
   struct [[nodiscard]] BigString {
@@ -170,5 +185,7 @@ class [[nodiscard]] String {
     SmallString m_smallString;
   };
 };
+
+bool operator==(const char* a, const dc::String& b);
 
 }  // namespace dc
