@@ -46,6 +46,7 @@ set(DC_SOURCES
   include/dc/time.hpp
   include/dc/traits.hpp
   include/dc/types.hpp
+  include/dc/utf.hpp
   src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp
@@ -54,6 +55,7 @@ set(DC_SOURCES
   src/mac.cpp
   src/string.cpp
   src/time.cpp
+  src/utf.cpp
   )
 
 set(DTEST_SOURCES

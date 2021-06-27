@@ -112,13 +112,13 @@ const char* String::c_str() const {
   return reinterpret_cast<const char*>(data);
 }
 
-const u8* String::data() const {
+const u8* String::getData() const {
   const u8* data = getState() == State::BigString ? m_bigString.string
                                                   : &m_smallString.string[0];
   return data;
 }
 
-u8* String::data() {
+u8* String::getData() {
   u8* data = getState() == State::BigString ? m_bigString.string
                                             : &m_smallString.string[0];
   return data;
@@ -129,7 +129,11 @@ usize String::getSize() const {
                                         : m_smallString.getSize();
 }
 
-usize String::getLength() const { return getSize(); }
+usize String::getLength() const {
+	const u8* data = getData();
+	// TODO cgustafsson: 
+	return getSize();
+}
 
 usize String::getCapacity() const {
   return getState() == State::BigString ? m_bigString.capacity
@@ -143,24 +147,24 @@ bool String::isEmpty() const {
 
 bool String::operator==(const String& other) const {
   return getSize() == other.getSize() &&
-         memcmp(data(), other.data(), getSize()) == 0;
+         memcmp(getData(), other.getData(), getSize()) == 0;
 }
 
 bool String::operator!=(const String& other) const { return !(*this == other); }
 
 bool String::operator==(const char* other) const {
-  return getSize() == strlen(other) && memcmp(data(), other, getSize()) == 0;
+  return getSize() == strlen(other) && memcmp(getData(), other, getSize()) == 0;
 }
 
 bool String::operator!=(const char* other) const { return !(*this == other); }
 
 void String::insert(const u8* str, usize size, usize offset) {
   if (getCapacity() > size + offset) /* > includes the null terminator */ {
-    memcpy(data() + offset, str, size);
+    memcpy(getData() + offset, str, size);
 
     const usize newSize = max(getSize(), size + offset);
     m_smallString.setSize(newSize);
-    data()[newSize] = 0;
+    getData()[newSize] = 0;
   } else {
     const usize newSize = offset + size + 1 /* null termniator */;
 

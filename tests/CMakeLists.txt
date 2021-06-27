@@ -17,6 +17,7 @@ set(TEST_SOURCES
   string.test.cpp
   time.test.cpp
   track_lifetime.test.cpp
+  utf.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////

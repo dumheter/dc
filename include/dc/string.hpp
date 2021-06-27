@@ -101,8 +101,8 @@ class [[nodiscard]] String {
   // String substr() const;
 
   [[nodiscard]] const char* c_str() const;
-  [[nodiscard]] const u8* data() const;
-  [[nodiscard]] u8* data();
+  [[nodiscard]] const u8* getData() const;
+  [[nodiscard]] u8* getData();
 
   [[nodiscard]] usize getSize() const;
   [[nodiscard]] usize getLength() const;
@@ -119,12 +119,12 @@ class [[nodiscard]] String {
   void operator+=(u8 codePoint);
   void operator+=(const char* str);
 
-  [[nodiscard]] Iterator begin() { return Iterator(data(), 0); }
+  [[nodiscard]] Iterator begin() { return Iterator(getData(), 0); }
 
-  [[nodiscard]] Iterator end() { return Iterator(data(), getSize()); }
+  [[nodiscard]] Iterator end() { return Iterator(getData(), getSize()); }
 
-  [[nodiscard]] CIterator cbegin() const { return CIterator(data(), 0); }
-  [[nodiscard]] CIterator cend() const { return CIterator(data(), getSize()); }
+  [[nodiscard]] CIterator cbegin() const { return CIterator(getData(), 0); }
+  [[nodiscard]] CIterator cend() const { return CIterator(getData(), getSize()); }
 
   /// Append to the back of the string.
   void append(const u8* str, usize size);
