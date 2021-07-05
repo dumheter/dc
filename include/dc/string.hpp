@@ -177,6 +177,9 @@ class [[nodiscard]] String {
   /// Take ownership of the other's data.
   void take(String&& other);
 
+	/// When an allocation fails, set our string to a memory alloc failed state.
+	void onAllocFailed();
+
  private:
   IAllocator* m_allocator;  //< used to store flags, do not access directly.
 
