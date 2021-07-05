@@ -191,4 +191,41 @@ class [[nodiscard]] String {
 
 bool operator==(const char* a, const dc::String& b);
 
+///////////////////////////////////////////////////////////////////////////////
+// String View
+//
+
+namespace details
+{
+template <usize Size>
+constexpr usize length(const char (&)[Size])
+{
+	return Size > 0 ? Size-1 : 0;
+}
+}
+
+template <usize Size>
+class [[nodiscard]] StringView
+{
+  public:
+	static constexpr usize Dynamic = 0;
+
+  public:
+	constexpr StringView(const char (&string)[Size])
+			: m_string(string)
+			, m_size(details::length(string))
+	{}
+
+	[[nodiscard]] constexpr const char* getString() const { return m_string; }
+
+	[[nodiscard]] constexpr usize getSize() const { return m_size; }
+
+  private:
+	const char* m_string = nullptr;
+	usize m_size = 0;
+};
+
+// template <>
+// class [[nodiscard]] StringView<0>;
+
 }  // namespace dc

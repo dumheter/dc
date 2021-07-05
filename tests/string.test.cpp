@@ -104,3 +104,11 @@ DTEST(insertMakesStringGrow) {
 // 	str.insert("o wor", 4);
 // 	ASSERT_EQ("Hello world", str);
 // }
+
+DTEST(StringViewCompTime)
+{
+	constexpr dc::StringView view("comptime length");
+
+  ASSERT_EQ(view.getSize(), strlen("comptime length"));
+  ASSERT_TRUE(strcmp(view.getString(), "comptime length") == 0);
+}
