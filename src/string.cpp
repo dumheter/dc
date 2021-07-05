@@ -42,11 +42,18 @@ String::String(const char* str, usize size, IAllocator& allocator)
   if (size >= SmallString::kSize) {
     m_bigString = BigString();
     m_bigString.string = static_cast<u8*>(m_allocator->alloc(size + 1));
-    memcpy(m_bigString.string, str, size);
-    m_bigString.string[size] = 0;
-    m_bigString.size = size;
-    m_bigString.capacity = size;
-    setState(State::BigString);
+	if (m_bigString.string)
+	{
+		memcpy(m_bigString.string, str, size);
+		m_bigString.string[size] = 0;
+		m_bigString.size = size;
+		m_bigString.capacity = size;
+		setState(State::BigString);
+	}
+	else
+	{
+		onAllocFailed();
+	}
   } else {
     m_smallString = SmallString();
     memcpy(&m_smallString.string[0], str, size);
@@ -83,9 +90,15 @@ void String::operator=(const char* str) {
       // big -> big (need realloc)
       m_bigString.string =
           static_cast<u8*>(m_allocator->realloc(m_bigString.string, size + 1));
-      m_bigString.string[size] = 0;
-      m_bigString.size = size;
-      m_bigString.capacity = size;
+	  if (m_bigString.string)
+	  {
+		  m_bigString.string[size] = 0;
+		  m_bigString.size = size;
+		  m_bigString.capacity = size;
+	  }
+      else {
+		  onAllocFailed();
+	  }
     }
   } else {
     if (size >= SmallString::kSize) {
@@ -93,9 +106,16 @@ void String::operator=(const char* str) {
       setState(State::BigString);
       m_bigString = BigString();
       m_bigString.string = static_cast<u8*>(m_allocator->alloc(size + 1));
-      m_bigString.string[size] = 0;
-      m_bigString.size = size;
-      m_bigString.capacity = size;
+	  if (m_bigString.string)
+	  {
+		  m_bigString.string[size] = 0;
+		  m_bigString.size = size;
+		  m_bigString.capacity = size;
+	  }
+	  else
+	  {
+		  onAllocFailed();
+	  }
     } else {
       // small -> small
       m_smallString = SmallString();
@@ -175,6 +195,19 @@ void String::take(String&& other) {
     m_smallString = other.m_smallString;
     m_smallString.clear();
   }
+}
+
+void String::onAllocFailed()
+{
+	constexpr const char* const kAllocFailedString = "MEMORY ALLOC FAILED";
+	constexpr usize kAllocFailedStringSize = 19;
+	static_assert(kAllocFailedStringSize < SmallString::kSize);
+
+	m_smallString = SmallString();
+    memcpy(&m_smallString.string[0], kAllocFailedString, kAllocFailedStringSize);
+    m_smallString.setSize(kAllocFailedStringSize);
+    m_smallString.string[kAllocFailedStringSize] = 0;
+    setState(State::SmallString);
 }
 
 }  // namespace dc

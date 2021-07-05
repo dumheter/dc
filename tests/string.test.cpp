@@ -1,8 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/string.hpp>
 
-DTEST_VIP;
-
 DTEST(empty) {
   dc::String nothing("");
   ASSERT_TRUE(nothing.isEmpty());
