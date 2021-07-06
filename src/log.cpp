@@ -298,15 +298,15 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
 
 void windowsFixConsole() {
 #if defined(DC_PLATFORM_WINDOWS)
-		// Set console encoding
-		SetConsoleOutputCP(CP_UTF8);
-		SetConsoleCP(CP_UTF8);
+  // Set console encoding
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
 
-		// Enable virtual terminal processing
-		const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-		DWORD mode;
-		GetConsoleMode(out, &mode);
-		SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  // Enable virtual terminal processing
+  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode;
+  GetConsoleMode(out, &mode);
+  SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #endif
 }
 

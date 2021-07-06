@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,8 +26,7 @@
 
 #include <dc/core.hpp>
 
-namespace dc
-{
+namespace dc {
 
 class String;
 
@@ -40,6 +39,7 @@ void encode();
 /// @pre Must be valid utf-8.
 /// @param data Must be 1-4 bytes or bigger.
 CodeSize decode(const u8* data, usize offset, CodePoint& codePointOut);
-CodeSize decode(const dc::String& string, usize offset, CodePoint& codePointOut);
+CodeSize decode(const dc::String& string, usize offset,
+                CodePoint& codePointOut);
 
-}
+}  // namespace dc

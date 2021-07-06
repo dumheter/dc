@@ -124,7 +124,9 @@ class [[nodiscard]] String {
   [[nodiscard]] Iterator end() { return Iterator(getData(), getSize()); }
 
   [[nodiscard]] CIterator cbegin() const { return CIterator(getData(), 0); }
-  [[nodiscard]] CIterator cend() const { return CIterator(getData(), getSize()); }
+  [[nodiscard]] CIterator cend() const {
+    return CIterator(getData(), getSize());
+  }
 
   /// Append to the back of the string.
   void append(const u8* str, usize size);
@@ -177,8 +179,8 @@ class [[nodiscard]] String {
   /// Take ownership of the other's data.
   void take(String&& other);
 
-	/// When an allocation fails, set our string to a memory alloc failed state.
-	void onAllocFailed();
+  /// When an allocation fails, set our string to a memory alloc failed state.
+  void onAllocFailed();
 
  private:
   IAllocator* m_allocator;  //< used to store flags, do not access directly.
@@ -195,37 +197,18 @@ bool operator==(const char* a, const dc::String& b);
 // String View
 //
 
-namespace details
-{
-template <usize Size>
-constexpr usize length(const char (&)[Size])
-{
-	return Size > 0 ? Size-1 : 0;
-}
-}
+template <usize kSize>
+class [[nodiscard]] StringView {
+ public:
+  constexpr StringView(const char (&string)[kSize])
+      : m_string(string), m_size(kSize - 1) {}
 
-template <usize Size>
-class [[nodiscard]] StringView
-{
-  public:
-	static constexpr usize Dynamic = 0;
+  [[nodiscard]] constexpr const char* c_str() const { return m_string; }
+  [[nodiscard]] constexpr usize getSize() const { return m_size; }
 
-  public:
-	constexpr StringView(const char (&string)[Size])
-			: m_string(string)
-			, m_size(details::length(string))
-	{}
-
-	[[nodiscard]] constexpr const char* getString() const { return m_string; }
-
-	[[nodiscard]] constexpr usize getSize() const { return m_size; }
-
-  private:
-	const char* m_string = nullptr;
-	usize m_size = 0;
+ private:
+  const char* m_string = nullptr;
+  usize m_size = 0;
 };
-
-// template <>
-// class [[nodiscard]] StringView<0>;
 
 }  // namespace dc
