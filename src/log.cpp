@@ -25,7 +25,6 @@
 #include <moodycamel/blockingconcurrentqueue.h>
 #include <moodycamel/lightweightsemaphore.h>
 
-#include <dc/core.hpp>
 #include <dc/log.hpp>
 #include <dc/math.hpp>
 #include <dc/platform.hpp>

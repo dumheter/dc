@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2019 Christoffer Gustafsson
@@ -26,7 +26,6 @@
 #include <cstdlib>
 #include <cwchar>
 #include <dc/callstack.hpp>
-#include <dc/core.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <string>

@@ -24,29 +24,6 @@
 
 #pragma once
 
-#include <dc/assert.hpp>
-#include <dc/types.hpp>
-
-namespace dc {
-
-/// Returns pointer to past the last slash in the path string.
-constexpr const char* filenameFromPath(const char* path) {
-  const char* filename = path;
-
-  while (*path) {
-#if !defined(WIN32)
-    if (*path++ == '/')
-#else
-    if (*path++ == '\\')
-#endif
-      filename = path;
-  }
-
-  return filename;
-}
-
-}  // namespace dc
-
 ///////////////////////////////////////////////////////////////////////////////
 // Misc
 //
@@ -56,10 +33,6 @@ constexpr const char* filenameFromPath(const char* path) {
 /// Example:
 ///   'd:/dev/dc/include/dc/core.hpp' -> 'core.hpp'
 #define DC_FILENAME dc::filenameFromPath(__FILE__)
-
-#define DC_UNUSED(variable) (void)variable
-
-#define DC_NOT_IMPLEMENTED DC_ASSERT(false, "not implemented");
 
 #if defined(_MSC_VER)
 #define DC_COMPILER_MSVC
@@ -118,3 +91,23 @@ constexpr const char* filenameFromPath(const char* path) {
 #define DC_DEFAULT_MOVE(ClassName)        \
   ClassName(ClassName&& other) = default; \
   ClassName& operator=(ClassName&& other) = default
+
+///////////////////////////////////////////////////////////////////////////////
+
+namespace dc {
+
+/// Returns pointer to past the last slash in the path string.
+constexpr const char* filenameFromPath(const char* path) {
+  const char* filename = path;
+  while (*path) {
+#if !defined(WIN32)
+    if (*path++ == '/')
+#else
+    if (*path++ == '\\')
+#endif
+      filename = path;
+  }
+  return filename;
+}
+
+}  // namespace dc

@@ -23,7 +23,6 @@
  */
 
 #include <dc/callstack.hpp>
-#include <dc/core.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <iterator>

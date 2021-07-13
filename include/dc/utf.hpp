@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <dc/core.hpp>
+#include <dc/types.hpp>
 
 namespace dc {
 

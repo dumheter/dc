@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include <dc/core.hpp>
+#include <dc/macros.hpp>
 #include <dc/result.hpp>
+#include <dc/types.hpp>
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////////

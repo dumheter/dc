@@ -25,10 +25,11 @@
 #pragma once
 
 #include <dc/assert.hpp>
-#include <dc/core.hpp>
 #include <dc/log.hpp>
+#include <dc/macros.hpp>
 #include <dc/math.hpp>
 #include <dc/traits.hpp>
+#include <dc/types.hpp>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>

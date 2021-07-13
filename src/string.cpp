@@ -23,6 +23,7 @@
  */
 
 #include <cstring>
+#include <dc/assert.hpp>
 #include <dc/math.hpp>
 #include <dc/string.hpp>
 

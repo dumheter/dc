@@ -26,8 +26,8 @@
 
 #include <dc/allocator.hpp>
 #include <dc/assert.hpp>
-#include <dc/core.hpp>
 #include <dc/result.hpp>
+#include <dc/types.hpp>
 #include <utility>
 
 namespace dc {

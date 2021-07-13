@@ -25,7 +25,7 @@
 #pragma once
 
 #include <dc/allocator.hpp>
-#include <dc/core.hpp>
+#include <dc/types.hpp>
 #include <type_traits>
 
 namespace dc {
