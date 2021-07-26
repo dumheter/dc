@@ -27,8 +27,8 @@
 #pragma once
 
 #include <dc/assert.hpp>
+#include <dc/macros.hpp>
 #include <dc/traits.hpp>
-#include <utility>
 
 namespace dc {
 
@@ -96,7 +96,7 @@ struct [[nodiscard]] Some {
 
   using value_type = V;
 
-  explicit constexpr Some(V&& value) : m_value(std::forward<V&&>(value)) {}
+  explicit constexpr Some(V&& value) : m_value(forward<V&&>(value)) {}
 
   constexpr Some(const Some<V>& other) = default;
   constexpr Some& operator=(const Some<V>& other) = default;
@@ -106,9 +106,9 @@ struct [[nodiscard]] Some {
   [[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
   [[nodiscard]] constexpr const V value() const&& noexcept {
-    return std::move(m_value);
+    return move(m_value);
   }
-  [[nodiscard]] constexpr V value() && noexcept { return std::move(m_value); }
+  [[nodiscard]] constexpr V value() && noexcept { return move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(const Some<U> other) const noexcept {
@@ -162,21 +162,21 @@ class [[nodiscard]] Option {
   constexpr Option() noexcept : m_isSome(false) {}
 
   constexpr Option(Some<V>&& some)
-      : m_some(std::forward<V>(some.m_value)), m_isSome(true) {}
+      : m_some(forward<V>(some.m_value)), m_isSome(true) {}
 
   constexpr Option(const NoneType&) noexcept : m_isSome(false) {}
 
   Option(Option&& other) : m_isSome(other.m_isSome) {
-    if (other.isSome()) new (&m_some) V(std::move(other.m_some));
+    if (other.isSome()) new (&m_some) V(move(other.m_some));
   }
 
   Option& operator=(Option&& other) {
     if (isSome() && other.isSome())
-      std::swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
-                                        // maybe should be removed.
+      swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
+                                   // maybe should be removed.
     else if (isNone() && other.isSome()) {
       m_isSome = true;
-      new (&m_some) V(std::move(other.m_some));
+      new (&m_some) V(move(other.m_some));
       other.m_isSome = false;
     } else if (isSome() && other.isNone()) {
       m_isSome = false;
@@ -198,7 +198,7 @@ class [[nodiscard]] Option {
                   "'V' in 'Some<V>' is not copy constructible.");
 
     if (isSome())
-      return Some<V>(std::move(V(valueCRef())));
+      return Some<V>(move(V(valueCRef())));
     else
       return None;
   }
@@ -234,9 +234,9 @@ class [[nodiscard]] Option {
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return std::forward<SomeFn&&>(someFn)(std::move(valueRef()));
+      return forward<SomeFn&&>(someFn)(move(valueRef()));
     else
-      return std::forward<NoneFn&&>(noneFn)();
+      return forward<NoneFn&&>(noneFn)();
   }
 
   template <typename SomeFn, typename NoneFn>
@@ -251,9 +251,9 @@ class [[nodiscard]] Option {
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return std::forward<SomeFn&&>(someFn)(valueRef());
+      return forward<SomeFn&&>(someFn)(valueRef());
     else
-      return std::forward<NoneFn&&>(noneFn)();
+      return forward<NoneFn&&>(noneFn)();
   }
 
   template <typename SomeFn, typename NoneFn>
@@ -269,9 +269,9 @@ class [[nodiscard]] Option {
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return std::forward<SomeFn&&>(someFn)(valueCRef());
+      return forward<SomeFn&&>(someFn)(valueCRef());
     else
-      return std::forward<NoneFn&&>(noneFn)();
+      return forward<NoneFn&&>(noneFn)();
   }
 
   [[nodiscard]] constexpr V& value() & {
@@ -286,7 +286,7 @@ class [[nodiscard]] Option {
 
   [[nodiscard]] constexpr V unwrap() && {
     DC_ASSERT(isSome(), "Tried to unwrap value 'Some' when Option is 'None'.");
-    return std::move(valueRef());
+    return move(valueRef());
   }
 
   // TODO cgustafsson: unwrapOr
@@ -363,19 +363,19 @@ class [[nodiscard]] IntrusiveOption {
 
   constexpr IntrusiveOption() noexcept : m_some(noneValue) {}
   constexpr IntrusiveOption(Some<V>&& value)
-      : m_some(std::forward<V>(value.m_value)) {}
+      : m_some(forward<V>(value.m_value)) {}
   constexpr IntrusiveOption(NoneType) noexcept : m_some(noneValue) {}
 
   IntrusiveOption(IntrusiveOption&& other) {
-    if (other.isSome()) new (&m_some) V(std::move(other.m_some));
+    if (other.isSome()) new (&m_some) V(move(other.m_some));
   }
 
   IntrusiveOption& operator=(IntrusiveOption&& other) {
     if (isSome() && other.isSome())
-      std::swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
+      swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
     // maybe should be removed.
     else if (isNone() && other.isSome()) {
-      new (&m_some) V(std::move(other.m_some));
+      new (&m_some) V(move(other.m_some));
     } else if (isSome() && other.isNone()) {
       m_some.~V();
     }
@@ -410,7 +410,7 @@ class [[nodiscard]] IntrusiveOption {
   }
   [[nodiscard]] constexpr V&& value() && {
     DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
-    return std::move(m_some);
+    return move(m_some);
   }
 
  private:
@@ -434,7 +434,7 @@ struct [[nodiscard]] Ok {
 
   /// Can only be constructed with an r-value. Use dc::Ref, dc::CRef and
   /// dc::MutRef to capture references to non owned objects.
-  explicit constexpr Ok(V&& value) : m_value(std::forward<V&&>(value)) {}
+  explicit constexpr Ok(V&& value) : m_value(forward<V&&>(value)) {}
 
   constexpr Ok(const Ok&) = default;
   constexpr Ok& operator=(const Ok&) = default;
@@ -443,8 +443,8 @@ struct [[nodiscard]] Ok {
 
   [[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr const V value() const&& { return std::move(m_value); }
-  [[nodiscard]] constexpr V value() && { return std::move(m_value); }
+  [[nodiscard]] constexpr const V value() const&& { return move(m_value); }
+  [[nodiscard]] constexpr V value() && { return move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const {
@@ -488,7 +488,7 @@ struct [[nodiscard]] Err {
 
   using value_type = E;
 
-  Err(E&& value) : m_value(std::move(value)) {}
+  Err(E&& value) : m_value(move(value)) {}
 
   constexpr Err(const Err&) = default;
   constexpr Err& operator=(const Err&) = default;
@@ -497,8 +497,8 @@ struct [[nodiscard]] Err {
 
   [[nodiscard]] constexpr const E& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr E& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr const E value() const&& { return std::move(m_value); }
-  [[nodiscard]] constexpr E value() && { return std::move(m_value); }
+  [[nodiscard]] constexpr const E value() const&& { return move(m_value); }
+  [[nodiscard]] constexpr E value() && { return move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Err<U> const& other) const {
@@ -539,13 +539,13 @@ struct [[nodiscard]] Err {
 // template <typename Va, typename Er>
 // Va&& unsafeValueMove(Result<Va, Er>& result)
 // {
-// 	return std::move(result.valueRef());
+// 	return move(result.valueRef());
 // }
 
 // template <typename Va, typename Er>
 // Er&& unsafErrMove(Result<Va, Er>& result)
 // {
-// 	return std::move(result.errRef());
+// 	return move(result.errRef());
 // }
 
 // }
@@ -571,29 +571,29 @@ class [[nodiscard]] Result {
   using value_type = V;
   using error_type = E;
 
-  Result(Ok<V>&& ok) : m_value(std::forward<V>(ok.value())), m_isOk(true) {}
-  Result(Err<E>&& err) : m_err(std::forward<E>(err.value())), m_isOk(false) {}
+  Result(Ok<V>&& ok) : m_value(forward<V>(ok.value())), m_isOk(true) {}
+  Result(Err<E>&& err) : m_err(forward<E>(err.value())), m_isOk(false) {}
 
   Result(Result&& other) : m_isOk(other.m_isOk) {
     if (other.isOk())
-      new (&m_value) V(std::move(other.m_value));
+      new (&m_value) V(move(other.m_value));
     else
-      new (&m_err) E(std::move(other.m_err));
+      new (&m_err) E(move(other.m_err));
   }
 
   Result& operator=(Result&& other) noexcept {
     if (isOk() && other.isOk()) {
-      std::swap(valueRef(), other.valueRef());
+      swap(valueRef(), other.valueRef());
     } else if (isOk() && other.isErr()) {
       m_value.~V();
-      new (&m_err) E(std::move(other.m_err));
+      new (&m_err) E(move(other.m_err));
       m_isOk = false;
     } else if (isErr() && other.isOk()) {
       m_err.~E();
-      new (&m_value) V(std::move(other.m_value));
+      new (&m_value) V(move(other.m_value));
       m_isOk = true;
     } else {
-      std::swap(errRef(), other.errRef());
+      swap(errRef(), other.errRef());
     }
     return *this;
   }
@@ -610,42 +610,42 @@ class [[nodiscard]] Result {
 
   [[nodiscard]] constexpr auto ok() && -> Option<V> {
     if (isOk())
-      return Some<V>(std::move(valueRef()));
+      return Some<V>(move(valueRef()));
     else
       return None;
   }
 
   [[nodiscard]] constexpr auto err() && -> Option<E> {
     if (isErr())
-      return Some<E>(std::move(errRef()));
+      return Some<E>(move(errRef()));
     else
       return None;
   }
 
   [[nodiscard]] V unwrapOr(V other) && {
     if (isOk())
-      return std::move(valueRef());
+      return move(valueRef());
     else
-      return std::move(other);
+      return move(other);
   }
 
   // TODO cgustafsson: unwrapOrElse(Fn(E)) -> V
 
   [[nodiscard]] V unwrap() && {
     DC_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
-    return std::move(valueRef());
+    return move(valueRef());
   }
 
   [[nodiscard]] E unwrapErrOr(E other) && {
     if (isErr())
-      return std::move(errRef());
+      return move(errRef());
     else
-      return std::move(other);
+      return move(other);
   }
 
   [[nodiscard]] E unwrapErr() && {
     DC_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
-    return std::move(errRef());
+    return move(errRef());
   }
 
   // TODO cgustafsson: map
@@ -655,10 +655,9 @@ class [[nodiscard]] Result {
     static_assert(isInvocable<Fn&&, V&&>,
                   "Cannot call 'Fn', is it a function with argument 'V&&'?");
     if (isOk())
-      return Ok<InvokeResult<Fn&&, V&&>>(
-          std::forward<Fn&&>(op)(std::move(valueRef())));
+      return Ok<InvokeResult<Fn&&, V&&>>(forward<Fn&&>(op)(move(valueRef())));
     else
-      return Err<E>(std::move(errRef()));
+      return Err<E>(move(errRef()));
   }
 
   [[nodiscard]] V& value() & noexcept {
@@ -815,9 +814,9 @@ class [[nodiscard]] Result {
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return std::forward<OkFn&&>(okFn)(std::move(valueRef()));
+      return forward<OkFn&&>(okFn)(move(valueRef()));
     else
-      return std::forward<ErrFn&&>(errFn)(std::move(errRef()));
+      return forward<ErrFn&&>(errFn)(move(errRef()));
   }
 
   template <typename OkFn, typename ErrFn>
@@ -832,9 +831,9 @@ class [[nodiscard]] Result {
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return std::forward<OkFn&&>(okFn)(valueRef());
+      return forward<OkFn&&>(okFn)(valueRef());
     else
-      return std::forward<ErrFn&&>(errFn)(errRef());
+      return forward<ErrFn&&>(errFn)(errRef());
   }
 
   template <typename OkFn, typename ErrFn>
@@ -851,9 +850,9 @@ class [[nodiscard]] Result {
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return std::forward<OkFn&&>(okFn)(valueCRef());
+      return forward<OkFn&&>(okFn)(valueCRef());
     else
-      return std::forward<ErrFn&&>(errFn)(errCRef());
+      return forward<ErrFn&&>(errFn)(errCRef());
   }
 
   [[nodiscard]] constexpr Result<V, E> clone() const {
@@ -861,9 +860,9 @@ class [[nodiscard]] Result {
     static_assert(isCopyConstructible<E>, "Cannot copy 'E' in 'Result<V, E>'.");
 
     if (isOk())
-      return Ok<V>(std::move(V(valueCRef())));
+      return Ok<V>(move(V(valueCRef())));
     else
-      return Err<E>(std::move(E(errCRef())));
+      return Err<E>(move(E(errCRef())));
   }
 
  private:
@@ -922,27 +921,27 @@ template <typename V>
 
 template <typename V>
 [[nodiscard]] constexpr auto makeSome(V value) -> Option<V> {
-  return Some<V>(std::forward<V>(value));
+  return Some<V>(forward<V>(value));
 }
 
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeOk(V value) -> Result<V, E> {
-  return Ok<V>(std::forward<V>(value));
+  return Ok<V>(forward<V>(value));
 }
 
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeErr(E err) -> Result<V, E> {
-  return Err<E>(std::forward<E>(err));
+  return Err<E>(forward<E>(err));
 }
 
 template <typename V, typename E>
 [[nodiscard]] auto makeOkRef(V& value) noexcept -> Result<Ref<V>, Ref<E>> {
-  return Ok<V>(Ref<V>(std::forward<V&>(value)));
+  return Ok<V>(Ref<V>(forward<V&>(value)));
 }
 
 template <typename V, typename E>
 [[nodiscard]] auto makeErrRef(E& err) noexcept -> Result<Ref<V>, Ref<E>> {
-  return Err<E>(Ref<E>(std::forward<E&>(err)));
+  return Err<E>(Ref<E>(forward<E&>(err)));
 }
 
 }  // namespace dc

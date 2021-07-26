@@ -34,11 +34,11 @@ set(DC_SOURCES
   include/dc/allocator.hpp
   include/dc/assert.hpp
   include/dc/callstack.hpp
-  include/dc/core.hpp
   include/dc/list.hpp
   include/dc/log.hpp
   include/dc/file.hpp
   include/dc/mac.hpp
+  include/dc/macros.hpp
   include/dc/math.hpp
   include/dc/platform.hpp
   include/dc/result.hpp
