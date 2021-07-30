@@ -640,12 +640,15 @@ struct InvokeResultImpl<
   using Type = decltype(invoke(declval<F>(), declval<Args>()...));
 };
 
-template <typename F, typename... Args>
-struct InvokeResult : public detail::InvokeResultImpl<void, F, Args...> {};
 }  // namespace detail
 
 template <typename F, typename... Args>
-using InvokeResultT = typename detail::InvokeResult<F, Args...>::Type;
+struct InvokeResult : public detail::InvokeResultImpl<void, F, Args...> {};
+
+/// NOTE: if you have a compile error that takes you here, you are probably
+/// trying to query the result type of a function that doesnt exist.
+template <typename F, typename... Args>
+using InvokeResultT = typename InvokeResult<F, Args...>::Type;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -663,5 +666,13 @@ struct IsInvocable : public detail::IsInvocable<F, void, Args...> {};
 
 template <typename F, typename... Args>
 constexpr bool isInvocable = detail::IsInvocable<F, void, Args...>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct IsPod : public IntegralConstant<bool, __is_pod(T)> {};
+
+template <typename T>
+constexpr bool isPod = IsPod<T>::value;
 
 }  // namespace dc

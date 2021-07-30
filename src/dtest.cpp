@@ -49,9 +49,9 @@ void Register::addTest(TestFunction fn, const char* testName,
   TestBodyState bodyState;
   bodyState.name = testName;
   TestCase testCase;
-  testCase.state = std::move(bodyState);
-  testCase.fn = std::move(fn);
-  category.tests.push_back(std::move(testCase));
+  testCase.state = dc::move(bodyState);
+  testCase.fn = dc::move(fn);
+  category.tests.push_back(dc::move(testCase));
 }
 
 void Register::addVip(u64 filePathHash) {

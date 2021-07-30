@@ -52,7 +52,7 @@ DTEST(assignment_option) {
 
   {
     TrackedInt original = 77;
-    Option<TrackedInt> optionSome = Some(std::move(original));
+    Option<TrackedInt> optionSome = Some(dc::move(original));
     Option<TrackedInt> optionNone = None;
     const int someMoves = original.getMoves();
     optionNone = move(optionSome);
@@ -100,7 +100,7 @@ DTEST(clone) {
 
 DTEST(as_mut_const_ref) {
   TrackedString original(std::string("awesome"));
-  auto option = makeSome(std::move(original));
+  auto option = makeSome(dc::move(original));
   auto constRef = option.asConstRef();
   auto mutRef = option.asMutRef();
   ASSERT_EQ(original.getCopies(), 0);
@@ -121,7 +121,7 @@ DTEST(match_rvalue) {
   TrackedInt i(7);
   Option<TrackedInt> optionSome = Some(move(i));
   const int moves = i.getMoves();
-  int resSome = std::move(optionSome)
+  int resSome = dc::move(optionSome)
                     .match([](TrackedInt v) -> int { return v == 7 ? 1 : -1; },
                            []() -> int { return -100; });
   ASSERT_EQ(resSome, 1);
@@ -136,7 +136,7 @@ DTEST(match_rvalue) {
 
 DTEST(match_lvalue) {
   TrackedInt i(7);
-  auto optionSome = makeSome(std::move(i));
+  auto optionSome = makeSome(dc::move(i));
   const int moves = i.getMoves();
   int resSome = optionSome.match([](TrackedInt& v) { return v == 7 ? 1 : -1; },
                                  []() { return -100; });
@@ -151,7 +151,7 @@ DTEST(match_lvalue) {
 
 DTEST(match_const_lvalue) {
   dtest::NoCopy<int> i(7);
-  const auto optionSome = makeSome(std::move(i));
+  const auto optionSome = makeSome(dc::move(i));
   int resSome = optionSome.match(
       [](const dtest::NoCopy<int>& v) { return v == 7 ? 1 : -1; },
       []() { return -100; });
@@ -164,7 +164,7 @@ DTEST(match_const_lvalue) {
 
 DTEST(value) {
   TrackedInt original(77);
-  auto option = makeSome(std::move(original));
+  auto option = makeSome(dc::move(original));
   TrackedInt& value = option.value();
   value.getObject() = -11;
   ASSERT_EQ(original.getCopies(), 0);
@@ -173,7 +173,7 @@ DTEST(value) {
 
 DTEST(const_value) {
   TrackedInt original(77);
-  const auto option = makeSome(std::move(original));
+  const auto option = makeSome(dc::move(original));
   const TrackedInt& value = option.value();
   ASSERT_EQ(original.getCopies(), 0);
   ASSERT_EQ(value.getObject(), 77);
@@ -181,9 +181,9 @@ DTEST(const_value) {
 
 DTEST(unwrap) {
   TrackedInt original(101);
-  auto option = makeSome(std::move(original));
+  auto option = makeSome(dc::move(original));
   const int moves = original.getMoves();
-  TrackedInt value = std::move(option).unwrap();
+  TrackedInt value = dc::move(option).unwrap();
   ASSERT_EQ(moves + 1, original.getMoves());
   ASSERT_EQ(value.getObject(), 101);
   ASSERT_EQ(original.getCopies(), 0);

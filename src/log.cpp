@@ -76,7 +76,7 @@ struct Logger::Data {
 };
 
 Logger::Logger(Sink sink, const char* name) : m_data(new Data) {
-  m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
+  m_data->sinks.push_back({dc::move(sink), dc::hash32fnv1a(name)});
 }
 
 Logger::~Logger() { delete m_data; }
@@ -125,7 +125,7 @@ bool Logger::stop(u64 timeoutUs) {
 }
 
 [[nodiscard]] bool Logger::enqueue(Payload&& payload) {
-  return m_data->queue.enqueue(std::move(payload));
+  return m_data->queue.enqueue(dc::move(payload));
 }
 
 [[nodiscard]] usize Logger::approxPayloadsInQueue() const {
@@ -171,7 +171,7 @@ void Logger::run() {
 }
 
 Logger& Logger::attachSink(Sink sink, const char* name) {
-  m_data->sinks.push_back({std::move(sink), dc::hash32fnv1a(name)});
+  m_data->sinks.push_back({dc::move(sink), dc::hash32fnv1a(name)});
   return *this;
 }
 

@@ -28,6 +28,7 @@
 #include <dc/callstack.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
+#include <dc/traits.hpp>
 #include <string>
 
 #if defined(DC_ASSERT_DIALOG)
@@ -62,7 +63,7 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
 
   auto callstackResult = buildCallstack();
   std::string callstack =
-      std::move(callstackResult)
+      dc::move(callstackResult)
           .match([](Callstack&& cs) { return cs.toString(); },
                  [](CallstackErr&& err) { return err.toString(); });
 

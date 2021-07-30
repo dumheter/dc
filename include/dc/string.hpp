@@ -25,8 +25,8 @@
 #pragma once
 
 #include <dc/allocator.hpp>
+#include <dc/traits.hpp>
 #include <dc/types.hpp>
-#include <type_traits>
 
 namespace dc {
 
@@ -38,7 +38,7 @@ class [[nodiscard]] String {
  public:
   class [[nodiscard]] Iterator {
    public:
-    Iterator(u8* data, usize pos) : m_pos(pos), m_data(data) {}
+    Iterator(u8* data, usize pos) : m_data(data), m_pos(pos) {}
 
     [[nodiscard]] u8& operator*() { return m_data[m_pos]; }
     [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
@@ -53,7 +53,7 @@ class [[nodiscard]] String {
       return m_data != other.m_data || m_pos != other.m_pos;
     }
 
-    [[nodiscard]] constexpr void operator++() { ++m_pos; }
+    constexpr void operator++() { ++m_pos; }
 
    private:
     u8* m_data;
@@ -62,7 +62,7 @@ class [[nodiscard]] String {
 
   class [[nodiscard]] CIterator {
    public:
-    CIterator(const u8* data, usize pos) : m_pos(pos), m_data(data) {}
+    CIterator(const u8* data, usize pos) : m_data(data), m_pos(pos) {}
 
     [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
 
@@ -75,7 +75,7 @@ class [[nodiscard]] String {
       return m_data != other.m_data || m_pos != other.m_pos;
     }
 
-    [[nodiscard]] constexpr void operator++() { ++m_pos; }
+    constexpr void operator++() { ++m_pos; }
 
    private:
     const u8* m_data;
@@ -143,7 +143,7 @@ class [[nodiscard]] String {
     usize size;
     usize capacity;
   };
-  static_assert(std::is_pod_v<BigString>);
+  static_assert(isPod<BigString>);
 
   struct [[nodiscard]] SmallString {
     static constexpr usize kSize =
@@ -158,7 +158,7 @@ class [[nodiscard]] String {
     void setSize(usize newSize);
     void clear();
   };
-  static_assert(std::is_pod_v<SmallString>);
+  static_assert(isPod<SmallString>);
 
   enum class State : uintptr_t {
     BigString = 0,

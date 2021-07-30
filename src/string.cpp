@@ -61,7 +61,7 @@ String::String(const char* str, usize size, IAllocator& allocator)
   }
 }
 
-String::String(String&& other) noexcept { take(std::move(other)); }
+String::String(String&& other) noexcept { take(dc::move(other)); }
 
 String::~String() { destroyAndClear(); }
 
@@ -69,7 +69,7 @@ String& String::operator=(String&& other) noexcept {
   if (this != &other) {
     destroyAndClear();
 
-    take(std::move(other));
+    take(dc::move(other));
   }
 
   return *this;

@@ -25,6 +25,7 @@
 #include <dc/callstack.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
+#include <dc/traits.hpp>
 #include <iterator>
 #include <vector>
 
@@ -110,7 +111,7 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
   if (okLoad == 0)
     return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
-  return Ok(std::move(out));
+  return Ok(dc::move(out));
 };
 
 class Symbol {
@@ -124,7 +125,7 @@ class Symbol {
     DWORD64 displacement;
     const bool ok = SymFromAddr(process, addr, &displacement, symbol.m_sym);
     if (ok)
-      return Ok(std::move(symbol));
+      return Ok(dc::move(symbol));
     else
       return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   }
@@ -152,7 +153,7 @@ class Symbol {
       return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
     name.resize(bytesWritten);
-    return Ok<std::string>(std::move(name));
+    return Ok<std::string>(dc::move(name));
   }
 
  private:
@@ -232,9 +233,9 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   std::vector<ModuleInfo> modules;
   for (HMODULE module : moduleHandles) {
     auto res = ModuleInfo::create(process, module);
-    if (res.isOk()) modules.push_back(std::move(res).unwrap());
+    if (res.isOk()) modules.push_back(dc::move(res).unwrap());
     // else
-    //   return std::move(res).map([](ModuleInfo&&) { return Callstack(); });
+    //   return dc::move(res).map([](ModuleInfo&&) { return Callstack(); });
   }
 
   void* base = modules[0].baseAddr;
@@ -312,7 +313,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
   Callstack cs;
   cs.setCallstack(buffer.begin(), buffer.end());
-  out = Ok(std::move(cs));
+  out = Ok(dc::move(cs));
 
   for (const ModuleInfo& module : modules)
     SymUnloadModule64(process, (DWORD64)module.baseAddr);
@@ -402,7 +403,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
   Callstack cs;
   cs.setCallstack(out.begin(), out.end());
 
-  return Ok(std::move(cs));
+  return Ok(dc::move(cs));
 }
 
 std::string CallstackErr::toString() const {

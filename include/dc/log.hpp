@@ -29,10 +29,10 @@
 #include <dc/assert.hpp>
 #include <dc/macros.hpp>
 #include <dc/time.hpp>
+#include <dc/traits.hpp>
 #include <dc/types.hpp>
 #include <functional>
 #include <string>
-#include <utility>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Quick Start
@@ -277,7 +277,7 @@ void makePayload(const char* fileName, const char* functionName, int lineno,
   payload.lineno = lineno;
   payload.level = level;
   payload.timestamp = makeTimestamp();
-  payload.msg = fmt::format(std::forward<Args>(args)...);
+  payload.msg = fmt::format(dc::forward<Args>(args)...);
 
   // Can fail if we cannot allocate memory.
   const bool res = logger.enqueue(std::move(payload));

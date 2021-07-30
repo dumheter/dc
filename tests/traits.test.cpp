@@ -284,8 +284,6 @@ DTEST(isRef) {
 DTEST(InvokeResult) {
   const auto fn = [](int, float) -> short { return 0; };
   static_assert(isSame<short, InvokeResultT<decltype(fn), int, float>>);
-  static_assert(
-      std::is_same_v<short, std::invoke_result_t<decltype(fn), int, float>>);
 
   ASSERT_TRUE(true);
 }
@@ -293,7 +291,20 @@ DTEST(InvokeResult) {
 DTEST(isInvocable) {
   const auto fn = [](int) {};
   static_assert(isInvocable<decltype(fn), int>);
-  static_assert(std::is_invocable_v<decltype(fn), int>);
+
+  ASSERT_TRUE(true);
+}
+
+DTEST(isPod) {
+  struct Abc {};
+  static_assert(isPod<Abc>);
+
+  static_assert(isPod<float>);
+
+  struct Complex {
+    Complex(int, float) {}
+  };
+  static_assert(!isPod<Complex>);
 
   ASSERT_TRUE(true);
 }

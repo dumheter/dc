@@ -188,8 +188,8 @@ DTEST(match_rvalue_ok) {
 
   dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
   float value =
-      std::move(okResult).match([](TrackedInt) -> float { return 1.f; },
-                                [](std::string&&) -> float { return -1.f; });
+      dc::move(okResult).match([](TrackedInt) -> float { return 1.f; },
+                               [](std::string&&) -> float { return -1.f; });
   ASSERT_TRUE(value > 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }

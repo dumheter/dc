@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <dc/file.hpp>
 #include <dc/platform.hpp>
+#include <dc/traits.hpp>
 
 namespace dc {
 
@@ -120,8 +121,8 @@ static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
 std::tuple<File::Result, std::string> File::Read() {
   std::string string{};
   File::Result result = Read(string);
-  return std::make_tuple<File::Result, std::string>(std::move(result),
-                                                    std::move(string));
+  return std::make_tuple<File::Result, std::string>(dc::move(result),
+                                                    dc::move(string));
 }
 
 File::Result File::Read(std::string& string_out) {
@@ -131,8 +132,8 @@ File::Result File::Read(std::string& string_out) {
 std::tuple<File::Result, std::vector<u8>> File::Load() {
   std::vector<u8> buffer;
   File::Result result = Load(buffer);
-  return std::make_tuple<File::Result, std::vector<u8>>(std::move(result),
-                                                        std::move(buffer));
+  return std::make_tuple<File::Result, std::vector<u8>>(dc::move(result),
+                                                        dc::move(buffer));
 }
 
 File::Result File::Load(std::vector<u8>& buffer) {
@@ -243,8 +244,7 @@ std::tuple<File::Result, long> File::GetSize() {
     result = Result::kFileNotOpen;
   }
 
-  return std::make_tuple<File::Result, long>(std::move(result),
-                                             std::move(size));
+  return std::make_tuple<File::Result, long>(dc::move(result), dc::move(size));
 }
 
 bool File::FileExists(const std::string& path) {

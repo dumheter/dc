@@ -14,11 +14,11 @@ DTEST(copies) {
 
 DTEST(moves) {
   dtest::TrackLifetime<int> parent = 7;
-  dtest::TrackLifetime<int> child1 = std::move(parent);
-  dtest::TrackLifetime<int> child2 = std::move(child1);
-  child1 = std::move(child2);
-  parent = std::move(child1);
-  parent = std::move(child2);
+  dtest::TrackLifetime<int> child1 = dc::move(parent);
+  dtest::TrackLifetime<int> child2 = dc::move(child1);
+  child1 = dc::move(child2);
+  parent = dc::move(child1);
+  parent = dc::move(child2);
   ASSERT_EQ(parent.getCopies(), 0);
   ASSERT_EQ(parent.getMoves(), 5);
   ASSERT_EQ(parent.getObject(), 7);

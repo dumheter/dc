@@ -27,8 +27,8 @@
 #include <dc/allocator.hpp>
 #include <dc/assert.hpp>
 #include <dc/result.hpp>
+#include <dc/traits.hpp>
 #include <dc/types.hpp>
-#include <utility>
 
 namespace dc {
 
@@ -226,7 +226,7 @@ void List<T>::remove(usize pos) {
 
   if (pos + 1 != size()) {
     for (usize i = pos + 1; i != m_size; ++i)
-      m_data[i - 1] = std::move(m_data[i]);
+      m_data[i - 1] = dc::move(m_data[i]);
   }
   --m_size;
 }

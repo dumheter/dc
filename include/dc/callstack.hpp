@@ -26,6 +26,7 @@
 
 #include <dc/macros.hpp>
 #include <dc/result.hpp>
+#include <dc/traits.hpp>
 #include <dc/types.hpp>
 #include <string>
 
@@ -52,10 +53,10 @@ class Callstack {
   Callstack() {}
 
   Callstack(Callstack&& other) noexcept
-      : m_callstack(std::move(other.m_callstack)) {}
+      : m_callstack(dc::move(other.m_callstack)) {}
 
   Callstack& operator=(Callstack&& other) {
-    if (this != &other) m_callstack = std::move(other.m_callstack);
+    if (this != &other) m_callstack = dc::move(other.m_callstack);
 
     return *this;
   }

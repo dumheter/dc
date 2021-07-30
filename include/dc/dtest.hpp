@@ -100,14 +100,14 @@ namespace dtest {
 ///  ASSERT(parent.getCopies() == 2);
 ///
 ///  dtest::TrackLifetime<int> parent = 13;
-///  dtest::TrackLifetime<int> child1 = std::move(parent);
-///  dtest::TrackLifetime<int> child2 = std::move(child1);
+///  dtest::TrackLifetime<int> child1 = dc::move(parent);
+///  dtest::TrackLifetime<int> child2 = dc::move(child1);
 ///  ASSERT(parent.getMoves() == 2);
 ///
 template <typename T>
 class [[nodiscard]] TrackLifetime {
  public:
-  TrackLifetime(T object) : m_object(std::move(object)) {}
+  TrackLifetime(T object) : m_object(dc::move(object)) {}
 
   /// Amount of times this object has been copied.
   [[nodiscard]] constexpr int getCopies() const noexcept { return m_copies; }
@@ -282,7 +282,7 @@ int runTests();
 template <typename Fn>
 void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
               u64 filePathHash) {
-  getRegister().addTest(std::forward<Fn>(fn), testName, fileName, filePathHash);
+  getRegister().addTest(dc::forward<Fn>(fn), testName, fileName, filePathHash);
 }
 
 }  // namespace dtest::internal
