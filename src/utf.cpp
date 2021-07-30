@@ -25,7 +25,7 @@
 #include <dc/string.hpp>
 #include <dc/utf.hpp>
 
-namespace dc {
+namespace dc::utf8 {
 
 constexpr CodePoint kOctetCount1Mask = 0b1000'0000;
 constexpr CodePoint kOctetCount2Mask = 0b1110'0000;
@@ -78,4 +78,4 @@ CodeSize decode(const String& string, usize offset, CodePoint& codePointOut) {
   return decode(string.getData(), offset, codePointOut);
 }
 
-}  // namespace dc
+}  // namespace dc::utf8

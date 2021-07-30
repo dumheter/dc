@@ -672,6 +672,9 @@ constexpr bool isInvocable = detail::IsInvocable<F, void, Args...>::value;
 template <typename T>
 struct IsPod : public IntegralConstant<bool, __is_pod(T)> {};
 
+template <typename T, size_t N>
+struct IsPod<T[N]> : public IsPod<T> {};
+
 template <typename T>
 constexpr bool isPod = IsPod<T>::value;
 

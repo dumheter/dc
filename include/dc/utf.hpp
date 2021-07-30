@@ -30,8 +30,9 @@ namespace dc {
 
 class String;
 
+namespace utf8 {
 using CodePoint = u32;
-using CodeSize = uint;
+using CodeSize = usize;
 
 void encode();
 
@@ -41,5 +42,6 @@ void encode();
 CodeSize decode(const u8* data, usize offset, CodePoint& codePointOut);
 CodeSize decode(const dc::String& string, usize offset,
                 CodePoint& codePointOut);
+}  // namespace utf8
 
 }  // namespace dc

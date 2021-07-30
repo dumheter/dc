@@ -53,7 +53,7 @@ class [[nodiscard]] List {
     [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
       return m_data != other.m_data || m_pos != other.m_pos;
     }
-    [[nodiscard]] constexpr void operator++() { ++m_pos; }
+    constexpr void operator++() { ++m_pos; }
 
    private:
     T* m_data;

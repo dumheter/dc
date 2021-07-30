@@ -26,6 +26,7 @@
 #include <dc/assert.hpp>
 #include <dc/math.hpp>
 #include <dc/string.hpp>
+#include <dc/utf.hpp>
 
 namespace dc {
 
@@ -144,8 +145,15 @@ usize String::getSize() const {
 
 usize String::getLength() const {
   const u8* data = getData();
-  // TODO cgustafsson:
-  return getSize();
+  usize length = 0;
+
+  for (usize i = 0; i < getSize(); ++length) {
+    utf8::CodePoint cp;
+    utf8::CodeSize cpSize = utf8::decode(data, i, cp);
+    i += cpSize;
+  }
+
+  return length;
 }
 
 usize String::getCapacity() const {

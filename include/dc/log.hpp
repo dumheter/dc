@@ -32,6 +32,7 @@
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
 #include <functional>
+#include <limits>
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -325,12 +326,15 @@ class Paint {
     DC_ASSERT(strlen(str) < kStrLen, "Trying to paint a too large string.");
     const int res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
                              static_cast<ColorType>(color), str);
-    DC_ASSERT(res < kStrLen, "Too small buffer.");
+    DC_ASSERT(
+        res < static_cast<int>(clamp(kStrLen, (usize)0,
+                                     (usize)std::numeric_limits<int>::max)),
+        "Too small buffer.");
     DC_ASSERT(res >= 0, "Encoding error from snprintf.");
     m_currentStrLen = res >= 0 ? res : 0;
   }
   const char* c_str() const { return m_str; }
-  const usize size() const { return m_currentStrLen; }
+  usize size() const { return m_currentStrLen; }
   DC_DELETE_COPY(Paint);
 
  private:

@@ -232,6 +232,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
   }
 }
 
+#if DC_LOG_PREFIX_LEVEL == 1
 static Color colorFromLevel(Level level) {
   switch (level) {
     case Level::Verbose:
@@ -246,6 +247,7 @@ static Color colorFromLevel(Level level) {
       return Color::Magenta;
   }
 }
+#endif
 
 void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {

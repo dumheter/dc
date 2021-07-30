@@ -73,9 +73,7 @@ DTEST(lengthOfMultiCodePointString) {
   str += 0x9F;
   str += 0x94;
   str += 0xA5;
-  // TODO cgustafsson:
-  // ASSERT_EQ(1, str.getLength());
-  ASSERT_EQ(4, str.getSize());
+  ASSERT_EQ(1, str.getLength());
 }
 
 DTEST(appendSmallToBig) {
