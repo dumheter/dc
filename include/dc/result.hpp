@@ -96,7 +96,7 @@ struct [[nodiscard]] Some {
 
   using value_type = V;
 
-  explicit constexpr Some(V&& value) : m_value(forward<V&&>(value)) {}
+  explicit constexpr Some(V&& value) : m_value(dc::forward<V&&>(value)) {}
 
   constexpr Some(const Some<V>& other) = default;
   constexpr Some& operator=(const Some<V>& other) = default;
@@ -106,9 +106,9 @@ struct [[nodiscard]] Some {
   [[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
   [[nodiscard]] constexpr const V value() const&& noexcept {
-    return move(m_value);
+    return dc::move(m_value);
   }
-  [[nodiscard]] constexpr V value() && noexcept { return move(m_value); }
+  [[nodiscard]] constexpr V value() && noexcept { return dc::move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(const Some<U> other) const noexcept {
@@ -162,12 +162,12 @@ class [[nodiscard]] Option {
   constexpr Option() noexcept : m_isSome(false) {}
 
   constexpr Option(Some<V>&& some)
-      : m_some(forward<V>(some.m_value)), m_isSome(true) {}
+      : m_some(dc::forward<V>(some.m_value)), m_isSome(true) {}
 
   constexpr Option(const NoneType&) noexcept : m_isSome(false) {}
 
   Option(Option&& other) : m_isSome(other.m_isSome) {
-    if (other.isSome()) new (&m_some) V(move(other.m_some));
+    if (other.isSome()) new (&m_some) V(dc::move(other.m_some));
   }
 
   Option& operator=(Option&& other) {
@@ -176,7 +176,7 @@ class [[nodiscard]] Option {
                                    // maybe should be removed.
     else if (isNone() && other.isSome()) {
       m_isSome = true;
-      new (&m_some) V(move(other.m_some));
+      new (&m_some) V(dc::move(other.m_some));
       other.m_isSome = false;
     } else if (isSome() && other.isNone()) {
       m_isSome = false;
@@ -198,7 +198,7 @@ class [[nodiscard]] Option {
                   "'V' in 'Some<V>' is not copy constructible.");
 
     if (isSome())
-      return Some<V>(move(V(valueCRef())));
+      return Some<V>(dc::move(V(valueCRef())));
     else
       return None;
   }
@@ -223,55 +223,55 @@ class [[nodiscard]] Option {
 
   template <typename SomeFn, typename NoneFn>
   [[nodiscard]] constexpr auto match(
-      SomeFn someFn, NoneFn noneFn) && -> InvokeResult<SomeFn&&, V&&> {
+      SomeFn someFn, NoneFn noneFn) && -> InvokeResultT<SomeFn&&, V&&> {
     static_assert(
         isInvocable<SomeFn&&, V&&>,
         "Cannot call 'SomeFn', is it a function with argument 'V&&'?");
     static_assert(isInvocable<NoneFn&&>,
                   "Cannot call 'NoneFn', is it a function with no arguments?");
     static_assert(
-        isSame<InvokeResult<SomeFn&&, V&&>, InvokeResult<NoneFn&&>>,
+        isSame<InvokeResultT<SomeFn&&, V&&>, InvokeResultT<NoneFn&&>>,
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return forward<SomeFn&&>(someFn)(move(valueRef()));
+      return dc::forward<SomeFn&&>(someFn)(dc::move(valueRef()));
     else
-      return forward<NoneFn&&>(noneFn)();
+      return dc::forward<NoneFn&&>(noneFn)();
   }
 
   template <typename SomeFn, typename NoneFn>
   [[nodiscard]] constexpr auto match(
-      SomeFn someFn, NoneFn noneFn) & -> InvokeResult<SomeFn&&, V&> {
+      SomeFn someFn, NoneFn noneFn) & -> InvokeResultT<SomeFn&&, V&> {
     static_assert(isInvocable<SomeFn&&, V&>,
                   "Cannot call 'SomeFn', is it a function with argument 'V&'");
     static_assert(isInvocable<NoneFn&&>,
                   "Cannot call 'NoneFn', is it a function with no arguments?");
     static_assert(
-        isSame<InvokeResult<SomeFn&&, V&>, InvokeResult<NoneFn&&>>,
+        isSame<InvokeResultT<SomeFn&&, V&>, InvokeResultT<NoneFn&&>>,
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return forward<SomeFn&&>(someFn)(valueRef());
+      return dc::forward<SomeFn&&>(someFn)(valueRef());
     else
-      return forward<NoneFn&&>(noneFn)();
+      return dc::forward<NoneFn&&>(noneFn)();
   }
 
   template <typename SomeFn, typename NoneFn>
-  [[nodiscard]] constexpr auto match(
-      SomeFn someFn, NoneFn noneFn) const& -> InvokeResult<SomeFn&&, const V&> {
+  [[nodiscard]] constexpr auto match(SomeFn someFn, NoneFn noneFn)
+      const& -> InvokeResultT<SomeFn&&, const V&> {
     static_assert(
         isInvocable<SomeFn&&, const V&>,
         "Cannot call 'SomeFn', is it a function with argument 'const V&'?");
     static_assert(isInvocable<NoneFn&&>,
                   "Cannot call 'NoneFn', is it a function with no arguments?");
     static_assert(
-        isSame<InvokeResult<SomeFn&&, const V&>, InvokeResult<NoneFn&&>>,
+        isSame<InvokeResultT<SomeFn&&, const V&>, InvokeResultT<NoneFn&&>>,
         "The result type of 'SomeFn' and 'NoneFn' does not match, they must.");
 
     if (isSome())
-      return forward<SomeFn&&>(someFn)(valueCRef());
+      return dc::forward<SomeFn&&>(someFn)(valueCRef());
     else
-      return forward<NoneFn&&>(noneFn)();
+      return dc::forward<NoneFn&&>(noneFn)();
   }
 
   [[nodiscard]] constexpr V& value() & {
@@ -286,7 +286,7 @@ class [[nodiscard]] Option {
 
   [[nodiscard]] constexpr V unwrap() && {
     DC_ASSERT(isSome(), "Tried to unwrap value 'Some' when Option is 'None'.");
-    return move(valueRef());
+    return dc::move(valueRef());
   }
 
   // TODO cgustafsson: unwrapOr
@@ -363,11 +363,11 @@ class [[nodiscard]] IntrusiveOption {
 
   constexpr IntrusiveOption() noexcept : m_some(noneValue) {}
   constexpr IntrusiveOption(Some<V>&& value)
-      : m_some(forward<V>(value.m_value)) {}
+      : m_some(dc::forward<V>(value.m_value)) {}
   constexpr IntrusiveOption(NoneType) noexcept : m_some(noneValue) {}
 
   IntrusiveOption(IntrusiveOption&& other) {
-    if (other.isSome()) new (&m_some) V(move(other.m_some));
+    if (other.isSome()) new (&m_some) V(dc::move(other.m_some));
   }
 
   IntrusiveOption& operator=(IntrusiveOption&& other) {
@@ -375,7 +375,7 @@ class [[nodiscard]] IntrusiveOption {
       swap(m_some, other.m_some);  // TODO cgustafsson: Revisit this swap,
     // maybe should be removed.
     else if (isNone() && other.isSome()) {
-      new (&m_some) V(move(other.m_some));
+      new (&m_some) V(dc::move(other.m_some));
     } else if (isSome() && other.isNone()) {
       m_some.~V();
     }
@@ -410,7 +410,7 @@ class [[nodiscard]] IntrusiveOption {
   }
   [[nodiscard]] constexpr V&& value() && {
     DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
-    return move(m_some);
+    return dc::move(m_some);
   }
 
  private:
@@ -434,7 +434,7 @@ struct [[nodiscard]] Ok {
 
   /// Can only be constructed with an r-value. Use dc::Ref, dc::CRef and
   /// dc::MutRef to capture references to non owned objects.
-  explicit constexpr Ok(V&& value) : m_value(forward<V&&>(value)) {}
+  explicit constexpr Ok(V&& value) : m_value(dc::forward<V&&>(value)) {}
 
   constexpr Ok(const Ok&) = default;
   constexpr Ok& operator=(const Ok&) = default;
@@ -443,8 +443,8 @@ struct [[nodiscard]] Ok {
 
   [[nodiscard]] constexpr const V& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr V& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr const V value() const&& { return move(m_value); }
-  [[nodiscard]] constexpr V value() && { return move(m_value); }
+  [[nodiscard]] constexpr const V value() const&& { return dc::move(m_value); }
+  [[nodiscard]] constexpr V value() && { return dc::move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Ok<U> const& other) const {
@@ -488,7 +488,7 @@ struct [[nodiscard]] Err {
 
   using value_type = E;
 
-  Err(E&& value) : m_value(move(value)) {}
+  Err(E&& value) : m_value(dc::move(value)) {}
 
   constexpr Err(const Err&) = default;
   constexpr Err& operator=(const Err&) = default;
@@ -497,8 +497,8 @@ struct [[nodiscard]] Err {
 
   [[nodiscard]] constexpr const E& value() const& noexcept { return m_value; }
   [[nodiscard]] constexpr E& value() & noexcept { return m_value; }
-  [[nodiscard]] constexpr const E value() const&& { return move(m_value); }
-  [[nodiscard]] constexpr E value() && { return move(m_value); }
+  [[nodiscard]] constexpr const E value() const&& { return dc::move(m_value); }
+  [[nodiscard]] constexpr E value() && { return dc::move(m_value); }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(Err<U> const& other) const {
@@ -571,14 +571,14 @@ class [[nodiscard]] Result {
   using value_type = V;
   using error_type = E;
 
-  Result(Ok<V>&& ok) : m_value(forward<V>(ok.value())), m_isOk(true) {}
-  Result(Err<E>&& err) : m_err(forward<E>(err.value())), m_isOk(false) {}
+  Result(Ok<V>&& ok) : m_value(dc::forward<V>(ok.value())), m_isOk(true) {}
+  Result(Err<E>&& err) : m_err(dc::forward<E>(err.value())), m_isOk(false) {}
 
   Result(Result&& other) : m_isOk(other.m_isOk) {
     if (other.isOk())
-      new (&m_value) V(move(other.m_value));
+      new (&m_value) V(dc::move(other.m_value));
     else
-      new (&m_err) E(move(other.m_err));
+      new (&m_err) E(dc::move(other.m_err));
   }
 
   Result& operator=(Result&& other) noexcept {
@@ -586,11 +586,11 @@ class [[nodiscard]] Result {
       swap(valueRef(), other.valueRef());
     } else if (isOk() && other.isErr()) {
       m_value.~V();
-      new (&m_err) E(move(other.m_err));
+      new (&m_err) E(dc::move(other.m_err));
       m_isOk = false;
     } else if (isErr() && other.isOk()) {
       m_err.~E();
-      new (&m_value) V(move(other.m_value));
+      new (&m_value) V(dc::move(other.m_value));
       m_isOk = true;
     } else {
       swap(errRef(), other.errRef());
@@ -610,54 +610,55 @@ class [[nodiscard]] Result {
 
   [[nodiscard]] constexpr auto ok() && -> Option<V> {
     if (isOk())
-      return Some<V>(move(valueRef()));
+      return Some<V>(dc::move(valueRef()));
     else
       return None;
   }
 
   [[nodiscard]] constexpr auto err() && -> Option<E> {
     if (isErr())
-      return Some<E>(move(errRef()));
+      return Some<E>(dc::move(errRef()));
     else
       return None;
   }
 
   [[nodiscard]] V unwrapOr(V other) && {
     if (isOk())
-      return move(valueRef());
+      return dc::move(valueRef());
     else
-      return move(other);
+      return dc::move(other);
   }
 
   // TODO cgustafsson: unwrapOrElse(Fn(E)) -> V
 
   [[nodiscard]] V unwrap() && {
     DC_ASSERT(isOk(), "Tried to unwrap a result that was not 'Ok'.");
-    return move(valueRef());
+    return dc::move(valueRef());
   }
 
   [[nodiscard]] E unwrapErrOr(E other) && {
     if (isErr())
-      return move(errRef());
+      return dc::move(errRef());
     else
-      return move(other);
+      return dc::move(other);
   }
 
   [[nodiscard]] E unwrapErr() && {
     DC_ASSERT(isErr(), "Tried to unwrapErr a result that was not 'Err'.");
-    return move(errRef());
+    return dc::move(errRef());
   }
 
   // TODO cgustafsson: map
   template <typename Fn>
   [[nodiscard]] constexpr auto map(
-      Fn&& op) && -> Result<InvokeResult<Fn&&, V&&>, E> {
+      Fn&& op) && -> Result<InvokeResultT<Fn&&, V&&>, E> {
     static_assert(isInvocable<Fn&&, V&&>,
                   "Cannot call 'Fn', is it a function with argument 'V&&'?");
     if (isOk())
-      return Ok<InvokeResult<Fn&&, V&&>>(forward<Fn&&>(op)(move(valueRef())));
+      return Ok<InvokeResultT<Fn&&, V&&>>(
+          dc::forward<Fn&&>(op)(dc::move(valueRef())));
     else
-      return Err<E>(move(errRef()));
+      return Err<E>(dc::move(errRef()));
   }
 
   [[nodiscard]] V& value() & noexcept {
@@ -804,41 +805,41 @@ class [[nodiscard]] Result {
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
-      OkFn&& okFn, ErrFn&& errFn) && -> InvokeResult<OkFn&&, V&&> {
+      OkFn&& okFn, ErrFn&& errFn) && -> InvokeResultT<OkFn&&, V&&> {
     static_assert(isInvocable<OkFn&&, V&&>,
                   "Cannot call 'OkFn', is it a function with argument 'V&&'?");
     static_assert(isInvocable<ErrFn&&, E&&>,
                   "Cannot call 'ErrFn', is it a function with argument 'E&&'?");
     static_assert(
-        isSame<InvokeResult<OkFn&&, V&&>, InvokeResult<ErrFn&&, E&&>>,
+        isSame<InvokeResultT<OkFn&&, V&&>, InvokeResultT<ErrFn&&, E&&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return forward<OkFn&&>(okFn)(move(valueRef()));
+      return dc::forward<OkFn&&>(okFn)(dc::move(valueRef()));
     else
-      return forward<ErrFn&&>(errFn)(move(errRef()));
+      return dc::forward<ErrFn&&>(errFn)(dc::move(errRef()));
   }
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
-      OkFn&& okFn, ErrFn&& errFn) & -> InvokeResult<OkFn&&, V&> {
+      OkFn&& okFn, ErrFn&& errFn) & -> InvokeResultT<OkFn&&, V&> {
     static_assert(isInvocable<OkFn&&, V&>,
                   "Cannot call 'OkFn', is it a function with argument 'V&'?");
     static_assert(isInvocable<ErrFn&&, E&>,
                   "Cannot call 'ErrFn', is it a function with argument 'E&'?");
     static_assert(
-        isSame<InvokeResult<OkFn&&, V&>, InvokeResult<ErrFn&&, E&>>,
+        isSame<InvokeResultT<OkFn&&, V&>, InvokeResultT<ErrFn&&, E&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return forward<OkFn&&>(okFn)(valueRef());
+      return dc::forward<OkFn&&>(okFn)(valueRef());
     else
-      return forward<ErrFn&&>(errFn)(errRef());
+      return dc::forward<ErrFn&&>(errFn)(errRef());
   }
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
-      OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResult<OkFn&&, const V&> {
+      OkFn&& okFn, ErrFn&& errFn) const& -> InvokeResultT<OkFn&&, const V&> {
     static_assert(
         isInvocable<OkFn&&, const V&>,
         "Cannot call 'OkFn', is it a function with argument 'const V&'?");
@@ -846,13 +847,14 @@ class [[nodiscard]] Result {
         isInvocable<ErrFn&&, const E&>,
         "Cannot call 'ErrFn', is it a function with argument 'const E&'?");
     static_assert(
-        isSame<InvokeResult<OkFn&&, const V&>, InvokeResult<ErrFn&&, const E&>>,
+        isSame<InvokeResultT<OkFn&&, const V&>,
+               InvokeResultT<ErrFn&&, const E&>>,
         "The result type of 'OkFn' and 'ErrFn' does not match, they must.");
 
     if (isOk())
-      return forward<OkFn&&>(okFn)(valueCRef());
+      return dc::forward<OkFn&&>(okFn)(valueCRef());
     else
-      return forward<ErrFn&&>(errFn)(errCRef());
+      return dc::forward<ErrFn&&>(errFn)(errCRef());
   }
 
   [[nodiscard]] constexpr Result<V, E> clone() const {
@@ -860,9 +862,9 @@ class [[nodiscard]] Result {
     static_assert(isCopyConstructible<E>, "Cannot copy 'E' in 'Result<V, E>'.");
 
     if (isOk())
-      return Ok<V>(move(V(valueCRef())));
+      return Ok<V>(dc::move(V(valueCRef())));
     else
-      return Err<E>(move(E(errCRef())));
+      return Err<E>(dc::move(E(errCRef())));
   }
 
  private:
@@ -921,27 +923,27 @@ template <typename V>
 
 template <typename V>
 [[nodiscard]] constexpr auto makeSome(V value) -> Option<V> {
-  return Some<V>(forward<V>(value));
+  return Some<V>(dc::forward<V>(value));
 }
 
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeOk(V value) -> Result<V, E> {
-  return Ok<V>(forward<V>(value));
+  return Ok<V>(dc::forward<V>(value));
 }
 
 template <typename V, typename E>
 [[nodiscard]] constexpr auto makeErr(E err) -> Result<V, E> {
-  return Err<E>(forward<E>(err));
+  return Err<E>(dc::forward<E>(err));
 }
 
 template <typename V, typename E>
 [[nodiscard]] auto makeOkRef(V& value) noexcept -> Result<Ref<V>, Ref<E>> {
-  return Ok<V>(Ref<V>(forward<V&>(value)));
+  return Ok<V>(Ref<V>(dc::forward<V&>(value)));
 }
 
 template <typename V, typename E>
 [[nodiscard]] auto makeErrRef(E& err) noexcept -> Result<Ref<V>, Ref<E>> {
-  return Err<E>(Ref<E>(forward<E&>(err)));
+  return Err<E>(Ref<E>(dc::forward<E&>(err)));
 }
 
 }  // namespace dc

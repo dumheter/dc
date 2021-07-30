@@ -22,8 +22,8 @@ DTEST(ResultOk) {
 
 DTEST(ok) {
   auto result = dc::makeOk<int, std::string>(27);
-  auto maybeInt = std::move(result).ok();
-  auto maybeString = std::move(result).err();
+  auto maybeInt = dc::move(result).ok();
+  auto maybeString = dc::move(result).err();
   ASSERT_TRUE(maybeInt);
   ASSERT_EQ(maybeInt.value(), 27);
   ASSERT_FALSE(maybeString);
@@ -31,8 +31,8 @@ DTEST(ok) {
 
 DTEST(err) {
   auto result = dc::makeErr<int, std::string>("carrot");
-  auto maybeInt = std::move(result).ok();
-  auto maybeString = std::move(result).err();
+  auto maybeInt = dc::move(result).ok();
+  auto maybeString = dc::move(result).err();
   ASSERT_FALSE(maybeInt);
   ASSERT_TRUE(maybeString);
   ASSERT_EQ(maybeString.value(), std::string("carrot"));
@@ -41,7 +41,7 @@ DTEST(err) {
 DTEST(value) {
   {
     TrackedInt original(27);
-    auto result = dc::makeOk<TrackedInt, float>(std::move(original));
+    auto result = dc::makeOk<TrackedInt, float>(dc::move(original));
     TrackedInt& value = result.value();
     ASSERT_EQ(value.getObject(), 27);
     ASSERT_TRUE(value.getCopies() == 0);
@@ -54,7 +54,7 @@ DTEST(value) {
 
   {
     TrackedInt original(27);
-    const auto result = dc::makeOk<TrackedInt, float>(std::move(original));
+    const auto result = dc::makeOk<TrackedInt, float>(dc::move(original));
     const TrackedInt& value = result.value();
     ASSERT_EQ(value.getObject(), 27);
     ASSERT_TRUE(value.getCopies() == 0);
@@ -64,7 +64,7 @@ DTEST(value) {
 DTEST(errValue) {
   {
     TrackedFloat original(27.f);
-    auto result = dc::makeErr<int, TrackedFloat>(std::move(original));
+    auto result = dc::makeErr<int, TrackedFloat>(dc::move(original));
     TrackedFloat& value = result.errValue();
     ASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     ASSERT_TRUE(value.getCopies() == 0);
@@ -77,7 +77,7 @@ DTEST(errValue) {
 
   {
     TrackedFloat original(27.f);
-    const auto result = dc::makeErr<int, TrackedFloat>(std::move(original));
+    const auto result = dc::makeErr<int, TrackedFloat>(dc::move(original));
     const TrackedFloat& value = result.errValue();
     ASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
     ASSERT_TRUE(value.getCopies() == 0);
@@ -86,11 +86,11 @@ DTEST(errValue) {
 
 DTEST(unwrap) {
   TrackedInt original = 66;
-  auto result = dc::makeOk<TrackedInt, int>(std::move(original));
+  auto result = dc::makeOk<TrackedInt, int>(dc::move(original));
   ASSERT_EQ(original.getCopies(), 0);
   const int moves = original.getMoves();
 
-  TrackedInt moved = std::move(result).unwrap();
+  TrackedInt moved = dc::move(result).unwrap();
   ASSERT_EQ(original.getCopies(), 0);
   ASSERT_EQ(original.getMoves(), moves + 1);
   ASSERT_EQ(moved.getObject(), 66);
@@ -98,11 +98,11 @@ DTEST(unwrap) {
 
 DTEST(unwrapErr) {
   TrackedInt original = 5050;
-  auto result = dc::makeErr<int, TrackedInt>(std::move(original));
+  auto result = dc::makeErr<int, TrackedInt>(dc::move(original));
   ASSERT_EQ(original.getCopies(), 0);
   const int moves = original.getMoves();
 
-  TrackedInt moved = std::move(result).unwrapErr();
+  TrackedInt moved = dc::move(result).unwrapErr();
   ASSERT_EQ(original.getCopies(), 0);
   ASSERT_EQ(original.getMoves(), moves + 1);
   ASSERT_EQ(moved.getObject(), 5050);
@@ -110,7 +110,7 @@ DTEST(unwrapErr) {
 
 DTEST(as_const_ref) {
   TrackedString original(std::string("hey"));
-  const auto result = dc::makeOk<TrackedString, int>(std::move(original));
+  const auto result = dc::makeOk<TrackedString, int>(dc::move(original));
   const auto constRef = result.asConstRef();
   ASSERT_EQ(result.value(), constRef.value().get());
   ASSERT_EQ(original.getCopies(), 0);
@@ -118,7 +118,7 @@ DTEST(as_const_ref) {
 
 DTEST(as_mut_ref) {
   TrackedString original(std::string("hey"));
-  auto result = dc::makeOk<TrackedString, int>(std::move(original));
+  auto result = dc::makeOk<TrackedString, int>(dc::move(original));
   auto mutRef = result.asMutRef();
   ASSERT_EQ(result.value(), mutRef.value().get());
   ASSERT_EQ(original.getCopies(), 0);
@@ -186,9 +186,10 @@ DTEST(neq_result) {
 DTEST(match_rvalue_ok) {
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult = dc::Ok(std::move(parent));
-  float value = std::move(okResult).match([](TrackedInt) { return 1.f; },
-                                          [](std::string) { return -1.f; });
+  dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
+  float value =
+      std::move(okResult).match([](TrackedInt) -> float { return 1.f; },
+                                [](std::string&&) -> float { return -1.f; });
   ASSERT_TRUE(value > 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }
@@ -196,9 +197,9 @@ DTEST(match_rvalue_ok) {
 DTEST(match_rvalue_err) {
   TrackedInt parent = 13;
 
-  dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
-  float value = std::move(errResult).match([](float) { return 1.f; },
-                                           [](TrackedInt) { return -1.f; });
+  dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
+  float value = dc::move(errResult).match([](float) { return 1.f; },
+                                          [](TrackedInt) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }
@@ -206,7 +207,7 @@ DTEST(match_rvalue_err) {
 DTEST(match_lvalue_ok) {
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult = dc::Ok(std::move(parent));
+  dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
   float value = okResult.match([](TrackedInt&) { return 1.f; },
                                [](std::string&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
@@ -216,7 +217,7 @@ DTEST(match_lvalue_ok) {
 DTEST(match_lvalue_err) {
   TrackedInt parent = 13;
 
-  dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
+  dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
   float value = errResult.match([](float&) { return 1.f; },
                                 [](TrackedInt&) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
@@ -226,8 +227,7 @@ DTEST(match_lvalue_err) {
 DTEST(match_const_lvalue_ok) {
   TrackedInt parent = 13;
 
-  const dc::Result<TrackedInt, std::string> okResult =
-      dc::Ok(std::move(parent));
+  const dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
   float value = okResult.match([](const TrackedInt&) { return 1.f; },
                                [](const std::string&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
@@ -237,7 +237,7 @@ DTEST(match_const_lvalue_ok) {
 DTEST(match_const_lvalue_err) {
   TrackedInt parent = 13;
 
-  const dc::Result<float, TrackedInt> errResult = dc::Err(std::move(parent));
+  const dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
   float value = errResult.match([](const float&) { return 1.f; },
                                 [](const TrackedInt&) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
@@ -251,7 +251,7 @@ DTEST(match_const_lvalue_err) {
 DTEST(clone) {
   TrackedInt original = 77;
 
-  dc::Result<TrackedInt, float> okResult = dc::Ok(std::move(original));
+  dc::Result<TrackedInt, float> okResult = dc::Ok(dc::move(original));
   auto clone = okResult.clone();
   auto cloneOfClone = clone.clone();
 

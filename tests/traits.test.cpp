@@ -1,6 +1,7 @@
 #include <dc/dtest.hpp>
 #include <dc/macros.hpp>
 #include <dc/traits.hpp>
+#include <type_traits>
 
 using namespace dc;
 
@@ -235,15 +236,17 @@ DTEST(conditional) {
 }
 
 DTEST(decay) {
-  // TODO cgustafsson:
-  // static_assert(isSame<int, Decay<int>::Type>);
+  static_assert(isSame<int, Decay<int>::Type>);
+  static_assert(isSame<int, Decay<int&>::Type>);
+  static_assert(isSame<int, Decay<int&&>::Type>);
+  static_assert(!isSame<int, Decay<float&>::Type>);
+  static_assert(isSame<int*, Decay<int[]>::Type>);
 
   ASSERT_TRUE(true);
 }
 
 DTEST(enableIf) {
-  // TODO cgustafsson:
-
+  // NOTE: dont really need to test here, its used all over
   ASSERT_TRUE(true);
 }
 
@@ -263,9 +266,10 @@ DTEST(isEqualityComparable) {
     bool operator==(const A& other);
     bool operator!=(const A& other);
   };
-  // TODO cgustafsson:
-  // static_assert(isEqualityComparable<A, A>);
-  // static_assert(isEqualityComparable<int, int>);
+
+  static_assert(isEqualityComparable<A, A>);
+  static_assert(isEqualityComparable<int, int>);
+  static_assert(!isEqualityComparable<A, int>);
 
   ASSERT_TRUE(true);
 }
@@ -279,14 +283,17 @@ DTEST(isRef) {
 
 DTEST(InvokeResult) {
   const auto fn = [](int, float) -> short { return 0; };
-  static_assert(isSame<short, InvokeResult<decltype(fn), int, float>>);
+  static_assert(isSame<short, InvokeResultT<decltype(fn), int, float>>);
+  static_assert(
+      std::is_same_v<short, std::invoke_result_t<decltype(fn), int, float>>);
 
   ASSERT_TRUE(true);
 }
 
 DTEST(isInvocable) {
   const auto fn = [](int) {};
-  static_assert(IsInvocable<decltype(fn), int>::value);
+  static_assert(isInvocable<decltype(fn), int>);
+  static_assert(std::is_invocable_v<decltype(fn), int>);
 
   ASSERT_TRUE(true);
 }

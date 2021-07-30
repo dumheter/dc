@@ -386,12 +386,15 @@ struct Conditional<false, T, F> {
 /// to functions.
 template <typename T>
 struct Decay {
-  using U = RemoveReference<T>;
+  using U = typename RemoveReference<T>::Type;
   using Type = typename Conditional<
       isArray<U>, typename RemoveExtent<U>::Type*,
       typename Conditional<isFunction<U>, typename AddPointer<U>::Type,
                            typename RemoveCV<U>::Type>::Type>::Type;
 };
+
+template <typename T>
+using DecayT = typename Decay<T>::Type;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -414,18 +417,14 @@ constexpr bool isBaseOf = IsBaseOf<Base, Derived>::value;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename T, typename Other = T, typename = void>
+template <typename A, typename B = A, typename = void>
 struct IsEqualityComparable : FalseType {};
 
-template <typename T, typename Other>
-struct IsEqualityComparable<
-    T, Other,
-    typename EnableIf<true,
-                      decltype((declval<RemoveReference<T> const&>() ==
-                                declval<RemoveReference<Other> const&>()) &&
-                                   (declval<RemoveReference<T> const&>() !=
-                                    declval<RemoveReference<Other> const&>()),
-                               (void)0)>::Type> : TrueType {};
+template <typename A, typename B>
+struct IsEqualityComparable<A, B,
+                            VoidArgs<decltype(declval<A>() == declval<B>()),
+                                     decltype(declval<A>() != declval<B>())>>
+    : public TrueType {};
 
 /// Does T and Other have compatible operator== and operator!=?
 template <typename T, typename Other>
@@ -469,25 +468,39 @@ inline T* addressOf(T& x) noexcept {
 
 template <typename T>
 class Ref {
+ public:
   Ref(T& data) noexcept : m_data(addressOf(data)) {}
   Ref(T&& data) =
       delete;  // we don't own data, we keep a reference/pointer to it
 
-  Ref(const Ref& data) noexcept : m_data(addressOf(data)) {}
-  Ref& operator=(const Ref& other) noexcept { m_data(other.m_data); }
+  Ref(const Ref& other) noexcept : m_data(addressOf(other.m_data)) {}
+  Ref& operator=(const Ref& other) noexcept {
+    m_data(other.m_data);
+    return *this;
+  }
 
-  operator T&() noexcept { return *m_data; }
-  T& get() noexcept { return *m_data; }
+  Ref(Ref&& other) noexcept : m_data(other.m_data) {}
+  Ref& operator=(Ref&& other) noexcept {
+    m_data = other.m_data;
+    return *this;
+  }
+
+  constexpr operator T&() const noexcept { return *m_data; }
+
+  constexpr T& get() const noexcept { return *m_data; }
 
  private:
   T* m_data;
 };
 
 template <typename T>
-using MutRef = Ref<RemoveConst<T>>;
+Ref(T&) -> Ref<T>;
 
 template <typename T>
-using ConstRef = Ref<AddConst<T>>;
+using MutRef = Ref<typename RemoveConst<T>::Type>;
+
+template <typename T>
+using ConstRef = Ref<typename AddConst<T>::Type>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -499,6 +512,84 @@ struct IsRef<Ref<T>> : public TrueType {};
 
 template <typename T>
 constexpr bool isRef = IsRef<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+// template <typename R, typename C, typename T, typename... Args>
+// auto invokeImpl(R C::*fn, T&& obj, Args&&... args) ->
+//     typename EnableIf<isBaseOf<C, DecayT<decltype(obj)>>,
+//                       decltype((forward<T>(obj).*
+//                                 fn)(forward<Args>(args)...))>::Type {
+//   return (forward<T>(obj).*fn)(forward<Args>(args)...);
+// }
+
+// template <typename F, typename... Args>
+// auto invokeImpl(F&& fn, Args&&... args)
+//     -> decltype(forward<F>(fn)(forward<Args>(args)...)) {
+//   return forward<F>(fn)(forward<Args>(args)...);
+// }
+
+// template <typename R, typename C, typename T, typename... Args>
+// auto invokeImpl(R C::*fn, T&& obj, Args&&... args)
+//     -> decltype(((*forward<T>(obj)).*fn)(forward<Args>(args)...)) {
+//   return ((*forward<T>(obj)).*fn)(forward<Args>(args)...);
+// }
+
+// template <typename M, typename C, typename T>
+// auto invokeImpl(M C::*member, T&& obj) ->
+//     typename EnableIf<isBaseOf<C, DecayT<decltype(obj)>>,
+//                       decltype(obj.*member)>::Type {
+//   return obj.*member;
+// }
+
+// template <typename M, typename C, typename T>
+// auto invokeImpl(M C::*member, T&& obj) ->
+// decltype((*forward<T>(obj)).*member) {
+//   return (*forward<T>(obj)).*member;
+// }
+
+// template <typename F, typename... Args>
+// inline decltype(auto) invoke(F&& fn, Args&&... args) {
+//   return invokeImpl(forward<F>(fn), forward<Args>(args)...);
+// }
+
+// template <typename F, typename = void, typename... Args>
+// struct InvokeResultImpl {};
+
+// template <typename F, typename... Args>
+// struct InvokeResultImpl<
+//     F, VoidArgs<decltype(invokeImpl(declval<DecayT<F>>(),
+//     declval<Args>()...))>, Args...> {
+//   using Type = decltype(invokeImpl(declval<DecayT<F>>(),
+//   declval<Args>()...));
+// };
+
+// template <typename F, typename... Args>
+// struct InvokeResult : public InvokeResultImpl<F, void, Args...> {};
+
+// template <typename F, typename... Args>
+// using InvokeResultT = typename InvokeResult<F, Args...>::Type;
+
+// template <typename F, typename... Args>
+// using InvokeResultT = std::invoke_result_t<F, Args...>;
+
+///////////////////////////////////////////////////////////////////////////////
+
+// template <typename F, typename = void, typename... Args>
+// struct IsInvocableImpl : public FalseType {};
+
+// template <typename F, typename... Args>
+// struct IsInvocableImpl<F, VoidArgs<typename InvokeResult<F, Args...>::Type>,
+//                        Args...> : public TrueType {};
+
+// template <typename F, typename... Args>
+// struct IsInvocable : public IsInvocableImpl<F, void, Args...> {};
+
+// template <typename F, typename... Args>
+// constexpr bool isInvocable = IsInvocable<F, Args...>::value;
+
+// template <typename F, typename... Args>
+// constexpr bool isInvocable = std::is_invocable_v<F, Args...>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -527,7 +618,7 @@ struct InvokeImpl<MT B::*> {
 
   template <typename T, typename... Args, typename MT1,
             typename = typename EnableIf<isFunction<MT1>>::Type>
-  static auto call(MT B::*pmf, T&& t, Args&&... args)
+  static auto call(MT1 B::*pmf, T&& t, Args&&... args)
       -> decltype((InvokeImpl::get(forward<T>(t)).*
                    pmf)(forward<Args>(args)...));
 
@@ -554,7 +645,7 @@ struct InvokeResult : public detail::InvokeResultImpl<void, F, Args...> {};
 }  // namespace detail
 
 template <typename F, typename... Args>
-using InvokeResult = typename detail::InvokeResult<F, Args...>::Type;
+using InvokeResultT = typename detail::InvokeResult<F, Args...>::Type;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -571,6 +662,6 @@ template <typename F, typename... Args>
 struct IsInvocable : public detail::IsInvocable<F, void, Args...> {};
 
 template <typename F, typename... Args>
-constexpr bool isInvocable = detail::IsInvocable<F, Args...>::value;
+constexpr bool isInvocable = detail::IsInvocable<F, void, Args...>::value;
 
 }  // namespace dc

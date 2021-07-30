@@ -282,11 +282,12 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
           });
 
       if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
-        fmt::format_to(std::back_inserter(buffer), "{}",
-                       fnName.match([](const std::string& s) { return s; },
-                                    [](const CallstackErr&) {
-                                      return std::string("?fn?");
-                                    }));
+        fmt::format_to(
+            std::back_inserter(buffer), "{}",
+            fnName.match([](const std::string& s) -> std::string { return s; },
+                         [](const CallstackErr&) -> std::string {
+                           return std::string("?fn?");
+                         }));
 
         if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
                                  &offsetFromSymbol, &line))
