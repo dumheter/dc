@@ -28,8 +28,8 @@
 #include <dc/callstack.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
+#include <dc/string.hpp>
 #include <dc/traits.hpp>
-#include <string>
 
 #if defined(DC_ASSERT_DIALOG)
 
@@ -62,15 +62,15 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
   // memory, such that asserts can always do something, even when low on memory.
 
   auto callstackResult = buildCallstack();
-  std::string callstack =
+  dc::String callstack =
       dc::move(callstackResult)
-          .match([](Callstack&& cs) { return cs.toString(); },
+          .match([](Callstack&& cs) { return move(cs.toString()); },
                  [](CallstackErr&& err) { return err.toString(); });
 
-  if (callstack[callstack.size() - 1] == '\n')  //< remove last newline
-    callstack[callstack.size() - 1] = '\0';
+  if (callstack[callstack.getSize() - 1] == '\n')  //< remove last newline
+    callstack[callstack.getSize() - 1] = '\0';
 
-  std::string fmt = fmt::format(
+  dc::String fmt = dc::format(
       "Assertion failed: [{}] in [{}:{} @ {}]. "
       "Callstack:\n{}",
       msg, file, line, func, callstack.c_str());

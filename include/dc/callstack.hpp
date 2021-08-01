@@ -26,16 +26,31 @@
 
 #include <dc/macros.hpp>
 #include <dc/result.hpp>
+#include <dc/string.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
-#include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Quickstart
 //
 
-// On linux, you need link option '-rdynamic' for linker to export function
-// names to the dynamic symbol table.
+/// Code usage example
+/*
+```cpp
+int main(int, char**) {
+  const Result<Callstack, CallstackErr> result = buildCallstack();
+  const String& callstack =
+    result
+    .match([](const Callstack& cs) { return cs.toString(); },
+           [](const CallstackErr& err) { return err.toString(); });
+  LOG_INFO("{}", callstack);
+
+  return 0;
+}
+```
+*/
+/// On linux, you need link option '-rdynamic' for linker to export function
+/// names to the dynamic symbol table.
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +65,7 @@ Result<Callstack, CallstackErr> buildCallstack();
 
 class Callstack {
  public:
-  Callstack() {}
+  Callstack(StringView callstack) : m_callstack(callstack) {}
 
   Callstack(Callstack&& other) noexcept
       : m_callstack(dc::move(other.m_callstack)) {}
@@ -64,20 +79,16 @@ class Callstack {
   // use .clone() to explicitly copy
   DC_DELETE_COPY(Callstack);
 
-  const std::string& toString() const { return m_callstack; }
+  const String& toString() const { return m_callstack; }
+  String& toString() { return m_callstack; }
 
   Callstack clone() const { return Callstack(m_callstack); }
 
-  template <typename Iterator>
-  void setCallstack(Iterator begin, Iterator end) {
-    m_callstack = std::string(begin, end);
-  }
+ private:
+  Callstack(const String& callstack) : m_callstack(callstack.clone()) {}
 
  private:
-  Callstack(std::string callstack) : m_callstack(callstack) {}
-
- private:
-  std::string m_callstack;
+  String m_callstack;
 };
 
 class CallstackErr {
@@ -86,7 +97,7 @@ class CallstackErr {
 
   u64 getErrCode() const { return m_err; }
 
-  std::string toString() const;
+  String toString() const;
 
   int getLine() const { return m_line; }
 

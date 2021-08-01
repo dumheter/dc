@@ -36,10 +36,10 @@ constexpr CodePoint kOctetSequenceMask = 0b1100'0000;
 constexpr CodePoint kOctetCount1Value = 0b0000'0000;
 constexpr CodePoint kOctetCount2Value = 0b1100'0000;
 constexpr CodePoint kOctetCount3Value = 0b1110'0000;
-// constexpr CodePoint kOctetCount4Value = 0b1111'0000;
+constexpr CodePoint kOctetCount4Value = 0b1111'0000;
 // constexpr CodePoint kOctetSequenceValue = 0b1000'0000;
 
-CodeSize decode(const u8* data, usize offset, CodePoint& codePointOut) {
+CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut) {
   CodeSize size;
 
   const bool octetCount1 =
@@ -53,29 +53,54 @@ CodeSize decode(const u8* data, usize offset, CodePoint& codePointOut) {
 
   if (octetCount1) {
     size = 1;
-    codePointOut = data[offset] & (~kOctetCount1Mask);
+    codePointOut = data[offset] & ((~kOctetCount1Mask) & 0xFF);
   } else if (octetCount2) {
     size = 2;
-    codePointOut = ((data[offset] & (~kOctetCount2Mask)) << 6) +
-                   (data[offset + 1] & (~kOctetSequenceMask));
+    codePointOut = ((data[offset] & ((~kOctetCount2Mask) & 0xFF)) << 6) +
+                   (data[offset + 1] & ((~kOctetSequenceMask) & 0xFF));
   } else if (octetCount3) {
     size = 3;
-    codePointOut = ((data[offset] & (~kOctetCount3Mask)) << 12) +
-                   ((data[offset + 1] & (~kOctetSequenceMask)) << 6) +
-                   (data[offset + 2] & (~kOctetSequenceMask));
+    codePointOut = ((data[offset] & ((~kOctetCount3Mask) & 0xFF)) << 12) +
+                   ((data[offset + 1] & ((~kOctetSequenceMask) & 0xFF)) << 6) +
+                   (data[offset + 2] & ((~kOctetSequenceMask) & 0xFF));
   } else /* if (octetCount4) */ {
     size = 4;
-    codePointOut = ((data[offset] & (~kOctetCount4Mask)) << 18) +
-                   ((data[offset + 1] & (~kOctetSequenceMask)) << 12) +
-                   ((data[offset + 2] & (~kOctetSequenceMask)) << 6) +
-                   (data[offset + 3] & (~kOctetSequenceMask));
+    codePointOut = ((data[offset] & ((~kOctetCount4Mask) & 0xFF)) << 18) +
+                   ((data[offset + 1] & ((~kOctetSequenceMask) & 0xFF)) << 12) +
+                   ((data[offset + 2] & ((~kOctetSequenceMask) & 0xFF)) << 6) +
+                   (data[offset + 3] & ((~kOctetSequenceMask) & 0xFF));
   }
 
   return size;
 }
 
 CodeSize decode(const String& string, usize offset, CodePoint& codePointOut) {
-  return decode(string.getData(), offset, codePointOut);
+  return decode(string.c_str(), offset, codePointOut);
+}
+
+Option<CodeSize> validate(const char8* data) {
+  CodeSize size;
+
+  const bool octetCount1 = (data[0] & kOctetCount1Mask) == kOctetCount1Value;
+  const bool octetCount2 = (data[0] & kOctetCount2Mask) == kOctetCount2Value;
+  const bool octetCount3 = (data[0] & kOctetCount3Mask) == kOctetCount3Value;
+  const bool octetCount4 = (data[0] & kOctetCount4Mask) == kOctetCount4Value;
+
+  if (octetCount1) {
+    size = 1;
+  } else if (octetCount2) {
+    size = 2;
+  } else if (octetCount3) {
+    size = 3;
+  } else if (octetCount4) {
+    size = 4;
+  } else {
+    return None;
+  }
+
+  // TODO cgustafsson: fix option so we can construct without a move for trivial
+  // types
+  return Some(move(size));
 }
 
 }  // namespace dc::utf8

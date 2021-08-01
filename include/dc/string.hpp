@@ -24,11 +24,82 @@
 
 #pragma once
 
+#include <fmt/format.h>
+
 #include <dc/allocator.hpp>
+#include <dc/list.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
+#include <dc/utf.hpp>
 
 namespace dc {
+
+///////////////////////////////////////////////////////////////////////////////
+// String View
+//
+
+// constexpr usize kStringViewDynamic = 0;
+
+// template <usize kSize = kStringViewDynamic>
+class [[nodiscard]] StringView {
+ public:
+  class [[nodiscard]] Utf8Iterator {
+   public:
+    Utf8Iterator(const char* string, usize size, usize offset)
+        : m_string(string), m_size(size), m_offset(offset) {}
+
+    [[nodiscard]] utf8::CodePoint operator*();
+    //[[nodiscard]] utf8::CodePoint operator->() const;
+    [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
+    [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
+    void operator++();
+    void operator--();
+
+   private:
+    const char* m_string = nullptr;
+    usize m_size = 0;
+    usize m_offset = 0;
+  };
+
+ public:
+  // TODO cgustafsson: How to allow this constexpr size constructor?
+  // constexpr StringView(const char (&string)[kSize])
+  //    : m_string(string), m_size(kSize - 1) {}
+
+  StringView(const char* string) : StringView(string, strlen(string)) {}
+
+  StringView(const char* string, usize size) : m_string(string), m_size(size) {}
+
+  [[nodiscard]] constexpr const char* c_str() const { return m_string; }
+
+  [[nodiscard]] constexpr const u8* getData() const {
+    return (const u8*)m_string;
+  }
+
+  [[nodiscard]] constexpr usize getSize() const { return m_size; }
+
+  [[nodiscard]] usize getLength() const;
+
+  [[nodiscard]] constexpr bool isEmpty() const { return m_size == 0; }
+
+  [[nodiscard]] char operator[](usize pos) const;
+
+  // [[nodiscard]] constexpr const char* begin() const { return m_string; }
+  // [[nodiscard]] constexpr const char* end() const { return m_string + m_size;
+  // }
+  [[nodiscard]] Utf8Iterator begin() const {
+    return Utf8Iterator(m_string, m_size, 0);
+  }
+  [[nodiscard]] Utf8Iterator end() const {
+    return Utf8Iterator(m_string, m_size, m_size);
+  }
+
+  [[nodiscard]] Option<usize> find(StringView pattern) const;
+
+ private:
+  const char* m_string = nullptr;
+  usize m_size = 0;
+};
 
 /// String
 ///
@@ -86,16 +157,22 @@ class [[nodiscard]] String {
   String(IAllocator& = getDefaultAllocator());
   String(const char* str, IAllocator& = getDefaultAllocator());
   String(const char* str, usize size, IAllocator& = getDefaultAllocator());
+  String(StringView view);
   String(String&& other) noexcept;
 
   ~String();
 
-  [[nodiscard]] String& operator=(String&& other) noexcept;
+  String& operator=(String&& other) noexcept;
   void operator=(const char* str);
 
   // use clone() instead
-  String(const String& other) = delete;
-  [[nodiscard]] String& operator=(const String& other) = delete;
+  String(const String& other);
+  String& operator=(const String& other) = delete;
+
+  /// Make a copy of this string instance.
+  String clone() const;
+
+  StringView toView() const { return StringView(c_str(), getSize()); }
 
   // TODO cgustafsson:
   // String substr() const;
@@ -103,6 +180,11 @@ class [[nodiscard]] String {
   [[nodiscard]] const char* c_str() const;
   [[nodiscard]] const u8* getData() const;
   [[nodiscard]] u8* getData();
+
+  [[nodiscard]] u8& operator[](const usize pos) { return getData()[pos]; }
+  [[nodiscard]] const u8& operator[](const usize pos) const {
+    return getData()[pos];
+  }
 
   [[nodiscard]] usize getSize() const;
   [[nodiscard]] usize getLength() const;
@@ -116,6 +198,7 @@ class [[nodiscard]] String {
   [[nodiscard]] bool operator==(const char* other) const;
   [[nodiscard]] bool operator!=(const char* other) const;
 
+  void operator+=(const String& other);
   void operator+=(u8 codePoint);
   void operator+=(const char* str);
 
@@ -137,6 +220,15 @@ class [[nodiscard]] String {
   void insert(const u8* str, usize size, usize offset);
   void insert(const char* str, usize offset);
 
+  /// Resize the internal buffer.
+  /// @param size
+  /// @return
+  usize resize(usize size);
+
+  /// @retval Some with position if found
+  /// @retval None if not found
+  Option<usize> find(StringView pattern) const;
+
  private:
   struct [[nodiscard]] BigString {
     u8* string;
@@ -147,12 +239,12 @@ class [[nodiscard]] String {
 
   struct [[nodiscard]] SmallString {
     static constexpr usize kSize =
-        sizeof(BigString);  //< including null terminator
-    u8 string[kSize];
+        sizeof(BigString) - 1;  //< last byte reserved for null terminator
+    u8 string[sizeof(BigString)];
 
     [[nodiscard]] constexpr bool isEmpty() const { return getSize() == 0; }
     [[nodiscard]] constexpr usize getSize() const {
-      return kSize - string[kSize - 1];
+      return kSize - string[kSize];
     }
     [[nodiscard]] constexpr usize getCapacity() const { return kSize; }
     void setSize(usize newSize);
@@ -171,7 +263,11 @@ class [[nodiscard]] String {
   [[nodiscard]] State getState() const;
   void setState(State state);
 
-  [[nodiscard]] IAllocator& getAllocator();
+  /// Set the size in the correct string state.
+  /// This is the raw internal set size method.
+  void setSize(usize size);
+
+  [[nodiscard]] IAllocator& getAllocator() const;
 
   /// Clear our data, if we have allocated, free.
   void destroyAndClear();
@@ -193,22 +289,28 @@ class [[nodiscard]] String {
 
 bool operator==(const char* a, const dc::String& b);
 
+}  // namespace dc
+
 ///////////////////////////////////////////////////////////////////////////////
-// String View
+// Fmt
 //
 
-template <usize kSize>
-class [[nodiscard]] StringView {
- public:
-  constexpr StringView(const char (&string)[kSize])
-      : m_string(string), m_size(kSize - 1) {}
+namespace dc {
 
-  [[nodiscard]] constexpr const char* c_str() const { return m_string; }
-  [[nodiscard]] constexpr usize getSize() const { return m_size; }
+String vformat(fmt::string_view formatStr, fmt::format_args args);
 
- private:
-  const char* m_string = nullptr;
-  usize m_size = 0;
-};
+template <typename... Args>
+inline String format(fmt::string_view formatStr, Args... args) {
+  return dc::vformat(formatStr, fmt::make_format_args(args...));
+}
 
 }  // namespace dc
+
+template <>
+struct fmt::formatter<dc::String> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(const dc::String& string, FormatContext& ctx) {
+    string_view str(string.c_str(), string.getSize());
+    return formatter<string_view>::format(str, ctx);
+  }
+};

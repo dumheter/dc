@@ -37,28 +37,28 @@ template <typename T>
 class [[nodiscard]] List {
  public:
   /// Support for range loops. Not used for anything else.
-  class [[nodiscard]] Iterator {
-   public:
-    Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}
+  // class [[nodiscard]] Iterator {
+  //  public:
+  //   Iterator(T* data, usize pos) : m_data(data), m_pos(pos) {}
 
-    [[nodiscard]] T& operator*() { return m_data[m_pos]; }
-    [[nodiscard]] const T& operator*() const { return m_data[m_pos]; }
+  //   [[nodiscard]] T& operator*() { return m_data[m_pos]; }
+  //   [[nodiscard]] const T& operator*() const { return m_data[m_pos]; }
 
-    [[nodiscard]] T* operator->() { return &(m_data[m_pos]); }
-    [[nodiscard]] const T* operator->() const { return &(m_data[m_pos]); }
+  //   [[nodiscard]] T* operator->() { return &(m_data[m_pos]); }
+  //   [[nodiscard]] const T* operator->() const { return &(m_data[m_pos]); }
 
-    [[nodiscard]] constexpr bool operator==(const Iterator& other) const {
-      return m_data == other.m_data && m_pos == other.m_pos;
-    }
-    [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
-      return m_data != other.m_data || m_pos != other.m_pos;
-    }
-    constexpr void operator++() { ++m_pos; }
+  //   [[nodiscard]] constexpr bool operator==(const Iterator& other) const {
+  //     return m_data == other.m_data && m_pos == other.m_pos;
+  //   }
+  //   [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
+  //     return m_data != other.m_data || m_pos != other.m_pos;
+  //   }
+  //   constexpr void operator++() { ++m_pos; }
 
-   private:
-    T* m_data;
-    usize m_pos;
-  };
+  //  private:
+  //   T* m_data;
+  //   usize m_pos;
+  // };
 
  public:
   List(IAllocator& allocator = getDefaultAllocator());
@@ -102,16 +102,11 @@ class [[nodiscard]] List {
   [[nodiscard]] constexpr usize size() const { return m_size; }
   [[nodiscard]] constexpr usize capacity() const { return m_capacity; }
 
-  [[nodiscard]] constexpr Iterator begin() { return Iterator(m_data, 0); }
-  [[nodiscard]] constexpr Iterator end() { return Iterator(m_data, size()); }
+  [[nodiscard]] constexpr T* begin() { return &m_data[0]; }
+  [[nodiscard]] constexpr T* end() { return &m_data[size()]; }
 
-  // TODO cgustafsson: are these used?
-  [[nodiscard]] constexpr Iterator cbegin() const {
-    return Iterator(m_data, 0);
-  }
-  [[nodiscard]] constexpr Iterator cend() const {
-    return Iterator(m_data, size());
-  }
+  [[nodiscard]] constexpr const T* begin() const { return &m_data[0]; }
+  [[nodiscard]] constexpr const T* end() const { return &m_data[size()]; }
 
  private:
   void free();

@@ -4,15 +4,15 @@
 #include <thread>
 
 struct [[nodiscard]] BufferSink {
-  BufferSink(std::string& buf) : m_buf(buf) {}
+  BufferSink(dc::String& buf) : m_buf(buf) {}
   void operator()(const dc::log::Payload& payload, dc::log::Level) {
     m_buf += payload.msg;
   }
-  std::string& m_buf;
+  dc::String& m_buf;
 };
 
 DTEST(isLoggingCorrectly) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "test sink");
   logger.start();
 
@@ -22,11 +22,13 @@ DTEST(isLoggingCorrectly) {
 
   const bool stopOk = logger.stop(100'000);
   ASSERT_TRUE(stopOk);
+  const char* str = buf.c_str();
+  (void)str;
   ASSERT_EQ(buf, "you are awesome!");
 }
 
 DTEST(levelVerbose) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Verbose);
   logger.start();
@@ -43,7 +45,7 @@ DTEST(levelVerbose) {
 }
 
 DTEST(levelInfo) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Info);
   logger.start();
@@ -60,7 +62,7 @@ DTEST(levelInfo) {
 }
 
 DTEST(levelWarning) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Warning);
   logger.start();
@@ -77,7 +79,7 @@ DTEST(levelWarning) {
 }
 
 DTEST(levelError) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Error);
   logger.start();
@@ -94,7 +96,7 @@ DTEST(levelError) {
 }
 
 DTEST(levelRaw) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Raw);
   logger.start();
@@ -111,7 +113,7 @@ DTEST(levelRaw) {
 }
 
 DTEST(levelNone) {
-  std::string buf;
+  dc::String buf;
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::None);
   logger.start();
@@ -123,7 +125,7 @@ DTEST(levelNone) {
 
   const bool stopOk = logger.stop(100'000);
   ASSERT_TRUE(stopOk);
-  ASSERT_TRUE(buf.empty());
+  ASSERT_TRUE(buf.isEmpty());
 }
 
 DTEST(multithreadedStressTest) {
@@ -244,7 +246,7 @@ DTEST(canAttachSinkToGlobalLoggerAndDetach) {
   dc::log::Logger& logger = dc::log::getGlobalLogger();
   ASSERT_TRUE(drainLogger(logger));
 
-  std::string buf;
+  dc::String buf;
   logger.attachSink(BufferSink(buf), "bufferSink");
 
   LOG_INFO("you");

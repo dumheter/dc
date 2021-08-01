@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <dc/result.hpp>
 #include <dc/types.hpp>
 
 namespace dc {
@@ -31,6 +32,7 @@ namespace dc {
 class String;
 
 namespace utf8 {
+
 using CodePoint = u32;
 using CodeSize = usize;
 
@@ -39,9 +41,15 @@ void encode();
 /// Decode a code point from a utf-8 string.
 /// @pre Must be valid utf-8.
 /// @param data Must be 1-4 bytes or bigger.
-CodeSize decode(const u8* data, usize offset, CodePoint& codePointOut);
+CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut);
 CodeSize decode(const dc::String& string, usize offset,
                 CodePoint& codePointOut);
+
+/// Try to read the size of the encoded code point.
+/// @retval Some<CodeSize> Size of the valid utf8 encoded code point.
+/// @retval None Not a valid utf8 encoding.
+Option<CodeSize> validate(const char8* data);
+
 }  // namespace utf8
 
 }  // namespace dc

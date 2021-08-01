@@ -1,10 +1,12 @@
 #include <dc/callstack.hpp>
 #include <dc/dtest.hpp>
 
+using namespace dc;
+
 DTEST(callstackWorksTwice) {
-  dc::Result<dc::Callstack, dc::CallstackErr> callstack = dc::buildCallstack();
+  Result<Callstack, CallstackErr> callstack = buildCallstack();
   ASSERT_TRUE(callstack.isOk());
 
-  dc::Result<dc::Callstack, dc::CallstackErr> callstack2 = dc::buildCallstack();
+  Result<Callstack, CallstackErr> callstack2 = buildCallstack();
   ASSERT_TRUE(callstack2.isOk());
 }

@@ -44,3 +44,31 @@ DTEST(decode4) {
   ASSERT_EQ(cp, 0x1'F525);  // Fire emoji
   ASSERT_EQ(size, 4);
 }
+
+DTEST(validateOnValidUtf8) {
+  String str;
+  str += 0xF0;
+  str += 0x9F;
+  str += 0x94;
+  str += 0xA5;
+  Option<utf8::CodeSize> size = utf8::validate(str.c_str());
+  ASSERT_TRUE(size.isSome());
+  ASSERT_TRUE(size.contains((utf8::CodeSize)4));
+}
+
+DTEST(validateOnInvalidUtf8) {
+  String str;
+  str += 0xF0;
+  str += 0x9F;
+  str += 0x94;
+  str += 0xA5;
+
+  Option<utf8::CodeSize> size1 = utf8::validate(str.c_str() + 1);
+  ASSERT_TRUE(size1.isNone());
+
+  Option<utf8::CodeSize> size2 = utf8::validate(str.c_str() + 2);
+  ASSERT_TRUE(size2.isNone());
+
+  Option<utf8::CodeSize> size3 = utf8::validate(str.c_str() + 3);
+  ASSERT_TRUE(size3.isNone());
+}

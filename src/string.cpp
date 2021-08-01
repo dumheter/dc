@@ -27,8 +27,127 @@
 #include <dc/math.hpp>
 #include <dc/string.hpp>
 #include <dc/utf.hpp>
+#include <unordered_map>
 
 namespace dc {
+
+utf8::CodePoint StringView::Utf8Iterator::operator*() {
+  utf8::CodePoint cp;
+  utf8::decode(m_string, m_offset, cp);
+  return cp;
+}
+
+// utf8::CodePoint operator->() const;
+
+bool StringView::Utf8Iterator::operator==(const Utf8Iterator& other) const {
+  return (m_string + m_offset) == (other.m_string + other.m_offset);
+}
+
+bool StringView::Utf8Iterator::operator!=(const Utf8Iterator& other) const {
+  return (m_string + m_offset) != (other.m_string + other.m_offset);
+}
+
+void StringView::Utf8Iterator::operator++() {
+  utf8::CodePoint cp;
+  const utf8::CodeSize codeSize = utf8::decode(m_string, m_offset, cp);
+  m_offset += codeSize;
+}
+
+void StringView::Utf8Iterator::operator--() {
+  // find a valid utf8 character
+  Option<utf8::CodeSize> size;
+  for (int i = static_cast<int>(m_offset) - 1; i >= 0; --i) {
+    size = utf8::validate(m_string + i);
+  }
+
+  // TODO cgustafsson:
+  utf8::CodePoint cp;
+  const utf8::CodeSize codeSize = utf8::decode(m_string, m_offset, cp);
+  m_offset += codeSize;
+  m_size = uSafeSubtract(m_size, codeSize);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+char StringView::operator[](usize pos) const {
+  DC_ASSERT(pos <= m_size, "Trying to read outside the StringView memory.");
+  return m_string[pos];
+}
+
+usize StringView::getLength() const {
+  usize length = 0;
+
+  for (usize i = 0; i < getSize(); ++length) {
+    utf8::CodePoint cp;
+    utf8::CodeSize cpSize = utf8::decode(c_str(), i, cp);
+    i += cpSize;
+  }
+
+  return length;
+}
+
+std::unordered_map<utf8::CodePoint, usize> calcCharSkip(StringView string,
+                                                        StringView pattern) {
+  // calculate the step for each character in the search string.
+  //
+  // example
+  // here is a simple example
+  //
+  // example
+  //       ^   e is 0th letter from the back, and it exists
+  //           in the search string, it has a skip value of 0.
+  //
+  // example
+  //      ^    l is the 1th letter from the back, and it exists
+  //           in the search string, it has a skip value of 1.
+  //
+  // example
+  //  ^       x is the 5th letter from the back, and it exists
+  //          in the search string, it has a skip value of 5.
+  //
+  //
+  // The big gain comes from the symbols that are not in the pattern.
+  // For example, if we read 't', we can skip forward the entire
+  // length of the pattern.
+  std::unordered_map<utf8::CodePoint, usize> charSkip;
+
+  // TODO cgustafsson: perf, we don't have to store full skips, they can be by
+  // default.
+  for (utf8::CodePoint thisCp : string) {
+    usize posOfLastMatch = 0, i = 0;
+    for (utf8::CodePoint otherCp : pattern) {
+      if (thisCp == otherCp) posOfLastMatch = i;
+      ++i;
+    }
+    charSkip[thisCp] = pattern.getLength() - posOfLastMatch;
+  }
+
+  return charSkip;
+}
+
+Option<usize> StringView::find(StringView pattern) const {
+  if (pattern.isEmpty() || isEmpty() || pattern.getSize() > getSize())
+    return None;
+
+  // Boyer-Moore string search
+  const std::unordered_map<utf8::CodePoint, usize> charSkip =
+      calcCharSkip(*this, pattern);
+
+  for (usize i = 0; i < getSize();) {
+    // utf8::CodePoint thisCp;
+    // utf8::CodePoint otherCp;
+    // TODO cgustafsson: move forward in the string, in terms of code points
+    // if (m_string[lastCharPos] != pattern[lastCharPos])
+    // {
+    // 	// move forward by precalcualted step
+    // 	i += charSkip[]
+    // }
+  }
+
+  return None;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 String::String(IAllocator& allocator)
     : m_allocator(&allocator), m_smallString() {
@@ -62,6 +181,8 @@ String::String(const char* str, usize size, IAllocator& allocator)
   }
 }
 
+String::String(StringView view) : String(view.c_str(), view.getSize()) {}
+
 String::String(String&& other) noexcept { take(dc::move(other)); }
 
 String::~String() { destroyAndClear(); }
@@ -87,8 +208,8 @@ void String::operator=(const char* str) {
       m_bigString.size = size;
     } else {
       // big -> big (need realloc)
-      m_bigString.string =
-          static_cast<u8*>(m_allocator->realloc(m_bigString.string, size + 1));
+      m_bigString.string = static_cast<u8*>(
+          getAllocator().realloc(m_bigString.string, size + 1));
       if (m_bigString.string) {
         m_bigString.string[size] = 0;
         m_bigString.size = size;
@@ -102,7 +223,7 @@ void String::operator=(const char* str) {
       // small -> big
       setState(State::BigString);
       m_bigString = BigString();
-      m_bigString.string = static_cast<u8*>(m_allocator->alloc(size + 1));
+      m_bigString.string = static_cast<u8*>(getAllocator().alloc(size + 1));
       if (m_bigString.string) {
         m_bigString.string[size] = 0;
         m_bigString.size = size;
@@ -118,6 +239,14 @@ void String::operator=(const char* str) {
       m_smallString.string[size] = 0;
     }
   }
+}
+
+String::String(const String& other)
+    : String(other.c_str(), other.getSize(), other.getAllocator()) {}
+
+String String::clone() const {
+  String out(c_str(), getSize(), getAllocator());
+  return out;
 }
 
 const char* String::c_str() const {
@@ -144,12 +273,11 @@ usize String::getSize() const {
 }
 
 usize String::getLength() const {
-  const u8* data = getData();
   usize length = 0;
 
   for (usize i = 0; i < getSize(); ++length) {
     utf8::CodePoint cp;
-    utf8::CodeSize cpSize = utf8::decode(data, i, cp);
+    utf8::CodeSize cpSize = utf8::decode(c_str(), i, cp);
     i += cpSize;
   }
 
@@ -179,12 +307,14 @@ bool String::operator==(const char* other) const {
 
 bool String::operator!=(const char* other) const { return !(*this == other); }
 
+void String::append(const u8* str, usize len) { insert(str, len, getSize()); }
+
 void String::insert(const u8* str, usize size, usize offset) {
-  if (getCapacity() > size + offset) /* > includes the null terminator */ {
+  if (getCapacity() > size + offset) /* includes the null terminator */ {
     memcpy(getData() + offset, str, size);
 
     const usize newSize = max(getSize(), size + offset);
-    m_smallString.setSize(newSize);
+    setSize(newSize);
     getData()[newSize] = 0;
   } else {
     const usize newSize = offset + size + 1 /* null termniator */;
@@ -192,14 +322,14 @@ void String::insert(const u8* str, usize size, usize offset) {
     if (getState() == State::BigString) {
       // big -> big (realloc)
       m_bigString.string =
-          static_cast<u8*>(m_allocator->realloc(m_bigString.string, newSize));
+          static_cast<u8*>(getAllocator().realloc(m_bigString.string, newSize));
     } else {
       // small -> big (alloc)
       u8 temp[m_smallString.kSize];
       memcpy(temp, m_smallString.string, m_smallString.kSize);
       setState(State::BigString);
       m_bigString = BigString();
-      m_bigString.string = static_cast<u8*>(m_allocator->alloc(newSize));
+      m_bigString.string = static_cast<u8*>(getAllocator().alloc(newSize));
       memcpy(m_bigString.string, temp, m_smallString.kSize);
     }
 
@@ -215,7 +345,43 @@ void String::insert(const char* str, usize offset) {
   insert(reinterpret_cast<const u8*>(str), size, offset);
 }
 
-void String::append(const u8* str, usize len) { insert(str, len, getSize()); }
+usize String::resize(usize size) {
+  if (getCapacity() > size) /* includes the null terminator */ {
+    setSize(size);
+    getData()[size] = 0;
+  } else {
+    const usize sizeWithNullTerm = size + 1;
+    if (getState() == State::BigString) {
+      // big -> big (realloc)
+      m_bigString.string = static_cast<u8*>(
+          getAllocator().realloc(m_bigString.string, sizeWithNullTerm));
+    } else {
+      // small -> big (alloc)
+      u8 temp[m_smallString.kSize];
+      memcpy(temp, m_smallString.string, m_smallString.kSize);
+      setState(State::BigString);
+      m_bigString = BigString();
+      m_bigString.string =
+          static_cast<u8*>(getAllocator().alloc(sizeWithNullTerm));
+      memcpy(m_bigString.string, temp, m_smallString.kSize);
+    }
+
+    m_bigString.string[size] = 0;
+    m_bigString.size = size;
+    m_bigString.capacity = sizeWithNullTerm;
+  }
+
+  return getSize();
+}
+
+Option<usize> String::find(StringView pattern) const {
+  StringView thisString(c_str(), getSize());
+  return thisString.find(pattern);
+}
+
+void String::operator+=(const String& other) {
+  append(other.getData(), other.getSize());
+}
 
 void String::operator+=(u8 codePoint) { append(&codePoint, 1); }
 
@@ -223,15 +389,19 @@ void String::operator+=(const char* str) {
   append(reinterpret_cast<const u8*>(str), strlen(str));
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 void String::SmallString::setSize(usize newSize) {
   DC_ASSERT(newSize <= kSize, "tried to set a size larger than the capacity");
-  string[kSize - 1] = static_cast<u8>(kSize - newSize);
+  string[kSize] = static_cast<u8>(kSize - newSize);
 }
 
 void String::SmallString::clear() {
   string[0] = 0;
   setSize(0);
 }
+
+///////////////////////////////////////////////////////////////////////////////
 
 String::State String::getState() const {
   const auto ptr = reinterpret_cast<uintptr_t>(m_allocator);
@@ -246,7 +416,17 @@ void String::setState(State state) {
   m_allocator = (IAllocator*)ptr;
 }
 
-IAllocator& String::getAllocator() {
+void String::setSize(usize size) {
+  DC_ASSERT(size <= getCapacity(),
+            "Trying to set a size larger than capacity.");
+  State state = getState();
+  if (state == State::BigString)
+    m_bigString.size = size;
+  else
+    m_smallString.setSize(size);
+}
+
+IAllocator& String::getAllocator() const {
   const auto ptr = reinterpret_cast<uintptr_t>(m_allocator);
   auto out = reinterpret_cast<IAllocator*>(ptr - (ptr & kFlagStateMask));
   return *out;
@@ -254,7 +434,7 @@ IAllocator& String::getAllocator() {
 
 void String::destroyAndClear() {
   if (getState() == State::BigString) {
-    m_allocator->free(m_bigString.string);
+    getAllocator().free(m_bigString.string);
     // do cleanup for easier debugging
     m_bigString.size = 0;
     m_bigString.capacity = 0;
@@ -274,7 +454,7 @@ void String::take(String&& other) {
     other.m_bigString.capacity = 0;
   } else {
     m_smallString = other.m_smallString;
-    m_smallString.clear();
+    other.m_smallString.clear();
   }
 }
 
@@ -290,6 +470,12 @@ void String::onAllocFailed() {
   m_smallString.setSize(kAllocFailedStringSize);
   m_smallString.string[kAllocFailedStringSize] = 0;
   setState(State::SmallString);
+}
+
+String vformat(fmt::string_view formatStr, fmt::format_args args) {
+  fmt::basic_memory_buffer<char, fmt::inline_buffer_size> buffer;
+  fmt::vformat_to(buffer, formatStr, args);
+  return String(buffer.data(), buffer.size());
 }
 
 }  // namespace dc

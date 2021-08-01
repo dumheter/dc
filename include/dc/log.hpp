@@ -28,12 +28,12 @@
 
 #include <dc/assert.hpp>
 #include <dc/macros.hpp>
+#include <dc/string.hpp>
 #include <dc/time.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
 #include <functional>
 #include <limits>
-#include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Quick Start
@@ -261,12 +261,12 @@ class Logger {
 //
 
 struct [[nodiscard]] Payload {
-  const char* fileName;
-  const char* functionName;
-  int lineno;
-  Level level;
+  const char* fileName = nullptr;
+  const char* functionName = nullptr;
+  int lineno = -1;
+  Level level = Level::None;
   Timestamp timestamp;
-  std::string msg;
+  String msg;
 };
 
 template <typename... Args>
@@ -278,10 +278,10 @@ void makePayload(const char* fileName, const char* functionName, int lineno,
   payload.lineno = lineno;
   payload.level = level;
   payload.timestamp = makeTimestamp();
-  payload.msg = fmt::format(dc::forward<Args>(args)...);
+  payload.msg = dc::format(dc::forward<Args>(args)...);
 
   // Can fail if we cannot allocate memory.
-  const bool res = logger.enqueue(std::move(payload));
+  const bool res = logger.enqueue(dc::move(payload));
   DC_ASSERT(res, "failed to allocate memory");
 }
 

@@ -63,8 +63,8 @@ namespace dc {
 #if defined(DC_PLATFORM_WINDOWS)
 
 struct ModuleInfo {
-  std::string imageName;
-  std::string moduleName;
+  String imageName;
+  String moduleName;
   void* baseAddr;
   DWORD loadSize;
 
@@ -139,21 +139,21 @@ class Symbol {
 
   ~Symbol() { delete m_sym; }
 
-  std::string name() const { return std::string(m_sym->Name); }
+  String name() const { return String(m_sym->Name); }
 
-  Result<std::string, CallstackErr> undecoratedName() const {
-    if (*m_sym->Name == 0) return Ok<std::string>("<name not available>");
+  Result<String, CallstackErr> undecoratedName() const {
+    if (*m_sym->Name == 0) return Ok<String>("<name not available>");
 
-    std::string name;
+    String name;
     name.resize(kMaxNameLen);
-    const DWORD bytesWritten =
-        UnDecorateSymbolName(m_sym->Name, &name[0],
-                             static_cast<DWORD>(name.size()), UNDNAME_COMPLETE);
+    const DWORD bytesWritten = UnDecorateSymbolName(
+        m_sym->Name, reinterpret_cast<char*>(name.getData()),
+        static_cast<DWORD>(name.getSize()), UNDNAME_COMPLETE);
     if (bytesWritten == 0)
       return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
     name.resize(bytesWritten);
-    return Ok<std::string>(dc::move(name));
+    return Ok<String>(dc::move(name));
   }
 
  private:
@@ -203,8 +203,6 @@ Result<Callstack, CallstackErr> buildCallstack() {
 static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
                                                          HANDLE thread,
                                                          CONTEXT* context) {
-  Result<Callstack, CallstackErr> out = Ok(Callstack());
-
   if (!SymInitialize(process, NULL, false))
     return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
@@ -276,19 +274,18 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       Result<Symbol, CallstackErr> symbol =
           Symbol::create(process, frame.AddrPC.Offset);
 
-      Result<std::string, CallstackErr> fnName = symbol.match(
+      Result<String, CallstackErr> fnName = symbol.match(
           [](const Symbol& symbol) { return symbol.undecoratedName(); },
-          [frame](const CallstackErr&) -> Result<std::string, CallstackErr> {
-            return Ok<std::string>(fmt::format("{:#08x}", frame.AddrPC.Offset));
+          [frame](const CallstackErr&) -> Result<String, CallstackErr> {
+            return Ok<String>(dc::format("{:#08x}", frame.AddrPC.Offset));
           });
 
       if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
         fmt::format_to(
             std::back_inserter(buffer), "{}",
-            fnName.match([](const std::string& s) -> std::string { return s; },
-                         [](const CallstackErr&) -> std::string {
-                           return std::string("?fn?");
-                         }));
+            fnName.match(
+                [](const String& s) -> String { return s.clone(); },
+                [](const CallstackErr&) -> String { return String("?fn?"); }));
 
         if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
                                  &offsetFromSymbol, &line))
@@ -311,17 +308,15 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       break;
   } while (frame.AddrReturn.Offset != 0);
 
-  Callstack cs;
-  cs.setCallstack(buffer.begin(), buffer.end());
-  out = Ok(dc::move(cs));
-
   for (const ModuleInfo& module : modules)
     SymUnloadModule64(process, (DWORD64)module.baseAddr);
 
+  Result<Callstack, CallstackErr> out =
+      Ok(Callstack(StringView(buffer.data(), buffer.size())));
   return out;
 }
 
-std::string CallstackErr::toString() const {
+String CallstackErr::toString() const {
   LPVOID lpMsgBuf;
 
   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -330,7 +325,7 @@ std::string CallstackErr::toString() const {
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0,
                 NULL);
 
-  std::string out(static_cast<char*>(lpMsgBuf));
+  String out(static_cast<char*>(lpMsgBuf));
   LocalFree(lpMsgBuf);
 
   return out;
@@ -400,13 +395,10 @@ Result<Callstack, CallstackErr> buildCallstack() {
 
   if (!out.empty()) out.resize(out.size() - 1);  //< remove last newline
 
-  Callstack cs;
-  cs.setCallstack(out.begin(), out.end());
-
-  return Ok(dc::move(cs));
+  return Ok(Callstack(StringView(buffer.data(), buffer.size())));
 }
 
-std::string CallstackErr::toString() const {
+String CallstackErr::toString() const {
   // TODO cgustafsson:
   return "todo";
 }
