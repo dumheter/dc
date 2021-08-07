@@ -6,7 +6,7 @@
 using namespace dc;
 
 using TrackedInt = dtest::TrackLifetime<int>;
-using TrackedString = dtest::TrackLifetime<std::string>;
+using TrackedString = dtest::TrackLifetime<dc::String>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFETIME
@@ -36,7 +36,7 @@ DTEST(construction_option) {
   Option<TrackedString> optionSomeConstructed = dc::move(maybeCatName);
   ASSERT_TRUE(optionSomeConstructed);
   ASSERT_EQ(catName.getMoves(), catNameMoves + 1);
-  ASSERT_EQ(optionSomeConstructed.value().getObject(), std::string("Emma"));
+  ASSERT_EQ(optionSomeConstructed.value().getObject(), dc::String("Emma"));
 }
 
 DTEST(assignment_option) {
@@ -99,17 +99,17 @@ DTEST(clone) {
 }
 
 DTEST(as_mut_const_ref) {
-  TrackedString original(std::string("awesome"));
+  TrackedString original(dc::String("awesome"));
   auto option = makeSome(dc::move(original));
   auto constRef = option.asConstRef();
   auto mutRef = option.asMutRef();
   ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(constRef.value().get().getObject(), std::string("awesome"));
+  ASSERT_EQ(constRef.value().get().getObject(), dc::String("awesome"));
 
   mutRef.value().get().getObject() = "you are";
-  ASSERT_EQ(option.value().getObject(), std::string("you are"));
-  ASSERT_EQ(constRef.value().get().getObject(), std::string("you are"));
-  ASSERT_EQ(mutRef.value().get().getObject(), std::string("you are"));
+  ASSERT_EQ(option.value().getObject(), dc::String("you are"));
+  ASSERT_EQ(constRef.value().get().getObject(), dc::String("you are"));
+  ASSERT_EQ(mutRef.value().get().getObject(), dc::String("you are"));
   ASSERT_EQ(original.getCopies(), 0);
 }
 

@@ -1,10 +1,10 @@
 #include <dc/dtest.hpp>
 #include <dc/result.hpp>
-#include <string>
+#include <dc/string.hpp>
 
 using TrackedInt = dtest::TrackLifetime<int>;
 using TrackedFloat = dtest::TrackLifetime<float>;
-using TrackedString = dtest::TrackLifetime<std::string>;
+using TrackedString = dtest::TrackLifetime<dc::String>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFETIME
@@ -21,7 +21,7 @@ DTEST(ResultOk) {
 //
 
 DTEST(ok) {
-  auto result = dc::makeOk<int, std::string>(27);
+  auto result = dc::makeOk<int, dc::String>(27);
   auto maybeInt = dc::move(result).ok();
   auto maybeString = dc::move(result).err();
   ASSERT_TRUE(maybeInt);
@@ -30,12 +30,12 @@ DTEST(ok) {
 }
 
 DTEST(err) {
-  auto result = dc::makeErr<int, std::string>("carrot");
+  auto result = dc::makeErr<int, dc::String>("carrot");
   auto maybeInt = dc::move(result).ok();
   auto maybeString = dc::move(result).err();
   ASSERT_FALSE(maybeInt);
   ASSERT_TRUE(maybeString);
-  ASSERT_EQ(maybeString.value(), std::string("carrot"));
+  ASSERT_EQ(maybeString.value(), dc::String("carrot"));
 }
 
 DTEST(value) {
@@ -109,7 +109,7 @@ DTEST(unwrapErr) {
 }
 
 DTEST(as_const_ref) {
-  TrackedString original(std::string("hey"));
+  TrackedString original(dc::String("hey"));
   const auto result = dc::makeOk<TrackedString, int>(dc::move(original));
   const auto constRef = result.asConstRef();
   ASSERT_EQ(result.value(), constRef.value().get());
@@ -117,7 +117,7 @@ DTEST(as_const_ref) {
 }
 
 DTEST(as_mut_ref) {
-  TrackedString original(std::string("hey"));
+  TrackedString original(dc::String("hey"));
   auto result = dc::makeOk<TrackedString, int>(dc::move(original));
   auto mutRef = result.asMutRef();
   ASSERT_EQ(result.value(), mutRef.value().get());
@@ -133,11 +133,11 @@ DTEST(as_mut_ref) {
 //
 
 DTEST(contains) {
-  const auto resultOk = dc::makeOk<int, std::string>(-133);
-  const auto resultErr = dc::makeErr<int, std::string>(std::string("wow"));
+  const auto resultOk = dc::makeOk<int, dc::String>(-133);
+  const auto resultErr = dc::makeErr<int, dc::String>(dc::String("wow"));
   ASSERT_TRUE(resultOk.contains(-133));
-  ASSERT_TRUE(resultErr.containsErr(std::string("wow")));
-  ASSERT_FALSE(resultOk.containsErr(std::string("wow")));
+  ASSERT_TRUE(resultErr.containsErr(dc::String("wow")));
+  ASSERT_FALSE(resultOk.containsErr(dc::String("wow")));
   ASSERT_FALSE(resultErr.contains(-133));
 }
 
@@ -186,10 +186,10 @@ DTEST(neq_result) {
 DTEST(match_rvalue_ok) {
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
+  dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
   float value =
       dc::move(okResult).match([](TrackedInt) -> float { return 1.f; },
-                               [](std::string&&) -> float { return -1.f; });
+                               [](dc::String&&) -> float { return -1.f; });
   ASSERT_TRUE(value > 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }
@@ -207,9 +207,9 @@ DTEST(match_rvalue_err) {
 DTEST(match_lvalue_ok) {
   TrackedInt parent = 13;
 
-  dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
+  dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
   float value = okResult.match([](TrackedInt&) { return 1.f; },
-                               [](std::string&) { return -1.f; });
+                               [](dc::String&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }
@@ -227,9 +227,9 @@ DTEST(match_lvalue_err) {
 DTEST(match_const_lvalue_ok) {
   TrackedInt parent = 13;
 
-  const dc::Result<TrackedInt, std::string> okResult = dc::Ok(dc::move(parent));
+  const dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
   float value = okResult.match([](const TrackedInt&) { return 1.f; },
-                               [](const std::string&) { return -1.f; });
+                               [](const dc::String&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
   ASSERT_EQ(parent.getCopies(), 0);
 }
@@ -268,6 +268,6 @@ DTEST(make_ok) {
 }
 
 DTEST(make_err) {
-  auto result = dc::makeErr<int, std::string>("hey");
+  auto result = dc::makeErr<int, dc::String>("hey");
   ASSERT_TRUE(result.isErr());
 }
