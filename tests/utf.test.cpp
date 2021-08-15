@@ -4,6 +4,53 @@
 
 using namespace dc;
 
+DTEST(encode1) {
+	String str;
+	utf8::encode('x', str);
+
+	String correct;
+	correct += 'x';
+	ASSERT_EQ(str, correct);
+	ASSERT_EQ(str.getSize(), 1);
+}
+
+DTEST(encode2) {
+	String str;
+	utf8::encode(0x01B5, str); // Latin Capital Letter Z with Stroke.
+
+	String correct;
+	correct += 0xC6;
+	correct += 0xB5;
+	ASSERT_EQ(str, correct);
+	ASSERT_EQ(str.getSize(), 2);
+}
+
+DTEST(encode3) {
+	String str;
+	utf8::encode(0x2605, str); // Black Star
+
+	String correct;
+	correct += 0xE2;
+	correct += 0x98;
+	correct += 0x85;
+	ASSERT_EQ(str, correct);
+	ASSERT_EQ(str.getSize(), 3);
+}
+
+DTEST(encode4) {
+	String str;
+	utf8::encode(0x1'F525, str); // Fire emoji
+
+	String correct;
+	correct += 0xF0;
+	correct += 0x9F;
+	correct += 0x94;
+	correct += 0xA5;
+	ASSERT_EQ(str, correct);
+	ASSERT_EQ(str.getSize(), 4);
+}
+
+
 DTEST(decode1) {
   String str = "x";
   utf8::CodePoint cp;

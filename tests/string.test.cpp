@@ -3,6 +3,25 @@
 
 using namespace dc;
 
+///////////////////////////////////////////////////////////////////////////////
+// Iterator
+//
+
+DTEST(forwardRangeLoop) {
+  // const char* abc = "abc";
+  // Utf8Iterator iter(abc, 3, 0);
+  // Utf8Iterator iterEnd(abc, 3, 3);
+
+  // String str;
+  // for (; iter != iterEnd; iter++)
+  // {
+  // 	utf8::encode(*iter, str);
+  // }
+
+  // ASSERT_EQ(str, String("abc"));
+  ASSERT_TRUE(true);
+}
+
 DTEST(empty) {
   String nothing("");
   ASSERT_TRUE(nothing.isEmpty());

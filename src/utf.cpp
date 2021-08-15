@@ -27,6 +27,18 @@
 
 namespace dc::utf8 {
 
+/*
+   Char. number range  |        UTF-8 octet sequence
+      (hexadecimal)    |              (binary)
+   --------------------+---------------------------------------------
+   0000 0000-0000 007F | 0xxxxxxx
+   0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+   0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+   0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+   source: RFC-3629
+ */
+
 constexpr CodePoint kOctetCount1Mask = 0b1000'0000;
 constexpr CodePoint kOctetCount2Mask = 0b1110'0000;
 constexpr CodePoint kOctetCount3Mask = 0b1111'0000;
@@ -37,7 +49,43 @@ constexpr CodePoint kOctetCount1Value = 0b0000'0000;
 constexpr CodePoint kOctetCount2Value = 0b1100'0000;
 constexpr CodePoint kOctetCount3Value = 0b1110'0000;
 constexpr CodePoint kOctetCount4Value = 0b1111'0000;
-// constexpr CodePoint kOctetSequenceValue = 0b1000'0000;
+constexpr CodePoint kOctetSequenceValue = 0b1000'0000;
+
+constexpr CodePoint kOctetUpperBound1 = 0x7F;
+constexpr CodePoint kOctetUpperBound2 = 0x7FF;
+constexpr CodePoint kOctetUpperBound3 = 0xFFFF;
+constexpr CodePoint kOctetUpperBound4 = 0x10'FFFF;
+
+void encode(CodePoint cp, String& string)
+{
+	const bool hasOctetCount1 = cp <= kOctetUpperBound1;
+	const bool hasOctetCount2 = (cp <= kOctetUpperBound2) && (cp > kOctetUpperBound1);
+	const bool hasOctetCount3 = (cp <= kOctetUpperBound3) && (cp > kOctetUpperBound2);
+	const bool hasOctetCount4 = (cp <= kOctetUpperBound4) && (cp > kOctetUpperBound3);
+
+	const usize size = string.getSize();
+	u8* ptr = string.getData();
+
+	if (hasOctetCount1) {
+		string.resize(size + 1);
+		ptr[size] = (~kOctetCount1Mask) & cp;
+	} else if (hasOctetCount2) {
+		string.resize(size + 2);
+		ptr[size] = kOctetCount2Value + ((~kOctetCount2Mask) & (cp >> 6));
+		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+	} else if (hasOctetCount3) {
+		string.resize(size + 3);
+		ptr[size] = kOctetCount3Value + ((~kOctetCount3Mask) & (cp >> 12));
+		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
+		ptr[size+2] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+	} else if (hasOctetCount4) {
+		string.resize(size + 4);
+		ptr[size] = kOctetCount4Value + ((~kOctetCount4Mask) & (cp >> 18));
+		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 12));
+		ptr[size+2] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
+		ptr[size+3] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+	}
+}
 
 CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut) {
   CodeSize size;

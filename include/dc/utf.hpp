@@ -36,7 +36,8 @@ namespace utf8 {
 using CodePoint = u32;
 using CodeSize = usize;
 
-void encode();
+/// Encode the code point at the end of the string. Noop if invalid unicode character.
+void encode(CodePoint cp, String& string);
 
 /// Decode a code point from a utf-8 string.
 /// @pre Must be valid utf-8.

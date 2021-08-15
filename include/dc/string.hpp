@@ -35,6 +35,38 @@
 namespace dc {
 
 ///////////////////////////////////////////////////////////////////////////////
+// Iterator
+//
+
+/// Iterator to a utf-8 encoded string.
+class [[nodiscard]] Utf8Iterator
+{
+  public:
+    Utf8Iterator(const char* string, usize size, usize offset)
+			: m_string(string), m_size(size), m_offset(static_cast<s64>(offset)) {}
+
+	/// @return The code point at the current offset.
+    [[nodiscard]] utf8::CodePoint operator*();
+
+    //[[nodiscard]] utf8::CodePoint operator->() const;
+
+    [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
+
+    [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
+
+    void operator++();
+
+    void operator--();
+
+	[[nodiscard]] bool hasValidOffset() const;
+
+  private:
+    const char* m_string = nullptr;
+    u64 m_size = 0;
+    s64 m_offset = 0;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // String View
 //
 
@@ -42,25 +74,6 @@ namespace dc {
 
 // template <usize kSize = kStringViewDynamic>
 class [[nodiscard]] StringView {
- public:
-  class [[nodiscard]] Utf8Iterator {
-   public:
-    Utf8Iterator(const char* string, usize size, usize offset)
-        : m_string(string), m_size(size), m_offset(offset) {}
-
-    [[nodiscard]] utf8::CodePoint operator*();
-    //[[nodiscard]] utf8::CodePoint operator->() const;
-    [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
-    [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
-    void operator++();
-    void operator--();
-
-   private:
-    const char* m_string = nullptr;
-    usize m_size = 0;
-    usize m_offset = 0;
-  };
-
  public:
   // TODO cgustafsson: How to allow this constexpr size constructor?
   // constexpr StringView(const char (&string)[kSize])
