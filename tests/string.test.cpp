@@ -66,17 +66,11 @@ DTEST(utf8IteratorCanDecrementToBeforeBegin) {
 
 DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
   String str;
-  str += 0xF0;
-  str += 0x9F;
-  str += 0x94;
-  str += 0xA5;  // Fire emoji
-  str += ' ';
-  str += 0xE1;
-  str += 0xBD;
-  str += 0xA8;  // Greek Capital Letter Omega with Psili
-  str += ' ';
-  str += 0xC6;
-  str += 0xB5;  // Latin Capital Letter Z with Stroke
+  utf8::encode(0x1'F525, str);  // Fire emoji
+  utf8::encode(' ', str);
+  utf8::encode(0x1F68, str);  // Greek Capital Letter Omega with Psili
+  utf8::encode(' ', str);
+  utf8::encode(0x01B5, str);  // Latin Capital Letter Z with Stroke
 
   Utf8Iterator iter(str.c_str(), str.getSize(), 0);
   Utf8Iterator iterEnd(str.c_str(), str.getSize(), str.getSize());
@@ -106,17 +100,11 @@ DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
 
 DTEST(utf8IteratorCanDecrementToBeforeBeginWithLargeUtf8Characters) {
   String str;
-  str += 0xF0;
-  str += 0x9F;
-  str += 0x94;
-  str += 0xA5;  // Fire emoji
-  str += ' ';
-  str += 0xE1;
-  str += 0xBD;
-  str += 0xA8;  // Greek Capital Letter Omega with Psili
-  str += ' ';
-  str += 0xC6;
-  str += 0xB5;  // Latin Capital Letter Z with Stroke
+  utf8::encode(0x1'F525, str);  // Fire emoji
+  utf8::encode(' ', str);
+  utf8::encode(0x1F68, str);  // Greek Capital Letter Omega with Psili
+  utf8::encode(' ', str);
+  utf8::encode(0x01B5, str);  // Latin Capital Letter Z with Stroke
 
   Utf8Iterator iter(str.c_str(), str.getSize(), str.getSize());
   Utf8Iterator iterBeforeBegin(str.c_str(), str.getSize(), -1);
