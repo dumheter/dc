@@ -7,20 +7,201 @@ using namespace dc;
 // Iterator
 //
 
-DTEST(forwardRangeLoop) {
-  // const char* abc = "abc";
-  // Utf8Iterator iter(abc, 3, 0);
-  // Utf8Iterator iterEnd(abc, 3, 3);
+DTEST(utf8IteratorEndComparison) {
+  const String abc = "abc";
 
-  // String str;
-  // for (; iter != iterEnd; iter++)
-  // {
-  // 	utf8::encode(*iter, str);
-  // }
+  Utf8Iterator iterBeforeBegin(abc.c_str(), abc.getSize(), -1);
+  Utf8Iterator iterBegin(abc.c_str(), abc.getSize(), 0);
+  Utf8Iterator iterEnd(abc.c_str(), abc.getSize(), 3);
 
-  // ASSERT_EQ(str, String("abc"));
-  ASSERT_TRUE(true);
+  ASSERT_TRUE(iterBegin != iterBeforeBegin);
+  ASSERT_TRUE(iterBegin != iterEnd);
+  ASSERT_TRUE(iterBeforeBegin != iterEnd);
+
+  Utf8Iterator iterBeforeBegin2(abc.c_str(), abc.getSize(), -1);
+  ASSERT_TRUE(iterBeforeBegin == iterBeforeBegin2);
 }
+
+DTEST(utf8IteratorCanIncrementToEnd) {
+  const String abc = "abc";
+
+  Utf8Iterator iter(abc.c_str(), abc.getSize(), 0);
+  Utf8Iterator iterEnd(abc.c_str(), abc.getSize(), 3);
+
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 'a');
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 'b');
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 'c');
+
+  ++iter;
+  ASSERT_TRUE(iter == iterEnd);
+}
+
+DTEST(utf8IteratorCanDecrementToBeforeBegin) {
+  const String abc = "abc";
+
+  Utf8Iterator iter(abc.c_str(), abc.getSize(), 2);
+  Utf8Iterator iterBeforeBegin(abc.c_str(), abc.getSize(), -1);
+
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 'c');
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 'b');
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 'a');
+
+  --iter;
+  ASSERT_TRUE(iter == iterBeforeBegin);
+}
+
+DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
+  String str;
+  str += 0xF0;
+  str += 0x9F;
+  str += 0x94;
+  str += 0xA5;  // Fire emoji
+  str += ' ';
+  str += 0xE1;
+  str += 0xBD;
+  str += 0xA8;  // Greek Capital Letter Omega with Psili
+  str += ' ';
+  str += 0xC6;
+  str += 0xB5;  // Latin Capital Letter Z with Stroke
+
+  Utf8Iterator iter(str.c_str(), str.getSize(), 0);
+  Utf8Iterator iterEnd(str.c_str(), str.getSize(), str.getSize());
+
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 0x1'F525);
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, ' ');
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 0x1F68);
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, ' ');
+
+  ++iter;
+  ASSERT_TRUE(iter != iterEnd);
+  ASSERT_EQ(*iter, 0x01B5);
+
+  ++iter;
+  ASSERT_TRUE(iter == iterEnd);
+}
+
+DTEST(utf8IteratorCanDecrementToBeforeBeginWithLargeUtf8Characters) {
+  String str;
+  str += 0xF0;
+  str += 0x9F;
+  str += 0x94;
+  str += 0xA5;  // Fire emoji
+  str += ' ';
+  str += 0xE1;
+  str += 0xBD;
+  str += 0xA8;  // Greek Capital Letter Omega with Psili
+  str += ' ';
+  str += 0xC6;
+  str += 0xB5;  // Latin Capital Letter Z with Stroke
+
+  Utf8Iterator iter(str.c_str(), str.getSize(), str.getSize());
+  Utf8Iterator iterBeforeBegin(str.c_str(), str.getSize(), -1);
+
+  --iter;  // we are at end, place ourself at the last utf8 character's start
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 0x01B5);
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, ' ');
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 0x1F68);
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, ' ');
+
+  --iter;
+  ASSERT_TRUE(iter != iterBeforeBegin);
+  ASSERT_EQ(*iter, 0x1'F525);
+
+  --iter;
+  ASSERT_TRUE(iter == iterBeforeBegin);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// StringView
+//
+
+// DTEST(stringViewCompTime) {
+// 	 constexpr StringView view("comptime length");
+
+//   ASSERT_EQ(view.getSize(), strlen("comptime length"));
+//   ASSERT_TRUE(strcmp(view.c_str(), "comptime length") == 0);
+// }
+
+DTEST(stringViewRunTime) {
+  String runtimeString("runtime length");
+  StringView view = runtimeString.toView();
+
+  ASSERT_EQ(view.getSize(), strlen("runtime length"));
+  ASSERT_TRUE(strcmp(view.c_str(), "runtime length") == 0);
+}
+
+DTEST(stringViewUtf8Iterator) {
+  String str;
+
+  utf8::CodePoint cps[3];
+  utf8::CodePoint cp;
+
+  str += 0xC6;
+  str += 0xB5;
+  utf8::decode(str, 0, cp);
+  cps[0] = 0x01B5;  // Latin Captial Letter Z with Stroke.
+
+  str += 0xE1;
+  str += 0xBD;
+  str += 0xA8;
+  utf8::decode(str, 0, cp);
+  cps[1] = 0x1F68;  // Greek Capital Letter Omega with Psili
+
+  str += 'x';
+  utf8::decode(str, 0, cp);
+  cps[2] = 'x';
+
+  int i = 0;
+  for (utf8::CodePoint c : str.toView()) {
+    if (i == 0)
+      ASSERT_EQ(cps[0], c);
+    else if (i == 1)
+      ASSERT_EQ(cps[1], c);
+    else
+      ASSERT_EQ(cps[2], c);
+
+    ++i;
+  }
+  ASSERT_EQ(i, 3);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// String
+//
 
 DTEST(empty) {
   String nothing("");
@@ -146,55 +327,6 @@ DTEST(resize) {
   }
 }
 
-// DTEST(stringViewCompTime) {
-// 	 constexpr StringView view("comptime length");
-
-//   ASSERT_EQ(view.getSize(), strlen("comptime length"));
-//   ASSERT_TRUE(strcmp(view.c_str(), "comptime length") == 0);
-// }
-
-DTEST(stringViewRunTime) {
-  String runtimeString("runtime length");
-  StringView view = runtimeString.toView();
-
-  ASSERT_EQ(view.getSize(), strlen("runtime length"));
-  ASSERT_TRUE(strcmp(view.c_str(), "runtime length") == 0);
-}
-
-DTEST(stringViewUtf8Iterator) {
-  String str;
-
-  utf8::CodePoint cps[3];
-  utf8::CodePoint cp;
-
-  str += 0xC6;
-  str += 0xB5;
-  utf8::decode(str, 0, cp);
-  cps[0] = 0x01B5;  // Latin Captial Letter Z with Stroke.
-
-  str += 0xE1;
-  str += 0xBD;
-  str += 0xA8;
-  utf8::decode(str, 0, cp);
-  cps[1] = 0x1F68;  // Greek Capital Letter Omega with Psili
-
-  str += 'x';
-  utf8::decode(str, 0, cp);
-  cps[2] = 'x';
-
-  int i = 0;
-  for (utf8::CodePoint c : str.toView()) {
-    if (i == 0)
-      ASSERT_EQ(cps[0], c);
-    else if (i == 1)
-      ASSERT_EQ(cps[1], c);
-    else
-      ASSERT_EQ(cps[2], c);
-
-    ++i;
-  }
-  ASSERT_EQ(i, 3);
-}
 /*
 DTEST(findEasy) {
         const String lorem("Lorem ipsum dolor sit amet, consectetur adipisicing

@@ -98,11 +98,13 @@ struct [[nodiscard]] Some {
 
   explicit constexpr Some(V&& value) : m_value(dc::forward<V&&>(value)) {}
 
-	/// Allow copy construct for small things.
+  /// Allow copy construct for small things.
   template <typename = EnableIf<(sizeof(V) <= 16) && (isPod<V>)>>
-	explicit constexpr Some(V value) : m_value(value) {
-		static_assert(sizeof(V) <= 16 && (isPod<V>), "Trying to copy construct when the object is not cheap to copy, or not POD. Use move constructor instead.");
-	}
+  explicit constexpr Some(V value) : m_value(value) {
+    static_assert(sizeof(V) <= 16 && (isPod<V>),
+                  "Trying to copy construct when the object is not cheap to "
+                  "copy, or not POD. Use move constructor instead.");
+  }
 
   constexpr Some(const Some<V>& other) = default;
   constexpr Some& operator=(const Some<V>& other) = default;
@@ -290,28 +292,25 @@ class [[nodiscard]] Option {
     return valueCRef();
   }
 
-	[[nodiscard]] constexpr V& valueOr(V& value) & {
-		if (isSome())
-			return valueRef();
-		return value;
-	}
+  [[nodiscard]] constexpr V& valueOr(V& value) & {
+    if (isSome()) return valueRef();
+    return value;
+  }
 
-	[[nodiscard]] constexpr const V& valueOr(const V& value) const& {
-		if (isSome())
-			return valueCRef();
-		return value;
-	}
+  [[nodiscard]] constexpr const V& valueOr(const V& value) const& {
+    if (isSome()) return valueCRef();
+    return value;
+  }
 
   [[nodiscard]] constexpr V unwrap() && {
     DC_ASSERT(isSome(), "Tried to unwrap value 'Some' when Option is 'None'.");
     return dc::move(valueRef());
   }
 
-	[[nodiscard]] constexpr V unwrapOr(V&& value) && {
-		if (isSome())
-			return dc::move(valueRef());
-		return dc::move(value);
-	}
+  [[nodiscard]] constexpr V unwrapOr(V&& value) && {
+    if (isSome()) return dc::move(valueRef());
+    return dc::move(value);
+  }
 
   // TODO cgustafsson: unwrapOrElse
 

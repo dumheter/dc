@@ -56,35 +56,37 @@ constexpr CodePoint kOctetUpperBound2 = 0x7FF;
 constexpr CodePoint kOctetUpperBound3 = 0xFFFF;
 constexpr CodePoint kOctetUpperBound4 = 0x10'FFFF;
 
-void encode(CodePoint cp, String& string)
-{
-	const bool hasOctetCount1 = cp <= kOctetUpperBound1;
-	const bool hasOctetCount2 = (cp <= kOctetUpperBound2) && (cp > kOctetUpperBound1);
-	const bool hasOctetCount3 = (cp <= kOctetUpperBound3) && (cp > kOctetUpperBound2);
-	const bool hasOctetCount4 = (cp <= kOctetUpperBound4) && (cp > kOctetUpperBound3);
+void encode(CodePoint cp, String& string) {
+  const bool hasOctetCount1 = cp <= kOctetUpperBound1;
+  const bool hasOctetCount2 =
+      (cp <= kOctetUpperBound2) && (cp > kOctetUpperBound1);
+  const bool hasOctetCount3 =
+      (cp <= kOctetUpperBound3) && (cp > kOctetUpperBound2);
+  const bool hasOctetCount4 =
+      (cp <= kOctetUpperBound4) && (cp > kOctetUpperBound3);
 
-	const usize size = string.getSize();
-	u8* ptr = string.getData();
+  const usize size = string.getSize();
+  u8* ptr = string.getData();
 
-	if (hasOctetCount1) {
-		string.resize(size + 1);
-		ptr[size] = (~kOctetCount1Mask) & cp;
-	} else if (hasOctetCount2) {
-		string.resize(size + 2);
-		ptr[size] = kOctetCount2Value + ((~kOctetCount2Mask) & (cp >> 6));
-		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
-	} else if (hasOctetCount3) {
-		string.resize(size + 3);
-		ptr[size] = kOctetCount3Value + ((~kOctetCount3Mask) & (cp >> 12));
-		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
-		ptr[size+2] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
-	} else if (hasOctetCount4) {
-		string.resize(size + 4);
-		ptr[size] = kOctetCount4Value + ((~kOctetCount4Mask) & (cp >> 18));
-		ptr[size+1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 12));
-		ptr[size+2] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
-		ptr[size+3] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
-	}
+  if (hasOctetCount1) {
+    string.resize(size + 1);
+    ptr[size] = (~kOctetCount1Mask) & cp;
+  } else if (hasOctetCount2) {
+    string.resize(size + 2);
+    ptr[size] = kOctetCount2Value + ((~kOctetCount2Mask) & (cp >> 6));
+    ptr[size + 1] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+  } else if (hasOctetCount3) {
+    string.resize(size + 3);
+    ptr[size] = kOctetCount3Value + ((~kOctetCount3Mask) & (cp >> 12));
+    ptr[size + 1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
+    ptr[size + 2] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+  } else if (hasOctetCount4) {
+    string.resize(size + 4);
+    ptr[size] = kOctetCount4Value + ((~kOctetCount4Mask) & (cp >> 18));
+    ptr[size + 1] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 12));
+    ptr[size + 2] = kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6));
+    ptr[size + 3] = kOctetSequenceValue + ((~kOctetSequenceMask) & cp);
+  }
 }
 
 CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut) {
@@ -146,9 +148,7 @@ Option<CodeSize> validate(const char8* data) {
     return None;
   }
 
-  // TODO cgustafsson: fix option so we can construct without a move for trivial
-  // types
-  return Some(move(size));
+  return Some(size);
 }
 
 }  // namespace dc::utf8

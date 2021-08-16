@@ -39,31 +39,32 @@ namespace dc {
 //
 
 /// Iterator to a utf-8 encoded string.
-class [[nodiscard]] Utf8Iterator
-{
-  public:
-    Utf8Iterator(const char* string, usize size, usize offset)
-			: m_string(string), m_size(size), m_offset(static_cast<s64>(offset)) {}
+class [[nodiscard]] Utf8Iterator {
+ public:
+  Utf8Iterator(const char* string, u64 size, s64 offset)
+      : m_string(string), m_size(size), m_offset(offset) {}
 
-	/// @return The code point at the current offset.
-    [[nodiscard]] utf8::CodePoint operator*();
+  /// @return The code point at the current offset.
+  [[nodiscard]] utf8::CodePoint operator*();
 
-    //[[nodiscard]] utf8::CodePoint operator->() const;
+  //[[nodiscard]] utf8::CodePoint operator->() const;
 
-    [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
+  [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
 
-    [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
+  [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
 
-    void operator++();
+  /// prefix
+  Utf8Iterator& operator++();
 
-    void operator--();
+  /// prefix
+  Utf8Iterator& operator--();
 
-	[[nodiscard]] bool hasValidOffset() const;
+  [[nodiscard]] bool hasValidOffset() const;
 
-  private:
-    const char* m_string = nullptr;
-    u64 m_size = 0;
-    s64 m_offset = 0;
+ private:
+  const char* m_string = nullptr;
+  u64 m_size = 0;
+  s64 m_offset = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

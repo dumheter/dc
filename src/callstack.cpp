@@ -50,9 +50,9 @@
 #pragma comment(lib, "dbghelp.lib")
 
 #else
-#include <execinfo.h>
 #include <cxxabi.h>
 #include <dlfcn.h>
+#include <execinfo.h>
 #endif
 
 namespace dc {

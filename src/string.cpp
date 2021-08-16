@@ -27,8 +27,8 @@
 #include <dc/math.hpp>
 #include <dc/string.hpp>
 #include <dc/utf.hpp>
-#include <unordered_map>
 #include <limits>
+#include <unordered_map>
 
 namespace dc {
 
@@ -39,54 +39,51 @@ utf8::CodePoint Utf8Iterator::operator*() {
 }
 
 bool Utf8Iterator::operator==(const Utf8Iterator& other) const {
-	return hasValidOffset() && other.hasValidOffset() &&
-			((m_string + m_offset) == (other.m_string + other.m_offset));
+  return (hasValidOffset() == other.hasValidOffset()) &&
+         ((m_string + m_offset) == (other.m_string + other.m_offset));
 }
 
 bool Utf8Iterator::operator!=(const Utf8Iterator& other) const {
-	return !(*this == other);
+  return !(*this == other);
 }
 
-void Utf8Iterator::operator++() {
+Utf8Iterator& Utf8Iterator::operator++() {
   utf8::CodePoint cp;
   const utf8::CodeSize codeSize = utf8::decode(m_string, m_offset, cp);
   m_offset += codeSize;
+
+  return *this;
 }
 
-void Utf8Iterator::operator--() {
-	/*
-	  To lookup the length backwards, we have to probe until we find a non-sequence
-	  byte, then we can read the size.
+Utf8Iterator& Utf8Iterator::operator--() {
+  /*
+    To lookup the length backwards, we have to probe until we find a
+   non-sequence byte, then we can read the size.
 
-	  Char. number range  |        UTF-8 octet sequence
-         (hexadecimal)    |              (binary)
-	  --------------------+---------------------------------------------
-	  0000 0000-0000 007F | 0xxxxxxx
-	  0000 0080-0000 07FF | 110xxxxx 10xxxxxx
-	  0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
-	  0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+    Char. number range  |        UTF-8 octet sequence
+   (hexadecimal)    |              (binary)
+    --------------------+---------------------------------------------
+    0000 0000-0000 007F | 0xxxxxxx
+    0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+    0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+    0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 
-	  source: RFC-3629
-	 */
+    source: RFC-3629
+   */
 
   // find a valid utf8 character
   Option<utf8::CodeSize> size = None;
-  for (s64 i = m_offset - 1; i >= 0; --i) {
+  for (s64 i = m_offset - 1; i >= 0 && size.isNone(); --i) {
     size = utf8::validate(m_string + i);
   }
 
-  m_offset -= size.valueOr(1); // move mimimum one byte
+  m_offset -= size.valueOr(1);  // move mimimum one byte
 
-  // TODO cgustafsson:
-  utf8::CodePoint cp;
-  const utf8::CodeSize codeSize = utf8::decode(m_string, m_offset, cp);
-  m_offset += codeSize;
-  m_size = uSafeSubtract(m_size, codeSize);
+  return *this;
 }
 
-bool Utf8Iterator::hasValidOffset() const
-{
-	return m_offset >= 0 && m_offset < static_cast<s64>(m_size);
+bool Utf8Iterator::hasValidOffset() const {
+  return m_offset >= 0 && m_offset < static_cast<s64>(m_size);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -134,14 +131,14 @@ std::unordered_map<utf8::CodePoint, usize> calcCharSkip(StringView string,
   std::unordered_map<utf8::CodePoint, usize> charSkip;
 
   for (utf8::CodePoint thisCp : string) {
-	  Option<usize> posOfLastMatch = None;
-	  usize i = 0;
-	  for (utf8::CodePoint otherCp : pattern) {
-		  if (thisCp == otherCp) posOfLastMatch = Some(i);
-		  ++i;
-	  }
-	  if (posOfLastMatch.isSome())
-		  charSkip[thisCp] = pattern.getLength() - posOfLastMatch.value();
+    Option<usize> posOfLastMatch = None;
+    usize i = 0;
+    for (utf8::CodePoint otherCp : pattern) {
+      if (thisCp == otherCp) posOfLastMatch = Some(i);
+      ++i;
+    }
+    if (posOfLastMatch.isSome())
+      charSkip[thisCp] = pattern.getLength() - posOfLastMatch.value();
   }
 
   return charSkip;
@@ -158,20 +155,19 @@ Option<usize> StringView::find(StringView pattern) const {
 
   // for the length of the text
   for (usize i = pattern.getSize() - 1; i < getSize();) {
+    // skip the length of our pattern
+    // const usize patternLength = pattern.getLength();
 
-	  // skip the length of our pattern
-	  //const usize patternLength = pattern.getLength();
+    // example - 7
+    // getIterAt(7 - 1)
 
-	  // example - 7
-	  // getIterAt(7 - 1)
+    // const Utf8Iterator iter = getIterAt(patternLength - 1);
 
-	  //const Utf8Iterator iter = getIterAt(patternLength - 1);
+    // while (iter)
 
-	  //while (iter)
+    // compare against current cp
+    // if ()
 
-	  // compare against current cp
-	  //if ()
-	  
     // utf8::CodePoint thisCp;
     // utf8::CodePoint otherCp;
     // TODO cgustafsson: move forward in the string, in terms of code points
@@ -180,8 +176,6 @@ Option<usize> StringView::find(StringView pattern) const {
     // 	// move forward by precalcualted step
     // 	i += charSkip[]
     // }
-
-			  
   }
 
   return None;
