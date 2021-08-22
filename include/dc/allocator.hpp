@@ -35,9 +35,16 @@ class IAllocator {
 
   static constexpr usize kMinimumAlignment = sizeof(void*);
 
-  /// @param Number of bytes to allocate. Note that size = count * sizeof(type)
+  /// @param count Number of bytes to allocate. Note that size = count *
+  /// sizeof(type)
+  /// @return Pointer to the beginning of the newly allocated buffer.
+  /// Or nullptr on failure.
   virtual void* alloc(usize count, usize align = kMinimumAlignment) = 0;
 
+  /// @param data Pointer to memory to be reallocated. If a valid pointer is
+  /// returned, then data is invalided.
+  /// @return Pointer to the beginning of the newly allocated buffer.
+  /// Or nullptr on failure.
   virtual void* realloc(void* data, usize count,
                         usize align = kMinimumAlignment) = 0;
 
@@ -49,7 +56,7 @@ IAllocator& getDefaultAllocator();
 /// @return Old allocator
 // IAllocator* setDefaultAllocator(IAllocator* newDefaultAllocator);
 
-class GeneralAllocator : public IAllocator {
+class GeneralAllocator final : public IAllocator {
  public:
   virtual void* alloc(usize count, usize align) override;
 

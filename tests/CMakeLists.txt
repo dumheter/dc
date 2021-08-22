@@ -19,6 +19,8 @@ set(TEST_SOURCES
   track_lifetime.test.cpp
   traits.test.cpp
   utf.test.cpp
+  list.test.cpp
+  small.list.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////
