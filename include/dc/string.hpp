@@ -71,9 +71,9 @@ class [[nodiscard]] Utf8Iterator {
 // String View
 //
 
-// constexpr usize kStringViewDynamic = 0;
+// constexpr u64 kStringViewDynamic = 0;
 
-// template <usize kSize = kStringViewDynamic>
+// template <u64 kSize = kStringViewDynamic>
 class [[nodiscard]] StringView {
  public:
   // TODO cgustafsson: How to allow this constexpr size constructor?
@@ -82,7 +82,7 @@ class [[nodiscard]] StringView {
 
   StringView(const char* string) : StringView(string, strlen(string)) {}
 
-  StringView(const char* string, usize size) : m_string(string), m_size(size) {}
+  StringView(const char* string, u64 size) : m_string(string), m_size(size) {}
 
   [[nodiscard]] constexpr const char* c_str() const { return m_string; }
 
@@ -90,13 +90,13 @@ class [[nodiscard]] StringView {
     return (const u8*)m_string;
   }
 
-  [[nodiscard]] constexpr usize getSize() const { return m_size; }
+  [[nodiscard]] constexpr u64 getSize() const { return m_size; }
 
-  [[nodiscard]] usize getLength() const;
+  [[nodiscard]] u64 getLength() const;
 
   [[nodiscard]] constexpr bool isEmpty() const { return m_size == 0; }
 
-  [[nodiscard]] char operator[](usize pos) const;
+  [[nodiscard]] char operator[](u64 pos) const;
 
   // [[nodiscard]] constexpr const char* begin() const { return m_string; }
   // [[nodiscard]] constexpr const char* end() const { return m_string + m_size;
@@ -108,11 +108,11 @@ class [[nodiscard]] StringView {
     return Utf8Iterator(m_string, m_size, m_size);
   }
 
-  [[nodiscard]] Option<usize> find(StringView pattern) const;
+  [[nodiscard]] Option<u64> find(StringView pattern) const;
 
  private:
   const char* m_string = nullptr;
-  usize m_size = 0;
+  u64 m_size = 0;
 };
 
 /// String
@@ -123,7 +123,7 @@ class [[nodiscard]] String {
  public:
   class [[nodiscard]] Iterator {
    public:
-    Iterator(u8* data, usize pos) : m_data(data), m_pos(pos) {}
+    Iterator(u8* data, u64 pos) : m_data(data), m_pos(pos) {}
 
     [[nodiscard]] u8& operator*() { return m_data[m_pos]; }
     [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
@@ -142,12 +142,12 @@ class [[nodiscard]] String {
 
    private:
     u8* m_data;
-    usize m_pos;
+    u64 m_pos;
   };
 
   class [[nodiscard]] CIterator {
    public:
-    CIterator(const u8* data, usize pos) : m_data(data), m_pos(pos) {}
+    CIterator(const u8* data, u64 pos) : m_data(data), m_pos(pos) {}
 
     [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
 
@@ -164,13 +164,13 @@ class [[nodiscard]] String {
 
    private:
     const u8* m_data;
-    usize m_pos;
+    u64 m_pos;
   };
 
  public:
   String(IAllocator& = getDefaultAllocator());
   String(const char* str, IAllocator& = getDefaultAllocator());
-  String(const char* str, usize size, IAllocator& = getDefaultAllocator());
+  String(const char* str, u64 size, IAllocator& = getDefaultAllocator());
   String(StringView view);
   String(String&& other) noexcept;
 
@@ -195,14 +195,14 @@ class [[nodiscard]] String {
   [[nodiscard]] const u8* getData() const;
   [[nodiscard]] u8* getData();
 
-  [[nodiscard]] u8& operator[](const usize pos) { return getData()[pos]; }
-  [[nodiscard]] const u8& operator[](const usize pos) const {
+  [[nodiscard]] u8& operator[](const u64 pos) { return getData()[pos]; }
+  [[nodiscard]] const u8& operator[](const u64 pos) const {
     return getData()[pos];
   }
 
-  [[nodiscard]] usize getSize() const;
-  [[nodiscard]] usize getLength() const;
-  [[nodiscard]] usize getCapacity() const;
+  [[nodiscard]] u64 getSize() const;
+  [[nodiscard]] u64 getLength() const;
+  [[nodiscard]] u64 getCapacity() const;
 
   [[nodiscard]] bool isEmpty() const;
 
@@ -226,42 +226,42 @@ class [[nodiscard]] String {
   }
 
   /// Append to the back of the string.
-  void append(const u8* str, usize size);
+  void append(const u8* str, u64 size);
 
   /// Insert into the string, may allocate if needed. Will overwrite if not
   /// at end of string.
   /// @param size Byte size of str, without the null termination.
-  void insert(const u8* str, usize size, usize offset);
-  void insert(const char* str, usize offset);
+  void insert(const u8* str, u64 size, u64 offset);
+  void insert(const char* str, u64 offset);
 
   /// Resize the internal buffer.
   /// @param size
   /// @return
-  usize resize(usize size);
+  u64 resize(u64 size);
 
   /// @retval Some with position if found
   /// @retval None if not found
-  Option<usize> find(StringView pattern) const;
+  Option<u64> find(StringView pattern) const;
 
  private:
   struct [[nodiscard]] BigString {
     u8* string;
-    usize size;
-    usize capacity;
+    u64 size;
+    u64 capacity;
   };
   static_assert(isPod<BigString>);
 
   struct [[nodiscard]] SmallString {
-    static constexpr usize kSize =
+    static constexpr u64 kSize =
         sizeof(BigString) - 1;  //< last byte reserved for null terminator
     u8 string[sizeof(BigString)];
 
     [[nodiscard]] constexpr bool isEmpty() const { return getSize() == 0; }
-    [[nodiscard]] constexpr usize getSize() const {
+    [[nodiscard]] constexpr u64 getSize() const {
       return kSize - string[kSize];
     }
-    [[nodiscard]] constexpr usize getCapacity() const { return kSize; }
-    void setSize(usize newSize);
+    [[nodiscard]] constexpr u64 getCapacity() const { return kSize; }
+    void setSize(u64 newSize);
     void clear();
   };
   static_assert(isPod<SmallString>);
@@ -279,7 +279,7 @@ class [[nodiscard]] String {
 
   /// Set the size in the correct string state.
   /// This is the raw internal set size method.
-  void setSize(usize size);
+  void setSize(u64 size);
 
   [[nodiscard]] IAllocator& getAllocator() const;
 

@@ -25,6 +25,7 @@
 #pragma once
 
 #include <dc/allocator.hpp>
+#include <dc/assert.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
 
@@ -58,6 +59,10 @@ class BufferAwareAllocator final : public IAllocator {
 };
 
 }  // namespace detail
+
+///////////////////////////////////////////////////////////////////////////////
+// List
+//
 
 /// Small size optimized list (dynamic array list). Starts out with the small
 /// size buffer, unless specifically specified otherwise.
