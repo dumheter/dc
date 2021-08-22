@@ -30,31 +30,63 @@
 
 namespace dc {
 
+class BufferAwareAllocator final : public IAllocator {
+ public:
+  /// @param externalAllocator Must point to valid data throughout this objects
+  /// lifetime, will not delete it on this destruction.
+  BufferAwareAllocator(IAllocator& externalAllocator)
+      : m_externalAllocator(externalAllocator) {}
+
+  BufferAwareAllocator(const BufferAwareAllocator& externalAllocator)
+      : m_externalAllocator(externalAllocator.m_externalAllocator),
+        m_haveAllocated(externalAllocator.m_haveAllocated) {}
+
+  virtual void* alloc(usize count, usize align = kMinimumAlignment) override;
+
+  virtual void* realloc(void* data, usize count,
+                        usize align = kMinimumAlignment) override;
+
+  virtual void free(void* data) override;
+
+ private:
+  IAllocator& m_externalAllocator;
+  bool m_haveAllocated = false;
+};
+
+/// Small size optimized list (dynamic array list). Starts out with the small
+/// size buffer, unless specifically specified otherwise.
+///
 /// @tparam T Element type that list stores.
-template <typename T>
+/// @tparam N Internal buffer size, in terms of element count.
+template <typename T,
+          u64 N = (64 - (36 + sizeof(BufferAwareAllocator))) / sizeof(T)>
 class List {
  public:
+  /// Construct a new list. Starts off with the internal buffer memory.
+  List(IAllocator& allocator = getDefaultAllocator())
+      : List(allocator, buffer, buffer, N) {}
+
+  /// Construct a new list. Depending on capacity, will either use internal
+  /// buffer, or allocate from allocator.
+  List(u64 capacity, IAllocator& allocator = getDefaultAllocator());
+
+ private:
   /// Take ownership of an already allocated set of memory, based on allocator.
-  /// Called by SmallList.
   List(IAllocator& allocator, T* begin, T* end, u64 capacity)
       : m_allocator(allocator),
         m_begin(begin),
         m_end(end),
         m_capacity(capacity) {}
 
-  /// Construct a new list. Will allocate its first memory from the allocator.
-  List(IAllocator& allocator = getDefaultAllocator())
-      : m_allocator(allocator) {}
+  List(u64 capacity, const BufferAwareAllocator& allocator);
 
-  /// Construct a new list. Will allocate its first memory from the allocator.
-  List(u64 capacity, IAllocator& allocator = getDefaultAllocator());
+ public:
+  /// Use clone instead
+  List(const List& other) = delete;
+  List& operator=(const List& other) = delete;
 
-	/// Use clone instead
-	List(const List& other) = delete;
-	List& operator=(const List& other) = delete;
-
-	List(List&& other);
-	List& operator=(List&& other) noexcept;
+  List(List&& other);
+  List& operator=(List&& other) noexcept;
 
   ~List();
 
@@ -68,7 +100,7 @@ class List {
 
   [[nodiscard]] u64 getCapacity() const noexcept { return m_capacity; }
 
-	[[nodiscard]] List clone() const;
+  [[nodiscard]] List clone() const;
 
   /// Reserve block of memory. May (re)allocate. All active elements are moved
   /// on reallocation. Iterators and references are invaliated.
@@ -87,110 +119,98 @@ class List {
 
   constexpr T* end() const { return m_end; }
 
-	/// @return Pointer to the element on found, or pointer to m_end on not found.
-	T* find(const T& elem);
+  /// @return Pointer to the element on found, or pointer to m_end on not found.
+  T* find(const T& elem);
   const T* find(const T& elem) const;
 
  private:
-  IAllocator& m_allocator;
+  BufferAwareAllocator m_allocator;
   T *m_begin = nullptr, *m_end = nullptr;
   u64 m_capacity = 0;
-};
-
-class BufferAwareAllocator final : public IAllocator {
- public:
-  /// @param externalAllocator Must point to valid data throughout this objects
-  /// lifetime, will not delete it on this destruction.
-  BufferAwareAllocator(IAllocator& externalAllocator)
-      : m_externalAllocator(externalAllocator) {}
-
-  virtual void* alloc(usize count, usize align) override;
-
-  virtual void* realloc(void* data, usize count, usize align) override;
-
-  virtual void free(void* data) override;
-
- private:
-  IAllocator& m_externalAllocator;
-  bool m_haveAllocated = false;
-};
-
-/// Small size optimized list (dynamic array list). Starts out with the small
-/// size buffer, unless specifically specified otherwise.
-///
-/// @tparam T Element type that list stores.
-/// @tparam N Internal buffer size, in terms of element count.
-template <typename T,
-          u32 N = (64 - (sizeof(List<T>) + sizeof(BufferAwareAllocator))) /
-                  sizeof(T)>
-class SmallList : public List<T> {
- public:
-  SmallList(IAllocator& allocator = getDefaultAllocator())
-      : m_allocator(allocator), List<T>(m_allocator, buffer, buffer, N) {}
-
- private:
   T buffer[N];
-  BufferAwareAllocator m_allocator;
 };
+
+// template <typename T,
+//           u32 N = (64 - (sizeof(List<T>) + sizeof(BufferAwareAllocator))) /
+//                   sizeof(T)>
+// class SmallList : public List<T> {
+//  public:
+//   SmallList(IAllocator& allocator = getDefaultAllocator())
+//       : m_allocator(allocator), List<T>(m_allocator, buffer, buffer, N) {}
+
+//  private:
+
+// };
 
 ///////////////////////////////////////////////////////////////////////////////
 // Template Implementation
 //
 
-template <typename T>
-List<T>::List(u64 capacity, IAllocator& allocator)
+template <typename T, u64 N>
+List<T, N>::List(u64 capacity, IAllocator& allocator) : m_allocator(allocator) {
+  if (capacity <= N) {
+    m_begin = buffer;
+    m_end = buffer;
+    m_capacity = N;
+  } else
+    reserve(capacity);
+}
+
+template <typename T, u64 N>
+List<T, N>::List(u64 capacity, const BufferAwareAllocator& allocator)
     : m_allocator(allocator) {
-  reserve(capacity);
+  if (capacity <= N) {
+    m_begin = buffer;
+    m_end = buffer;
+    m_capacity = N;
+  } else
+    reserve(capacity);
 }
 
-template <typename T>
-List<T>::List(List&& other)
-		: m_allocator(other.m_allocator)
-		, m_begin(other.m_begin)
-		, m_end(other.m_end)
-		, m_capacity(other.m_capacity)
-{
-	if (&other != this)
-	{
-		other.m_begin = nullptr;
-		other.m_end = nullptr;
-		other.m_capacity = 0;
-	}
+template <typename T, u64 N>
+List<T, N>::List(List&& other)
+    : m_allocator(other.m_allocator),
+      m_begin(other.m_begin),
+      m_end(other.m_end),
+      m_capacity(other.m_capacity) {
+  if (&other != this) {
+    other.m_begin = nullptr;
+    other.m_end = nullptr;
+    other.m_capacity = 0;
+  }
 }
 
-template <typename T>
-List<T>& List<T>::operator=(List&& other) noexcept
-{
-	if (&other != this)
-	{
-		m_begin = other.m_begin;
-		m_end = other.m_end;
-		m_capacity = other.m_capacity;
-		other.m_begin = nullptr;
-		other.m_end = nullptr;
-		other.m_capacity = 0;
-	}
+template <typename T, u64 N>
+List<T, N>& List<T, N>::operator=(List&& other) noexcept {
+  if (&other != this) {
+    m_begin = other.m_begin;
+    m_end = other.m_end;
+    m_capacity = other.m_capacity;
+    other.m_begin = nullptr;
+    other.m_end = nullptr;
+    other.m_capacity = 0;
+  }
 
-	return *this;
+  return *this;
 }
 
-template <typename T>
-List<T>::~List() {
+template <typename T, u64 N>
+List<T, N>::~List() {
   for (T& item : *this) item.~T();
 
   m_allocator.free(m_begin);
 }
 
-template <typename T>
-void List<T>::add(T item) {
+template <typename T, u64 N>
+void List<T, N>::add(T item) {
   if (getSize() >= m_capacity) reserve(getSize() * 2 + 32);
 
   *m_end = item;
   m_end += 1;
 }
 
-template <typename T>
-void List<T>::remove(T* item) {
+template <typename T, u64 N>
+void List<T, N>::remove(T* item) {
   DC_ASSERT(item < m_end, "Trying to erase an element outside of bounds.");
 
   // item->~T();
@@ -202,24 +222,23 @@ void List<T>::remove(T* item) {
   --m_end;
 }
 
-template <typename T>
-void List<T>::remove(u64 pos) {
+template <typename T, u64 N>
+void List<T, N>::remove(u64 pos) {
   remove(m_begin + pos);
 }
 
-template <typename T>
-List<T> List<T>::clone() const
-{
-	List<T> out(getCapacity(), m_allocator);
+template <typename T, u64 N>
+List<T, N> List<T, N>::clone() const {
+  List<T> out(getCapacity(),
+              static_cast<const BufferAwareAllocator&>(m_allocator));
 
-	for (const T& iter : *this)
-		out.add(iter);
+  for (const T& iter : *this) out.add(iter);
 
-	return out;
+  return out;
 }
 
-template <typename T>
-void List<T>::reserve(u64 capacity) {
+template <typename T, u64 N>
+void List<T, N>::reserve(u64 capacity) {
   if (capacity > m_capacity) {
     const u64 size = getSize();
     T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
@@ -233,15 +252,15 @@ void List<T>::reserve(u64 capacity) {
   }
 }
 
-template <typename T>
-void List<T>::resize(u64 newSize) {
+template <typename T, u64 N>
+void List<T, N>::resize(u64 newSize) {
   if (newSize > m_capacity) reserve(newSize);
 
   m_end = m_begin + newSize;
 }
 
-template <typename T>
-void List<T>::clear() {
+template <typename T, u64 N>
+void List<T, N>::clear() {
   if (m_end - m_begin == 0) return;
 
   for (T* item = m_end - 1; item != m_begin; --item) item->~T();
@@ -250,21 +269,21 @@ void List<T>::clear() {
   m_end = m_begin;
 }
 
-template <typename T>
-[[nodiscard]] T& List<T>::operator[](u64 pos) {
+template <typename T, u64 N>
+[[nodiscard]] T& List<T, N>::operator[](u64 pos) {
   return m_begin[pos];
 }
 
-template <typename T>
-const T* List<T>::find(const T& elem) const {
+template <typename T, u64 N>
+const T* List<T, N>::find(const T& elem) const {
   for (const T* iter = m_begin; iter != m_end; ++iter) {
     if (*iter == elem) return iter;
   }
   return m_end;
 }
 
-template <typename T>
-T* List<T>::find(const T& elem) {
+template <typename T, u64 N>
+T* List<T, N>::find(const T& elem) {
   for (T* iter = m_begin; iter != m_end; ++iter) {
     if (*iter == elem) return iter;
   }

@@ -43,22 +43,22 @@ DTEST(remove) {
 }
 
 DTEST(find) {
-	List<int> v;
+  List<int> v;
 
-	v.add(10);
-	v.add(11);
-	v.add(12);
-	v.add(13);
-	v.add(14);
+  v.add(10);
+  v.add(11);
+  v.add(12);
+  v.add(13);
+  v.add(14);
 
-	int* iter = v.find(12);
-	ASSERT_TRUE(iter != v.end());
-	ASSERT_TRUE(*iter == 12);
+  int* iter = v.find(12);
+  ASSERT_TRUE(iter != v.end());
+  ASSERT_TRUE(*iter == 12);
 
-	v.remove(iter);
+  v.remove(iter);
 
-	iter = v.find(12);
-	ASSERT_TRUE(iter == v.end());
+  iter = v.find(12);
+  ASSERT_TRUE(iter == v.end());
 }
 
 DTEST(clone) {

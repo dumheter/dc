@@ -20,7 +20,6 @@ set(TEST_SOURCES
   traits.test.cpp
   utf.test.cpp
   list.test.cpp
-  small.list.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////
