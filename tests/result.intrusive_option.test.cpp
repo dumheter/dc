@@ -2,18 +2,20 @@
 #include <dc/result.hpp>
 #include <string>
 
+using namespace dc;
+
 DTEST(optionIsSome) {
-  dc::experimental::IntrusiveOption<int, -1> opt = dc::Some(1337);
+  experimental::IntrusiveOption<int, -1> opt = Some<int>(1337);
   ASSERT_TRUE(opt.isSome());
   ASSERT_TRUE(opt.value() == 1337);
 }
 
 DTEST(optionIsNone) {
-  dc::experimental::IntrusiveOption<int, -1> opt = dc::None;
+  experimental::IntrusiveOption<int, -1> opt = None;
   ASSERT_TRUE(opt.isNone());
 }
 
 DTEST(optionIsNoneBySomeAssignment) {
-  dc::experimental::IntrusiveOption<int, -1> opt = dc::Some(-1);
+  experimental::IntrusiveOption<int, -1> opt = Some<int>(-1);
   ASSERT_TRUE(opt.isNone());
 }

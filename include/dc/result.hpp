@@ -100,7 +100,7 @@ struct [[nodiscard]] Some {
 
   /// Allow copy construct for small things.
   template <typename = EnableIf<(sizeof(V) <= 16) && (isPod<V>)>>
-  explicit constexpr Some(V value) : m_value(value) {
+  explicit constexpr Some(const V& value) : m_value(value) {
     static_assert(sizeof(V) <= 16 && (isPod<V>),
                   "Trying to copy construct when the object is not cheap to "
                   "copy, or not POD. Use move constructor instead.");
