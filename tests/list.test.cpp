@@ -23,23 +23,60 @@ DTEST(growWhenOOM) {
 
   v.add(10);
   ASSERT_EQ(v.getSize(), 1);
-  ASSERT_EQ(v.getCapacity(), 1);
 
   v.add(20);
   ASSERT_EQ(v.getSize(), 2);
-  ASSERT_TRUE(v.getCapacity() > 1);
 }
 
-DTEST(remove) {
+DTEST(removeByPosition) {
   List<int> v;
 
   v.add(10);
   v.add(20);
   v.add(30);
 
-  v.remove(1);
+  v.removeAt(1);
   ASSERT_EQ(v.getSize(), 2);
   ASSERT_EQ(v[1], 30);
+}
+
+DTEST(removeByIterator) {
+  List<int*> v;
+
+  int abc[3];
+  abc[0] = 10;
+  abc[1] = 20;
+  abc[2] = 30;
+
+  v.add(&abc[0]);
+  v.add(&abc[1]);
+  v.add(&abc[2]);
+
+  v.remove(&v[1]);
+  v.remove(&v[1]);
+  v.remove(&v[0]);
+
+  ASSERT_EQ(v.getSize(), 0);
+}
+
+DTEST(removeByReference) {
+  List<int*> v;
+
+  int abc[3];
+  abc[0] = 10;
+  abc[1] = 20;
+  abc[2] = 30;
+
+  v.add(&abc[0]);
+  v.add(&abc[1]);
+  v.add(&abc[2]);
+
+  v.remove(&abc[1]);
+  v.remove(&abc[2]);
+  v.remove(&abc[0]);
+
+  v.remove(&abc[2]);
+  ASSERT_EQ(v.getSize(), 0);
 }
 
 DTEST(find) {

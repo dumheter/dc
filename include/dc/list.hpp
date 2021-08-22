@@ -69,9 +69,13 @@ class BufferAwareAllocator final : public IAllocator {
 ///
 /// @tparam T Element type that list stores.
 /// @tparam N Internal buffer size, in terms of element count.
-template <typename T,
-          u64 N =
-              (64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
+template <
+    typename T,
+    u64 N =
+        ((64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T) < 2)
+            ? 2
+            : (64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
+
 class List {
  public:
   /// Construct a new list. Starts off with the internal buffer memory.
@@ -102,11 +106,16 @@ class List {
 
   ~List();
 
-  void add(T item);
+  void add(T elem);
 
-  void remove(T* item);
+  /// Remove a specific entry in the list.
+  void remove(T* elem);
 
-  void remove(u64 pos);
+  /// Remove the first instance of the element. Noop if not found.
+  void remove(const T& elem);
+
+  /// Remove the element at a given posistion
+  void removeAt(u64 pos);
 
   [[nodiscard]] u64 getSize() const noexcept { return m_end - m_begin; }
 
@@ -196,34 +205,44 @@ List<T, N>& List<T, N>::operator=(List&& other) noexcept {
 
 template <typename T, u64 N>
 List<T, N>::~List() {
-  for (T& item : *this) item.~T();
+  for (T& elem : *this) elem.~T();
 
   m_allocator.free(m_begin);
 }
 
 template <typename T, u64 N>
-void List<T, N>::add(T item) {
+void List<T, N>::add(T elem) {
   if (getSize() >= m_capacity) reserve(getSize() * 2 + 32);
 
-  *m_end = item;
+  *m_end = elem;
   m_end += 1;
 }
 
 template <typename T, u64 N>
-void List<T, N>::remove(T* item) {
-  DC_ASSERT(item < m_end, "Trying to erase an element outside of bounds.");
-
-  // item->~T();
+void List<T, N>::remove(T* elem) {
+  DC_ASSERT(elem < m_end && elem >= m_begin,
+            "Trying to erase an element outside of bounds.");
 
   // TODO cgustafsson: if trivial, then we could just memcpy
 
-  for (; (item + 1) != m_end; ++item) *item = dc::move(*(item + 1));
+  for (; (elem + 1) != m_end; ++elem) *elem = dc::move(*(elem + 1));
 
   --m_end;
 }
 
 template <typename T, u64 N>
-void List<T, N>::remove(u64 pos) {
+void List<T, N>::remove(const T& elem) {
+  T* it = find(elem);
+
+  if (it == m_end) return;
+
+  for (; (it + 1) != m_end; ++it) *it = dc::move(*(it + 1));
+
+  --m_end;
+}
+
+template <typename T, u64 N>
+void List<T, N>::removeAt(u64 pos) {
   remove(m_begin + pos);
 }
 
@@ -243,8 +262,8 @@ void List<T, N>::reserve(u64 capacity) {
     const u64 size = getSize();
     T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
 
-    for (T* item = m_begin; item != m_end; ++item)
-      *(newBegin + (item - m_begin)) = dc::move(*item);
+    for (T* elem = m_begin; elem != m_end; ++elem)
+      *(newBegin + (elem - m_begin)) = dc::move(*elem);
 
     m_begin = newBegin;
     m_end = m_begin + size;
@@ -263,7 +282,7 @@ template <typename T, u64 N>
 void List<T, N>::clear() {
   if (m_end - m_begin == 0) return;
 
-  for (T* item = m_end - 1; item != m_begin; --item) item->~T();
+  for (T* elem = m_end - 1; elem != m_begin; --elem) elem->~T();
 
   m_begin->~T();
   m_end = m_begin;
