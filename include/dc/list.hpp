@@ -225,7 +225,7 @@ void List<T, N>::remove(u64 pos) {
 template <typename T, u64 N>
 List<T, N> List<T, N>::clone() const {
   List<T> out(getCapacity(),
-              static_cast<const BufferAwareAllocator&>(m_allocator));
+              static_cast<const detail::BufferAwareAllocator&>(m_allocator));
 
   for (const T& iter : *this) out.add(iter);
 
