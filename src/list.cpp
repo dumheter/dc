@@ -25,7 +25,7 @@
 #include <cstring>
 #include <dc/list.hpp>
 
-namespace dc {
+namespace dc::detail {
 
 void* BufferAwareAllocator::alloc(usize count, usize align) {
   m_haveAllocated = true;
@@ -45,4 +45,4 @@ void BufferAwareAllocator::free(void* data) {
   if (m_haveAllocated) m_externalAllocator.free(data);
 }
 
-}  // namespace dc
+}  // namespace dc::detail

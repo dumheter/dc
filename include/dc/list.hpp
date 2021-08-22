@@ -30,6 +30,10 @@
 
 namespace dc {
 
+namespace detail {
+
+/// Implements the allocator interface, but by default, it keeps track of an
+/// external buffer. And calling free without once allocating, will be a noop.
 class BufferAwareAllocator final : public IAllocator {
  public:
   /// @param externalAllocator Must point to valid data throughout this objects
@@ -53,13 +57,16 @@ class BufferAwareAllocator final : public IAllocator {
   bool m_haveAllocated = false;
 };
 
+}  // namespace detail
+
 /// Small size optimized list (dynamic array list). Starts out with the small
 /// size buffer, unless specifically specified otherwise.
 ///
 /// @tparam T Element type that list stores.
 /// @tparam N Internal buffer size, in terms of element count.
 template <typename T,
-          u64 N = (64 - (36 + sizeof(BufferAwareAllocator))) / sizeof(T)>
+          u64 N =
+              (64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
 class List {
  public:
   /// Construct a new list. Starts off with the internal buffer memory.
@@ -78,7 +85,7 @@ class List {
         m_end(end),
         m_capacity(capacity) {}
 
-  List(u64 capacity, const BufferAwareAllocator& allocator);
+  List(u64 capacity, const detail::BufferAwareAllocator& allocator);
 
  public:
   /// Use clone instead
@@ -124,23 +131,11 @@ class List {
   const T* find(const T& elem) const;
 
  private:
-  BufferAwareAllocator m_allocator;
+  detail::BufferAwareAllocator m_allocator;
   T *m_begin = nullptr, *m_end = nullptr;
   u64 m_capacity = 0;
   T buffer[N];
 };
-
-// template <typename T,
-//           u32 N = (64 - (sizeof(List<T>) + sizeof(BufferAwareAllocator))) /
-//                   sizeof(T)>
-// class SmallList : public List<T> {
-//  public:
-//   SmallList(IAllocator& allocator = getDefaultAllocator())
-//       : m_allocator(allocator), List<T>(m_allocator, buffer, buffer, N) {}
-
-//  private:
-
-// };
 
 ///////////////////////////////////////////////////////////////////////////////
 // Template Implementation
@@ -157,7 +152,7 @@ List<T, N>::List(u64 capacity, IAllocator& allocator) : m_allocator(allocator) {
 }
 
 template <typename T, u64 N>
-List<T, N>::List(u64 capacity, const BufferAwareAllocator& allocator)
+List<T, N>::List(u64 capacity, const detail::BufferAwareAllocator& allocator)
     : m_allocator(allocator) {
   if (capacity <= N) {
     m_begin = buffer;
