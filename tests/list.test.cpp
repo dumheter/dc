@@ -2,6 +2,7 @@
 #include <dc/list.hpp>
 
 using namespace dc;
+using namespace dtest;
 
 DTEST(canAdd) {
   List<int> v;
@@ -29,15 +30,19 @@ DTEST(growWhenOOM) {
 }
 
 DTEST(removeByPosition) {
-  List<int> v;
+  LifetimeStats stats;
+  List<LifetimeTracker<int>> v;
 
-  v.add(10);
-  v.add(20);
-  v.add(30);
+  v.add({10, stats});
+  v.add({20, stats});
+  v.add({30, stats});
 
+  const int destructsBefore = stats.destructs;
   v.removeAt(1);
   ASSERT_EQ(v.getSize(), 2);
   ASSERT_EQ(v[1], 30);
+  ASSERT_EQ(stats.destructs, destructsBefore + 1);
+  ASSERT_EQ(stats.copies, 0);
 }
 
 DTEST(removeByIterator) {

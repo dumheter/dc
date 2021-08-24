@@ -86,6 +86,87 @@ namespace dtest {
 // Helpers
 //
 
+struct LifetimeStats {
+  int moves = 0;
+  int copies = 0;
+  int constructs = 0;
+  int destructs = 0;
+};
+
+template <typename T>
+struct LifetimeTracker {
+  LifetimeTracker()
+      : dummyDefaultConstructStats(),
+        object(),
+        stats(dummyDefaultConstructStats) {
+    ++stats.constructs;
+  }
+
+  LifetimeTracker(T&& object, LifetimeStats& stats)
+      : object(dc::forward<T>(object)), stats(stats) {
+    ++stats.constructs;
+  }
+
+  LifetimeTracker(const LifetimeTracker& other)
+      : object(other.object), stats(other.stats) {
+    ++stats.constructs;
+    ++stats.copies;
+  }
+
+  LifetimeTracker& operator=(const LifetimeTracker& other) {
+    object = other.object;
+    stats = other.stats;
+    ++stats.copies;
+    return *this;
+  }
+
+  LifetimeTracker(LifetimeTracker&& other) noexcept
+      : object(dc::move(other.object)), stats(other.stats) {
+    ++stats.constructs;
+    ++stats.moves;
+  }
+
+  LifetimeTracker& operator=(LifetimeTracker&& other) noexcept {
+    if (&other != this) {
+      object = dc::move(other.object);
+      stats = other.stats;
+      ++stats.moves;
+    }
+    return *this;
+  }
+
+  ~LifetimeTracker() { ++stats.destructs; }
+
+  template <typename U>
+  [[nodiscard]] constexpr bool operator==(
+      const LifetimeTracker<U>& other) const noexcept {
+    static_assert(dc::isEqualityComparable<T, U>);
+    return object == other.object;
+  }
+
+  template <typename U>
+  [[nodiscard]] constexpr bool operator!=(
+      const LifetimeTracker<U>& other) const noexcept {
+    static_assert(dc::isEqualityComparable<T, U>);
+    return object != other.object;
+  }
+
+  [[nodiscard]] constexpr bool operator==(const T& other) const {
+    return object == other;
+  }
+
+  [[nodiscard]] constexpr bool operator!=(const T& other) const {
+    return object != other;
+  }
+
+ private:
+  LifetimeStats dummyDefaultConstructStats;
+
+ public:
+  T object;
+  LifetimeStats& stats;
+};
+
 /// Track the lifetime of any object, with lifetime meaning:
 ///    - track COPIES made of the original.
 ///    - track MOVES  made of the original.

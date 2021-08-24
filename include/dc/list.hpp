@@ -214,7 +214,7 @@ template <typename T, u64 N>
 void List<T, N>::add(T elem) {
   if (getSize() >= m_capacity) reserve(getSize() * 2 + 32);
 
-  *m_end = elem;
+  new (m_end) T(dc::move(elem));
   m_end += 1;
 }
 
@@ -224,8 +224,11 @@ void List<T, N>::remove(T* elem) {
             "Trying to erase an element outside of bounds.");
 
   // TODO cgustafsson: if trivial, then we could just memcpy
+  elem->~T();
 
-  for (; (elem + 1) != m_end; ++elem) *elem = dc::move(*(elem + 1));
+  for (; (elem + 1) != m_end; ++elem) {
+    new (elem) T(dc::move(*(elem + 1)));
+  }
 
   --m_end;
 }
@@ -263,7 +266,7 @@ void List<T, N>::reserve(u64 capacity) {
     T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
 
     for (T* elem = m_begin; elem != m_end; ++elem)
-      *(newBegin + (elem - m_begin)) = dc::move(*elem);
+      new (newBegin + (elem - m_begin)) T(dc::move(*elem));
 
     m_begin = newBegin;
     m_end = m_begin + size;
