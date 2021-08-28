@@ -33,6 +33,10 @@ namespace dc {
 template <typename PointerT, typename IntT = u32>
 class PointerIntPair {
  public:
+  PointerIntPair() = default;
+
+  PointerIntPair(PointerT ptr) { setPointer(ptr); }
+
   PointerT getPointer() const { return (PointerT)(m_value & kPointerMask); }
 
   IntT getInt() const { return (IntT)(m_value & kIntMask); }

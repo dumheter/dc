@@ -28,21 +28,23 @@
 namespace dc::detail {
 
 void* BufferAwareAllocator::alloc(usize count, usize align) {
-  m_haveAllocated = true;
-  return m_externalAllocator.alloc(count, align);
+  m_pair.setInt(kHaveAllocated);
+  return m_pair.getPointer()->alloc(count, align);
 }
 
 void* BufferAwareAllocator::realloc(void* data, usize count, usize align) {
   // TODO cgustafsson: only if trivially relocatable
-  if (m_haveAllocated) return m_externalAllocator.realloc(data, count, align);
+  if (m_pair.getInt() == kHaveAllocated) {
+    return m_pair.getPointer()->realloc(data, count, align);
+  }
 
-  void* newData = m_externalAllocator.alloc(count, align);
+  void* newData = m_pair.getPointer()->alloc(count, align);
   memcpy(newData, data, count);
   return newData;
 }
 
 void BufferAwareAllocator::free(void* data) {
-  if (m_haveAllocated) m_externalAllocator.free(data);
+  if (m_pair.getInt() == kHaveAllocated) m_pair.getPointer()->free(data);
 }
 
 }  // namespace dc::detail

@@ -203,10 +203,6 @@ DTEST(find) {
 DTEST(clone) {
   List<int> v;
 
-  List<int*> a;
-  (void)a;
-  LOG_INFO("List<int> size: {}, List<int*> size: {}", sizeof(v), sizeof(a));
-
   v.add(10);
   v.add(20);
   v.add(30);

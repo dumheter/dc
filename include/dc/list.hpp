@@ -26,6 +26,7 @@
 
 #include <dc/allocator.hpp>
 #include <dc/assert.hpp>
+#include <dc/pointer_int_pair.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
 
@@ -40,11 +41,12 @@ class BufferAwareAllocator final : public IAllocator {
   /// @param externalAllocator Must point to valid data throughout this objects
   /// lifetime, will not delete it on this destruction.
   BufferAwareAllocator(IAllocator& externalAllocator)
-      : m_externalAllocator(externalAllocator) {}
+      : m_pair(&externalAllocator) {
+    m_pair.setInt(kHaveNotAllocated);
+  }
 
-  BufferAwareAllocator(const BufferAwareAllocator& externalAllocator)
-      : m_externalAllocator(externalAllocator.m_externalAllocator),
-        m_haveAllocated(externalAllocator.m_haveAllocated) {}
+  BufferAwareAllocator(const BufferAwareAllocator& other)
+      : m_pair(other.m_pair) {}
 
   virtual void* alloc(usize count, usize align = kMinimumAlignment) override;
 
@@ -54,8 +56,10 @@ class BufferAwareAllocator final : public IAllocator {
   virtual void free(void* data) override;
 
  private:
-  IAllocator& m_externalAllocator;
-  bool m_haveAllocated = false;
+  PointerIntPair<IAllocator*, u32> m_pair;
+
+  static constexpr u32 kHaveAllocated = 1;
+  static constexpr u32 kHaveNotAllocated = 0;
 };
 
 }  // namespace detail
@@ -69,12 +73,15 @@ class BufferAwareAllocator final : public IAllocator {
 ///
 /// @tparam T Element type that list stores.
 /// @tparam N Internal buffer size, in terms of element count.
-template <
-    typename T,
-    u64 N =
-        ((64 - (32 + sizeof(detail::BufferAwareAllocator))) / sizeof(T) < 2)
-            ? 2
-            : (64 - (32 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
+template <typename T,
+          u64 N = ((64 - (2 * sizeof(T*) + sizeof(u64) +
+                          sizeof(detail::BufferAwareAllocator))) /
+                       sizeof(T) <
+                   2)
+                      ? 2
+                      : (64 - (2 * sizeof(T*) + sizeof(u64) +
+                               sizeof(detail::BufferAwareAllocator))) /
+                            sizeof(T)>
 
 class List {
  public:
@@ -151,6 +158,8 @@ class List {
   /// @return Pointer to the element on found, or pointer to m_end on not found.
   T* find(const T& elem);
   const T* find(const T& elem) const;
+
+  static constexpr u64 kInternalBuffer = N;
 
  private:
   detail::BufferAwareAllocator m_allocator;
