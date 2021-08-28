@@ -2,9 +2,8 @@
 #include <dc/result.hpp>
 #include <dc/string.hpp>
 
-using TrackedInt = dtest::TrackLifetime<int>;
-using TrackedFloat = dtest::TrackLifetime<float>;
-using TrackedString = dtest::TrackLifetime<dc::String>;
+using namespace dc;
+using namespace dtest;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFETIME
@@ -40,92 +39,120 @@ DTEST(err) {
 
 DTEST(value) {
   {
-    TrackedInt original(27);
-    auto result = dc::makeOk<TrackedInt, float>(dc::move(original));
-    TrackedInt& value = result.value();
-    ASSERT_EQ(value.getObject(), 27);
-    ASSERT_TRUE(value.getCopies() == 0);
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
 
-    int& object = value.getObject();
+    LifetimeTracker<int> original(27);
+    auto result = dc::makeOk<LifetimeTracker<int>, float>(dc::move(original));
+    LifetimeTracker<int>& value = result.value();
+    ASSERT_EQ(value.object, 27);
+    ASSERT_TRUE(stats.copies == 0);
+
+    int& object = value.object;
     object = 13;
-    ASSERT_EQ(value.getObject(), 13);
-    ASSERT_TRUE(value.getCopies() == 0);
+    ASSERT_EQ(value.object, 13);
+    ASSERT_TRUE(stats.copies == 0);
   }
 
   {
-    TrackedInt original(27);
-    const auto result = dc::makeOk<TrackedInt, float>(dc::move(original));
-    const TrackedInt& value = result.value();
-    ASSERT_EQ(value.getObject(), 27);
-    ASSERT_TRUE(value.getCopies() == 0);
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
+
+    LifetimeTracker<int> original(27);
+    const auto result =
+        dc::makeOk<LifetimeTracker<int>, float>(dc::move(original));
+    const LifetimeTracker<int>& value = result.value();
+    ASSERT_EQ(value.object, 27);
+    ASSERT_TRUE(stats.copies == 0);
   }
 }
 
 DTEST(errValue) {
   {
-    TrackedFloat original(27.f);
-    auto result = dc::makeErr<int, TrackedFloat>(dc::move(original));
-    TrackedFloat& value = result.errValue();
-    ASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
-    ASSERT_TRUE(value.getCopies() == 0);
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
 
-    float& object = value.getObject();
+    LifetimeTracker<float> original(27.f);
+    auto result = dc::makeErr<int, LifetimeTracker<float>>(dc::move(original));
+    LifetimeTracker<float>& value = result.errValue();
+    ASSERT_TRUE(value.object > 26.f && value.object < 28.f);
+    ASSERT_TRUE(stats.copies == 0);
+
+    float& object = value.object;
     object = 13.f;
-    ASSERT_TRUE(value.getObject() > 12.f && value.getObject() < 14.f);
-    ASSERT_TRUE(value.getCopies() == 0);
+    ASSERT_TRUE(value.object > 12.f && value.object < 14.f);
+    ASSERT_TRUE(stats.copies == 0);
   }
 
   {
-    TrackedFloat original(27.f);
-    const auto result = dc::makeErr<int, TrackedFloat>(dc::move(original));
-    const TrackedFloat& value = result.errValue();
-    ASSERT_TRUE(value.getObject() > 26.f && value.getObject() < 28.f);
-    ASSERT_TRUE(value.getCopies() == 0);
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
+
+    LifetimeTracker<float> original(27.f);
+    const auto result =
+        dc::makeErr<int, LifetimeTracker<float>>(dc::move(original));
+    const LifetimeTracker<float>& value = result.errValue();
+
+    ASSERT_TRUE(value.object > 26.f && value.object < 28.f);
+    ASSERT_TRUE(stats.copies == 0);
   }
 }
 
 DTEST(unwrap) {
-  TrackedInt original = 66;
-  auto result = dc::makeOk<TrackedInt, int>(dc::move(original));
-  ASSERT_EQ(original.getCopies(), 0);
-  const int moves = original.getMoves();
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  TrackedInt moved = dc::move(result).unwrap();
-  ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(original.getMoves(), moves + 1);
-  ASSERT_EQ(moved.getObject(), 66);
+  LifetimeTracker<int> original = 66;
+  auto result = dc::makeOk<LifetimeTracker<int>, int>(dc::move(original));
+  ASSERT_EQ(stats.copies, 0);
+  const int moves = stats.moves;
+
+  LifetimeTracker<int> moved = dc::move(result).unwrap();
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(stats.moves, moves + 1);
+  ASSERT_EQ(moved.object, 66);
 }
 
 DTEST(unwrapErr) {
-  TrackedInt original = 5050;
-  auto result = dc::makeErr<int, TrackedInt>(dc::move(original));
-  ASSERT_EQ(original.getCopies(), 0);
-  const int moves = original.getMoves();
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  TrackedInt moved = dc::move(result).unwrapErr();
-  ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(original.getMoves(), moves + 1);
-  ASSERT_EQ(moved.getObject(), 5050);
+  LifetimeTracker<int> original = 5050;
+  auto result = dc::makeErr<int, LifetimeTracker<int>>(dc::move(original));
+  ASSERT_EQ(stats.copies, 0);
+  const int moves = stats.moves;
+
+  LifetimeTracker<int> moved = dc::move(result).unwrapErr();
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(stats.moves, moves + 1);
+  ASSERT_EQ(moved.object, 5050);
 }
 
-DTEST(as_const_ref) {
-  TrackedString original(dc::String("hey"));
-  const auto result = dc::makeOk<TrackedString, int>(dc::move(original));
+DTEST(asConstRef) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<String> original(String("hey"));
+  const auto result = makeOk<LifetimeTracker<String>, int>(dc::move(original));
   const auto constRef = result.asConstRef();
+
   ASSERT_EQ(result.value(), constRef.value().get());
-  ASSERT_EQ(original.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(as_mut_ref) {
-  TrackedString original(dc::String("hey"));
-  auto result = dc::makeOk<TrackedString, int>(dc::move(original));
+DTEST(asMutRef) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<String> original(String("hey"));
+  auto result = makeOk<LifetimeTracker<String>, int>(dc::move(original));
   auto mutRef = result.asMutRef();
   ASSERT_EQ(result.value(), mutRef.value().get());
-  ASSERT_EQ(original.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 
-  mutRef.value().get().getObject() += " there";
+  mutRef.value().get().object += " there";
   ASSERT_EQ(result.value(), mutRef.value().get());
-  ASSERT_EQ(original.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -133,46 +160,46 @@ DTEST(as_mut_ref) {
 //
 
 DTEST(contains) {
-  const auto resultOk = dc::makeOk<int, dc::String>(-133);
-  const auto resultErr = dc::makeErr<int, dc::String>(dc::String("wow"));
+  const auto resultOk = makeOk<int, String>(-133);
+  const auto resultErr = makeErr<int, String>(String("wow"));
   ASSERT_TRUE(resultOk.contains(-133));
-  ASSERT_TRUE(resultErr.containsErr(dc::String("wow")));
-  ASSERT_FALSE(resultOk.containsErr(dc::String("wow")));
+  ASSERT_TRUE(resultErr.containsErr(String("wow")));
+  ASSERT_FALSE(resultOk.containsErr(String("wow")));
   ASSERT_FALSE(resultErr.contains(-133));
 }
 
-DTEST(eq_ok_err) {
-  dc::Result<int, float> result = dc::Ok<int>(15);
-  auto ok = dc::Ok<int>(15);
-  auto err = dc::Err<float>(15.f);
+DTEST(eqOkErr) {
+  Result<int, float> result = Ok<int>(15);
+  auto ok = Ok<int>(15);
+  auto err = Err<float>(15.f);
   ASSERT_TRUE(result == ok);
   ASSERT_FALSE(result == err);
 }
 
-DTEST(neq_ok_err) {
-  dc::Result<int, float> result = dc::Ok<int>(15);
-  auto ok = dc::Ok<int>(15);
-  auto err = dc::Err<float>(15.f);
+DTEST(neqOkErr) {
+  Result<int, float> result = Ok<int>(15);
+  auto ok = Ok<int>(15);
+  auto err = Err<float>(15.f);
   ASSERT_FALSE(result != ok);
   ASSERT_TRUE(result != err);
 }
 
-DTEST(eq_result) {
-  const auto AOk = dc::makeOk<int, char>(42);
-  const auto AErr = dc::makeErr<int, char>('X');
-  const auto BOk = dc::makeOk<int, char>(42);
-  const auto BErr = dc::makeErr<int, char>('X');
+DTEST(eqResult) {
+  const auto AOk = makeOk<int, char>(42);
+  const auto AErr = makeErr<int, char>('X');
+  const auto BOk = makeOk<int, char>(42);
+  const auto BErr = makeErr<int, char>('X');
   ASSERT_TRUE(AOk == BOk);
   ASSERT_FALSE(AOk == BErr);
   ASSERT_FALSE(AErr == BOk);
   ASSERT_TRUE(AErr == BErr);
 }
 
-DTEST(neq_result) {
-  const auto AOk = dc::makeOk<int, char>(42);
-  const auto AErr = dc::makeErr<int, char>('X');
-  const auto BOk = dc::makeOk<int, char>(42);
-  const auto BErr = dc::makeErr<int, char>('X');
+DTEST(neqResult) {
+  const auto AOk = makeOk<int, char>(42);
+  const auto AErr = makeErr<int, char>('X');
+  const auto BOk = makeOk<int, char>(42);
+  const auto BErr = makeErr<int, char>('X');
   ASSERT_FALSE(AOk != BOk);
   ASSERT_TRUE(AOk != BErr);
   ASSERT_TRUE(AErr != BOk);
@@ -183,65 +210,84 @@ DTEST(neq_result) {
 // MATCH
 //
 
-DTEST(match_rvalue_ok) {
-  TrackedInt parent = 13;
+DTEST(matchRValueOk) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
-  float value =
-      dc::move(okResult).match([](TrackedInt) -> float { return 1.f; },
-                               [](dc::String&&) -> float { return -1.f; });
+  LifetimeTracker<int> parent = 13;
+
+  Result<LifetimeTracker<int>, String> okResult = Ok(dc::move(parent));
+  float value = dc::move(okResult).match(
+      [](LifetimeTracker<int>) -> float { return 1.f; },
+      [](String&&) -> float { return -1.f; });
   ASSERT_TRUE(value > 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(match_rvalue_err) {
-  TrackedInt parent = 13;
+DTEST(matchRValueErr) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
-  float value = dc::move(errResult).match([](float) { return 1.f; },
-                                          [](TrackedInt) { return -1.f; });
+  LifetimeTracker<int> parent = 13;
+
+  Result<float, LifetimeTracker<int>> errResult = Err(dc::move(parent));
+  float value = dc::move(errResult).match(
+      [](float) { return 1.f; }, [](LifetimeTracker<int>) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(match_lvalue_ok) {
-  TrackedInt parent = 13;
+DTEST(matchLValueOk) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
-  float value = okResult.match([](TrackedInt&) { return 1.f; },
-                               [](dc::String&) { return -1.f; });
+  LifetimeTracker<int> parent = 13;
+
+  Result<LifetimeTracker<int>, String> okResult = Ok(dc::move(parent));
+  float value = okResult.match([](LifetimeTracker<int>&) { return 1.f; },
+                               [](String&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(match_lvalue_err) {
-  TrackedInt parent = 13;
+DTEST(matchLValueErr) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
+  LifetimeTracker<int> parent = 13;
+
+  Result<float, LifetimeTracker<int>> errResult = Err(dc::move(parent));
   float value = errResult.match([](float&) { return 1.f; },
-                                [](TrackedInt&) { return -1.f; });
+                                [](LifetimeTracker<int>&) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(match_const_lvalue_ok) {
-  TrackedInt parent = 13;
+DTEST(matchConstLValueOk) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  const dc::Result<TrackedInt, dc::String> okResult = dc::Ok(dc::move(parent));
-  float value = okResult.match([](const TrackedInt&) { return 1.f; },
-                               [](const dc::String&) { return -1.f; });
+  LifetimeTracker<int> parent = 13;
+
+  const Result<LifetimeTracker<int>, String> okResult = Ok(dc::move(parent));
+  float value = okResult.match([](const LifetimeTracker<int>&) { return 1.f; },
+                               [](const String&) { return -1.f; });
   ASSERT_TRUE(value > 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
-DTEST(match_const_lvalue_err) {
-  TrackedInt parent = 13;
+DTEST(matchConstLValueErr) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  const dc::Result<float, TrackedInt> errResult = dc::Err(dc::move(parent));
-  float value = errResult.match([](const float&) { return 1.f; },
-                                [](const TrackedInt&) { return -1.f; });
+  LifetimeTracker<int> parent = 13;
+
+  const Result<float, LifetimeTracker<int>> errResult = Err(dc::move(parent));
+  float value =
+      errResult.match([](const float&) { return 1.f; },
+                      [](const LifetimeTracker<int>&) { return -1.f; });
   ASSERT_TRUE(value < 0.f);
-  ASSERT_EQ(parent.getCopies(), 0);
+  ASSERT_EQ(stats.copies, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -249,25 +295,28 @@ DTEST(match_const_lvalue_err) {
 //
 
 DTEST(clone) {
-  TrackedInt original = 77;
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
 
-  dc::Result<TrackedInt, float> okResult = dc::Ok(dc::move(original));
+  LifetimeTracker<int> original = 77;
+
+  Result<LifetimeTracker<int>, float> okResult = Ok(dc::move(original));
   auto clone = okResult.clone();
   auto cloneOfClone = clone.clone();
 
-  ASSERT_EQ(original.getCopies(), 2);
+  ASSERT_EQ(stats.copies, 2);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // HELPERS
 //
 
-DTEST(make_ok) {
-  auto result = dc::makeOk<float, int>(13.f);
+DTEST(makeOk) {
+  auto result = makeOk<float, int>(13.f);
   ASSERT_TRUE(result.isOk());
 }
 
-DTEST(make_err) {
-  auto result = dc::makeErr<int, dc::String>("hey");
+DTEST(makeErr) {
+  auto result = makeErr<int, String>("hey");
   ASSERT_TRUE(result.isErr());
 }

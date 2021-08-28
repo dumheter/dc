@@ -30,58 +30,75 @@ DTEST(growWhenOOM) {
 }
 
 DTEST(removeByPosition) {
-  LifetimeStats stats;
-  List<LifetimeTracker<int>> v;
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+  List<LifetimeTracker<int>> list;
 
-  v.add({10, stats});
-  v.add({20, stats});
-  v.add({30, stats});
+  list.add(10);
+  list.add(20);
+  list.add(30);
 
   const int destructsBefore = stats.destructs;
-  v.removeAt(1);
-  ASSERT_EQ(v.getSize(), 2);
-  ASSERT_EQ(v[1], 30);
+  list.removeAt(1);
+
+  ASSERT_EQ(list.getSize(), 2);
+  ASSERT_EQ(list[1], 30);
   ASSERT_EQ(stats.destructs, destructsBefore + 1);
   ASSERT_EQ(stats.copies, 0);
 }
 
 DTEST(removeByIterator) {
-  List<int*> v;
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+  List<LifetimeTracker<int*>> list;
 
   int abc[3];
   abc[0] = 10;
   abc[1] = 20;
   abc[2] = 30;
 
-  v.add(&abc[0]);
-  v.add(&abc[1]);
-  v.add(&abc[2]);
+  list.add(&abc[0]);
+  list.add(&abc[1]);
+  list.add(&abc[2]);
 
-  v.remove(&v[1]);
-  v.remove(&v[1]);
-  v.remove(&v[0]);
+  const int destructsBefore = stats.destructs;
+  list.remove(&list[1]);
+  list.remove(&list[1]);
+  list.remove(&list[0]);
 
-  ASSERT_EQ(v.getSize(), 0);
+  ASSERT_EQ(list.getSize(), 0);
+  ASSERT_EQ(stats.copies, 0);
+  // ASSERT_EQ(stats.moves, 0);
+  ASSERT_EQ(stats.destructs, destructsBefore + 3);
 }
 
 DTEST(removeByReference) {
-  List<int*> v;
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+  List<LifetimeTracker<int*>> list;
 
   int abc[3];
   abc[0] = 10;
   abc[1] = 20;
   abc[2] = 30;
 
-  v.add(&abc[0]);
-  v.add(&abc[1]);
-  v.add(&abc[2]);
+  list.add(&abc[0]);
+  list.add(&abc[1]);
+  list.add(&abc[2]);
 
-  v.remove(&abc[1]);
-  v.remove(&abc[2]);
-  v.remove(&abc[0]);
+  const int destructsBefore = stats.destructs;
+  list.remove(&abc[1]);
+  list.remove(&abc[0]);
+  list.remove(&abc[2]);
 
-  v.remove(&abc[2]);
-  ASSERT_EQ(v.getSize(), 0);
+  // double remove is noop
+  const LifetimeTracker<int*> lookup(&abc[1]);
+  list.remove(lookup);
+
+  ASSERT_EQ(list.getSize(), 0);
+  ASSERT_EQ(stats.copies, 0);
+  // ASSERT_EQ(stats.moves, 0);
+  ASSERT_EQ(stats.destructs, destructsBefore + 3);
 }
 
 DTEST(find) {

@@ -37,7 +37,22 @@
 #include <Windows.h>
 #endif
 
-namespace dtest::internal {
+namespace dtest {
+
+LifetimeStats& LifetimeStats::getInstance() {
+  static LifetimeStats instance{};
+  return instance;
+}
+
+void LifetimeStats::resetInstance() {
+  LifetimeStats& instance = getInstance();
+  instance.moves = 0;
+  instance.copies = 0;
+  instance.constructs = 0;
+  instance.destructs = 0;
+}
+
+namespace internal {
 
 using Paint = dc::log::Paint<100>;
 using Color = dc::log::Color;
@@ -161,4 +176,6 @@ int runTests() {
   return failedCategories;
 }
 
-}  // namespace dtest::internal
+}  // namespace internal
+
+}  // namespace dtest

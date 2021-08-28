@@ -91,51 +91,69 @@ struct LifetimeStats {
   int copies = 0;
   int constructs = 0;
   int destructs = 0;
+
+  static LifetimeStats& getInstance();
+  static void resetInstance();
 };
 
+/// Track the lifetime of any object, stores the data in an external
+/// LifetimeStats struct.
+///
+/// Examples
+///  dtest::LifetimeStats stats;
+///  dtest::LifetimeTracker<int> parent = {13, stats};
+///  dtest::LifetimeTracker<int> child1 = parent;
+///  dtest::LifetimeTracker<int> child2 = child1;
+///  ASSERT(stats.copies == 2);
+///
+///  dtest::LifetimeStats stats;
+///  dtest::LifetimeTracker<int> parent = {13, stats};
+///  dtest::LifetimeTracker<int> child1 = dc::move(parent);
+///  dtest::LifetimeTracker<int> child2 = dc::move(child1);
+///  ASSERT(stats.moves == 2);
+///
 template <typename T>
 struct LifetimeTracker {
-  LifetimeTracker()
-      : dummyDefaultConstructStats(),
-        object(),
-        stats(dummyDefaultConstructStats) {
+  LifetimeTracker() : LifetimeTracker(T()) {}
+
+  LifetimeTracker(T&& object) : object(dc::forward<T>(object)) {
+    LifetimeStats& stats = LifetimeStats::getInstance();
     ++stats.constructs;
   }
 
-  LifetimeTracker(T&& object, LifetimeStats& stats)
-      : object(dc::forward<T>(object)), stats(stats) {
-    ++stats.constructs;
-  }
-
-  LifetimeTracker(const LifetimeTracker& other)
-      : object(other.object), stats(other.stats) {
+  LifetimeTracker(const LifetimeTracker& other) : object(other.object) {
+    LifetimeStats& stats = LifetimeStats::getInstance();
     ++stats.constructs;
     ++stats.copies;
   }
 
   LifetimeTracker& operator=(const LifetimeTracker& other) {
+    LifetimeStats& stats = LifetimeStats::getInstance();
     object = other.object;
-    stats = other.stats;
     ++stats.copies;
     return *this;
   }
 
   LifetimeTracker(LifetimeTracker&& other) noexcept
-      : object(dc::move(other.object)), stats(other.stats) {
+      : object(dc::move(other.object)) {
+    LifetimeStats& stats = LifetimeStats::getInstance();
     ++stats.constructs;
     ++stats.moves;
   }
 
   LifetimeTracker& operator=(LifetimeTracker&& other) noexcept {
     if (&other != this) {
+      LifetimeStats& stats = LifetimeStats::getInstance();
       object = dc::move(other.object);
-      stats = other.stats;
       ++stats.moves;
     }
     return *this;
   }
 
-  ~LifetimeTracker() { ++stats.destructs; }
+  ~LifetimeTracker() {
+    LifetimeStats& stats = LifetimeStats::getInstance();
+    ++stats.destructs;
+  }
 
   template <typename U>
   [[nodiscard]] constexpr bool operator==(
@@ -159,106 +177,8 @@ struct LifetimeTracker {
     return object != other;
   }
 
- private:
-  LifetimeStats dummyDefaultConstructStats;
-
  public:
   T object;
-  LifetimeStats& stats;
-};
-
-/// Track the lifetime of any object, with lifetime meaning:
-///    - track COPIES made of the original.
-///    - track MOVES  made of the original.
-///
-/// For lifetime tracking to work properly, the parent object may not leave
-/// scope before the last child is done.
-///
-/// Examples
-///  dtest::TrackLifetime<int> parent = 13;
-///  dtest::TrackLifetime<int> child1 = parent;
-///  dtest::TrackLifetime<int> child2 = child1;
-///  ASSERT(parent.getCopies() == 2);
-///
-///  dtest::TrackLifetime<int> parent = 13;
-///  dtest::TrackLifetime<int> child1 = dc::move(parent);
-///  dtest::TrackLifetime<int> child2 = dc::move(child1);
-///  ASSERT(parent.getMoves() == 2);
-///
-template <typename T>
-class [[nodiscard]] TrackLifetime {
- public:
-  TrackLifetime(T object) : m_object(dc::move(object)) {}
-
-  /// Amount of times this object has been copied.
-  [[nodiscard]] constexpr int getCopies() const noexcept { return m_copies; }
-
-  /// Amount of times this object has been moved.
-  [[nodiscard]] constexpr int getMoves() const noexcept { return m_moves; }
-
-  [[nodiscard]] constexpr const T& getObject() const { return m_object; }
-  [[nodiscard]] constexpr T& getObject() { return m_object; }
-
-  [[nodiscard]] constexpr int getDestructs() const { return m_destructs; }
-
-  TrackLifetime(const TrackLifetime& other)
-      : m_object(other.m_object), m_parent(other.m_parent) {
-    getParent()->m_copies++;
-  }
-
-  TrackLifetime& operator=(const TrackLifetime& other) {
-    m_object = other.m_object;
-    getParent()->m_copies++;
-    return *this;
-  }
-
-  TrackLifetime(TrackLifetime&& other)
-      : m_object(other.m_object), m_parent(other.getParent()) {
-    getParent()->m_moves++;
-  }
-
-  TrackLifetime& operator=(TrackLifetime&& other) noexcept {
-    m_object = other.m_object;
-    getParent()->m_moves++;
-    return *this;
-  }
-
-  ~TrackLifetime() { getParent()->m_destructs++; }
-
-  template <typename U>
-  [[nodiscard]] constexpr bool operator==(
-      const TrackLifetime<U>& other) const noexcept {
-    static_assert(dc::isEqualityComparable<T, U>);
-    return getObject() == other.getObject();
-  }
-
-  template <typename U>
-  [[nodiscard]] constexpr bool operator!=(
-      const TrackLifetime<U>& other) const noexcept {
-    static_assert(dc::isEqualityComparable<T, U>);
-    return getObject() != other.getObject();
-  }
-
-  [[nodiscard]] constexpr bool operator==(const T& other) const {
-    return m_object == other;
-  }
-
-  [[nodiscard]] constexpr bool operator!=(const T& other) const {
-    return m_object != other;
-  }
-
- private:
-  TrackLifetime<T>* getParent() {
-    if (m_parent) return m_parent;
-    return &(*this);
-  }
-
- private:
-  T m_object;
-  TrackLifetime<T>* m_parent = this;
-  mutable int m_copies = 0;
-  int m_moves = 0;
-  int m_destructs = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

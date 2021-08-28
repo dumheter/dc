@@ -4,9 +4,7 @@
 #include <string>
 
 using namespace dc;
-
-using TrackedInt = dtest::TrackLifetime<int>;
-using TrackedString = dtest::TrackLifetime<dc::String>;
+using namespace dtest;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFETIME
@@ -25,21 +23,28 @@ DTEST(construction) {
   ASSERT_FALSE(noneConstruction);
 }
 
-DTEST(construction_option) {
+DTEST(constructionOptionNone) {
   Option<int> optionNone = None;
   Option<int> optionNoneConstructed = move(optionNone);
   ASSERT_FALSE(optionNoneConstructed);
-
-  TrackedString catName("Emma");
-  Option<TrackedString> maybeCatName = Some(dc::move(catName));
-  const int catNameMoves = catName.getMoves();
-  Option<TrackedString> optionSomeConstructed = dc::move(maybeCatName);
-  ASSERT_TRUE(optionSomeConstructed);
-  ASSERT_EQ(catName.getMoves(), catNameMoves + 1);
-  ASSERT_EQ(optionSomeConstructed.value().getObject(), dc::String("Emma"));
 }
 
-DTEST(assignment_option) {
+DTEST(constructionOptionSome) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<String> catName("Emma");
+  Option<LifetimeTracker<String>> maybeCatName = Some(dc::move(catName));
+  const int catNameMoves = stats.moves;
+  Option<LifetimeTracker<String>> optionSomeConstructed =
+      dc::move(maybeCatName);
+
+  ASSERT_TRUE(optionSomeConstructed);
+  ASSERT_EQ(stats.moves, catNameMoves + 1);
+  ASSERT_EQ(optionSomeConstructed.value().object, dc::String("Emma"));
+}
+
+DTEST(assignmentOption) {
   {
     Option<char> a = Some('a');
     Option<char> b = Some('b');
@@ -51,23 +56,31 @@ DTEST(assignment_option) {
   }
 
   {
-    TrackedInt original = 77;
-    Option<TrackedInt> optionSome = Some(dc::move(original));
-    Option<TrackedInt> optionNone = None;
-    const int someMoves = original.getMoves();
-    optionNone = move(optionSome);
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
+
+    LifetimeTracker<int> original = 77;
+    Option<LifetimeTracker<int>> optionSome = Some(dc::move(original));
+    Option<LifetimeTracker<int>> optionNone = None;
+    const int someMoves = stats.moves;
+    optionNone = dc::move(optionSome);
+
     ASSERT_TRUE(optionNone);
-    ASSERT_EQ(original.getMoves(), someMoves + 1);
+    ASSERT_EQ(stats.moves, someMoves + 1);
     ASSERT_FALSE(optionSome);
   }
 
   {
-    TrackedInt original = -2;
-    Option<TrackedInt> optionSome = Some(move(original));
-    Option<TrackedInt> optionNone = None;
-    const int destructs = original.getDestructs();
+    LifetimeStats::resetInstance();
+    LifetimeStats& stats = LifetimeStats::getInstance();
+
+    LifetimeTracker<int> original = -2;
+    Option<LifetimeTracker<int>> optionSome = Some(move(original));
+    Option<LifetimeTracker<int>> optionNone = None;
+    const int destructs = stats.destructs;
     optionSome = move(optionNone);
-    ASSERT_EQ(original.getDestructs(), destructs + 1);
+
+    ASSERT_EQ(stats.destructs, destructs + 1);
     ASSERT_FALSE(optionSome);
   }
 
@@ -80,53 +93,67 @@ DTEST(assignment_option) {
 }
 
 DTEST(destruction) {
-  TrackedString str("wood");
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<std::string> str("wood");
   int destructs;
   {
-    const Option<TrackedString> option = Some(dc::move(str));
+    const Option<LifetimeTracker<std::string>> option = Some(dc::move(str));
     ASSERT_TRUE(option);
-    destructs = str.getDestructs();
+    destructs = stats.destructs;
   }
-  ASSERT_EQ(str.getDestructs(), destructs + 1);
+  ASSERT_EQ(stats.destructs, destructs + 1);
 }
 
 DTEST(clone) {
-  TrackedInt original(3);
-  Option<TrackedInt> option = Some(move(original));
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> original(3);
+  Option<LifetimeTracker<int>> option = Some(move(original));
   auto clone = option.clone();
-  ASSERT_EQ(original.getCopies(), 1);
+
+  ASSERT_EQ(stats.copies, 1);
   ASSERT_EQ(clone.value(), option.value());
 }
 
-DTEST(as_mut_const_ref) {
-  TrackedString original(dc::String("awesome"));
+DTEST(asMutConstRef) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<String> original(String("awesome"));
   auto option = makeSome(dc::move(original));
   auto constRef = option.asConstRef();
   auto mutRef = option.asMutRef();
-  ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(constRef.value().get().getObject(), dc::String("awesome"));
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(constRef.value().get().object, String("awesome"));
 
-  mutRef.value().get().getObject() = "you are";
-  ASSERT_EQ(option.value().getObject(), dc::String("you are"));
-  ASSERT_EQ(constRef.value().get().getObject(), dc::String("you are"));
-  ASSERT_EQ(mutRef.value().get().getObject(), dc::String("you are"));
-  ASSERT_EQ(original.getCopies(), 0);
+  mutRef.value().get().object = "you are";
+  ASSERT_EQ(option.value().object, String("you are"));
+  ASSERT_EQ(constRef.value().get().object, dc::String("you are"));
+  ASSERT_EQ(mutRef.value().get().object, dc::String("you are"));
+  ASSERT_EQ(stats.copies, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // ACCESSORS / MODIFIERS
 //
 
-DTEST(match_rvalue) {
-  TrackedInt i(7);
-  Option<TrackedInt> optionSome = Some(move(i));
-  const int moves = i.getMoves();
-  int resSome = dc::move(optionSome)
-                    .match([](TrackedInt v) -> int { return v == 7 ? 1 : -1; },
-                           []() -> int { return -100; });
+DTEST(matchRValue) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> i(7);
+  Option<LifetimeTracker<int>> optionSome = Some(move(i));
+  const int moves = stats.moves;
+  int resSome =
+      dc::move(optionSome)
+          .match([](LifetimeTracker<int> v) -> int { return v == 7 ? 1 : -1; },
+                 []() -> int { return -100; });
   ASSERT_EQ(resSome, 1);
-  ASSERT_EQ(i.getMoves(), moves + 1);
-  ASSERT_EQ(i.getCopies(), 0);
+  ASSERT_EQ(stats.moves, moves + 1);
+  ASSERT_EQ(stats.copies, 0);
 
   auto optionNone = makeNone<int>();
   int resNone =
@@ -134,23 +161,27 @@ DTEST(match_rvalue) {
   ASSERT_EQ(resNone, 11);
 }
 
-DTEST(match_lvalue) {
-  TrackedInt i(7);
+DTEST(matchLValue) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> i(7);
   auto optionSome = makeSome(dc::move(i));
-  const int moves = i.getMoves();
-  int resSome = optionSome.match([](TrackedInt& v) { return v == 7 ? 1 : -1; },
-                                 []() { return -100; });
+  const int moves = stats.moves;
+  int resSome =
+      optionSome.match([](LifetimeTracker<int>& v) { return v == 7 ? 1 : -1; },
+                       []() { return -100; });
   ASSERT_EQ(resSome, 1);
-  ASSERT_EQ(i.getMoves(), moves);
-  ASSERT_EQ(i.getCopies(), 0);
+  ASSERT_EQ(stats.moves, moves);
+  ASSERT_EQ(stats.copies, 0);
 
   auto optionNone = makeNone<int>();
   int resNone = optionNone.match([](int) { return 10; }, []() { return 11; });
   ASSERT_EQ(resNone, 11);
 }
 
-DTEST(match_const_lvalue) {
-  dtest::NoCopy<int> i(7);
+DTEST(matchConstLValue) {
+  NoCopy<int> i(7);
   const auto optionSome = makeSome(dc::move(i));
   int resSome = optionSome.match(
       [](const dtest::NoCopy<int>& v) { return v == 7 ? 1 : -1; },
@@ -159,43 +190,56 @@ DTEST(match_const_lvalue) {
 
   const auto optionNone = makeNone<int>();
   int resNone = optionNone.match([](int) { return 10; }, []() { return 11; });
+
   ASSERT_EQ(resNone, 11);
 }
 
 DTEST(value) {
-  TrackedInt original(77);
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> original(77);
   auto option = makeSome(dc::move(original));
-  TrackedInt& value = option.value();
-  value.getObject() = -11;
-  ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(option.value().getObject(), -11);
+  LifetimeTracker<int>& value = option.value();
+  value.object = -11;
+
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(option.value().object, -11);
 }
 
-DTEST(const_value) {
-  TrackedInt original(77);
+DTEST(constValue) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> original(77);
   const auto option = makeSome(dc::move(original));
-  const TrackedInt& value = option.value();
-  ASSERT_EQ(original.getCopies(), 0);
-  ASSERT_EQ(value.getObject(), 77);
+  const LifetimeTracker<int>& value = option.value();
+
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(value.object, 77);
 }
 
 DTEST(unwrap) {
-  TrackedInt original(101);
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> original(101);
   auto option = makeSome(dc::move(original));
-  const int moves = original.getMoves();
-  TrackedInt value = dc::move(option).unwrap();
-  ASSERT_EQ(moves + 1, original.getMoves());
-  ASSERT_EQ(value.getObject(), 101);
-  ASSERT_EQ(original.getCopies(), 0);
+  const int moves = stats.moves;
+  LifetimeTracker<int> value = dc::move(option).unwrap();
+
+  ASSERT_EQ(moves + 1, stats.moves);
+  ASSERT_EQ(value.object, 101);
+  ASSERT_EQ(stats.copies, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // STATE
 //
 
-DTEST(is_some_none_bool) {
-  const auto some = makeSome(7);
-  const auto none = makeNone<int>();
+DTEST(isSomeNoneBool) {
+  const Option<int> some = Some(7);
+  const Option<int> none = None;
   ASSERT_TRUE(some.isSome());
   ASSERT_FALSE(some.isNone());
   ASSERT_TRUE(none.isNone());
@@ -205,16 +249,16 @@ DTEST(is_some_none_bool) {
 }
 
 DTEST(contains) {
-  const auto some = makeSome<char>('c');
-  const auto none = makeNone<char>();
+  const Option<char> some = Some('c');
+  const Option<char> none = None;
   ASSERT_TRUE(some.contains('c'));
   ASSERT_FALSE(some.contains('w'));
   ASSERT_FALSE(none.contains('c'));
 }
 
 DTEST(compare) {
-  const auto now = makeSome<int>(2021);
-  const auto then = makeSome<int>(1969);
+  const Option<int> now = Some(2021);
+  const Option<int> then = Some(1969);
   const auto nowClone = now.clone();
   ASSERT_FALSE(now == then);
   ASSERT_TRUE(now != then);

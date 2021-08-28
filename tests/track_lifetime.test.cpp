@@ -1,25 +1,32 @@
 #include <dc/dtest.hpp>
 
+using namespace dtest;
+
 DTEST(copies) {
-  dtest::TrackLifetime<int> parent = 13;
-  dtest::TrackLifetime<int> child1 = parent;
-  dtest::TrackLifetime<int> child2 = child1;
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> parent = 13;
+  LifetimeTracker<int> child1 = parent;
+  LifetimeTracker<int> child2 = child1;
   child1 = child2;
   parent = child1;
   parent = child2;
-  ASSERT_EQ(parent.getCopies(), 5);
-  ASSERT_EQ(parent.getMoves(), 0);
-  ASSERT_EQ(parent.getObject(), 13);
+
+  ASSERT_EQ(stats.copies, 5);
+  ASSERT_EQ(stats.moves, 0);
+  ASSERT_EQ(parent.object, 13);
 }
 
 DTEST(moves) {
-  dtest::TrackLifetime<int> parent = 7;
-  dtest::TrackLifetime<int> child1 = dc::move(parent);
-  dtest::TrackLifetime<int> child2 = dc::move(child1);
-  child1 = dc::move(child2);
-  parent = dc::move(child1);
-  parent = dc::move(child2);
-  ASSERT_EQ(parent.getCopies(), 0);
-  ASSERT_EQ(parent.getMoves(), 5);
-  ASSERT_EQ(parent.getObject(), 7);
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  LifetimeTracker<int> parent = 7;
+  LifetimeTracker<int> child1 = dc::move(parent);
+  LifetimeTracker<int> child2 = dc::move(child1);
+
+  ASSERT_EQ(stats.copies, 0);
+  ASSERT_EQ(stats.moves, 2);
+  ASSERT_EQ(child2.object, 7);
 }
