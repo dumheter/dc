@@ -72,9 +72,9 @@ class BufferAwareAllocator final : public IAllocator {
 template <
     typename T,
     u64 N =
-        ((64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T) < 2)
+        ((64 - (32 + sizeof(detail::BufferAwareAllocator))) / sizeof(T) < 2)
             ? 2
-            : (64 - (36 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
+            : (64 - (32 + sizeof(detail::BufferAwareAllocator))) / sizeof(T)>
 
 class List {
  public:

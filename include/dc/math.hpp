@@ -100,8 +100,22 @@ inline constexpr T uSafeSubtract(T minuend, T subtrahend) {
 /// Example:
 ///   setBit(7, 1, false) -> 6
 template <typename T>
-inline constexpr T setBit(T value, usize bit, bool bitValue) {
+[[nodiscard]] inline constexpr T setBit(T value, usize bit, bool bitValue) {
   return (value & ~(T(1) << bit)) | (T(bitValue) << bit);
+}
+
+/// Set mutiple bits in a value, while the bits not specified in @ref bits, will
+/// be kept as to what @ref value has. See math.test.cpp for examples.
+template <typename T>
+[[nodiscard]] inline constexpr T setBits(T value, s64 bits, s64 offset,
+                                         T bitsValue) {
+  return (value & ~(T((((T)1 << bits) - 1)) << offset)) |
+         (T(bitsValue & (((T)1 << bits) - 1)) << offset);
+}
+
+template <typename T>
+constexpr T log2(T n) {
+  return ((n < 2) ? 0 : 1 + log2(n / 2));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

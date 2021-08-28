@@ -11,6 +11,8 @@ set(TEST_SOURCES
   list.test.cpp
   log.test.cpp
   main.test.cpp
+  math.test.cpp
+  pointer_int_pair.test.cpp
   result.intrusive_option.test.cpp
   result.option.test.cpp
   result.result.test.cpp
@@ -19,7 +21,6 @@ set(TEST_SOURCES
   track_lifetime.test.cpp
   traits.test.cpp
   utf.test.cpp
-  list.test.cpp
   )
 
 #//////////////////////////////////////////////////////////////////////////////
