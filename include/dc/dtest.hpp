@@ -99,15 +99,18 @@ struct LifetimeStats {
 /// Track the lifetime of any object, stores the data in an external
 /// LifetimeStats struct.
 ///
-/// Examples
-///  dtest::LifetimeStats stats;
-///  dtest::LifetimeTracker<int> parent = {13, stats};
+/// Example copies
+///  dtest::LifetimeStats::resetInstance();
+///  dtest::LifetimeStats& stats = dtest::LifetimeStats::getInstance();
+///  dtest::LifetimeTracker<int> parent = 13;
 ///  dtest::LifetimeTracker<int> child1 = parent;
 ///  dtest::LifetimeTracker<int> child2 = child1;
 ///  ASSERT(stats.copies == 2);
 ///
-///  dtest::LifetimeStats stats;
-///  dtest::LifetimeTracker<int> parent = {13, stats};
+/// Example moves
+///  dtest::LifetimeStats::resetInstance();
+///  dtest::LifetimeStats& stats = dtest::LifetimeStats::getInstance();
+///  dtest::LifetimeTracker<int> parent = 13;
 ///  dtest::LifetimeTracker<int> child1 = dc::move(parent);
 ///  dtest::LifetimeTracker<int> child2 = dc::move(child1);
 ///  ASSERT(stats.moves == 2);
