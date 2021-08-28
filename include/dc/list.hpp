@@ -114,10 +114,12 @@ class List {
   /// Remove the first instance of the element. Noop if not found.
   void remove(const T& elem);
 
-  /// Remove the element at a given posistion
+  /// Remove a specific element at a given posistion
   void removeAt(u64 pos);
 
-  /// Evaluate each element in list with \ref Fn, remove those who match.
+  /// Evaluate each element in list with @ref fn, remove those who match.
+  /// @param Fn A function that takes a const T& and returns true if it should
+  /// be removed
   template <typename Fn>
   void removeIf(Fn fn);
 
