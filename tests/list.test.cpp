@@ -101,6 +101,86 @@ DTEST(removeByReference) {
   ASSERT_EQ(stats.destructs, destructsBefore + 3);
 }
 
+DTEST(removeIfHappyPath) {
+  List<int> list;
+
+  list.add(1);
+  list.add(2);
+  list.add(1);
+  list.add(4);
+
+  list.add(2);
+  list.add(3);
+  list.add(2);
+  list.add(1);
+
+  list.removeIf([](const int& i) -> bool { return i == 2; });
+
+  ASSERT_EQ(list.getSize(), 5);
+
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 1);
+  ASSERT_EQ(list[2], 4);
+  ASSERT_EQ(list[3], 3);
+
+  ASSERT_EQ(list[4], 1);
+}
+
+DTEST(removeIfRemovesNothing) {
+  List<int> list;
+
+  list.add(1);
+  list.add(2);
+  list.add(1);
+  list.add(4);
+
+  list.add(2);
+  list.add(3);
+  list.add(2);
+  list.add(1);
+
+  list.removeIf([](const int& i) -> bool { return i == 1337; });
+
+  ASSERT_EQ(list.getSize(), 8);
+
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 2);
+  ASSERT_EQ(list[2], 1);
+  ASSERT_EQ(list[3], 4);
+
+  ASSERT_EQ(list[4], 2);
+  ASSERT_EQ(list[5], 3);
+  ASSERT_EQ(list[6], 2);
+  ASSERT_EQ(list[7], 1);
+}
+
+DTEST(removeIfWithLargeDataSet) {
+  List<int> list;
+
+  for (int i = 0; i < 10000; ++i) {
+    list.add(i % 10);
+  }
+
+  list.removeIf([](const int& i) -> bool { return i == 0; });
+
+  ASSERT_EQ(list.getSize(), 9000);
+
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 2);
+  ASSERT_EQ(list[2], 3);
+  ASSERT_EQ(list[3], 4);
+
+  ASSERT_EQ(list[4], 5);
+  ASSERT_EQ(list[5], 6);
+  ASSERT_EQ(list[6], 7);
+  ASSERT_EQ(list[7], 8);
+
+  ASSERT_EQ(list[8], 9);
+  ASSERT_EQ(list[9], 1);
+  ASSERT_EQ(list[10], 2);
+  ASSERT_EQ(list[11], 3);
+}
+
 DTEST(find) {
   List<int> v;
 

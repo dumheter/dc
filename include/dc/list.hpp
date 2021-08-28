@@ -117,9 +117,15 @@ class List {
   /// Remove the element at a given posistion
   void removeAt(u64 pos);
 
+  /// Evaluate each element in list with \ref Fn, remove those who match.
+  template <typename Fn>
+  void removeIf(Fn fn);
+
   [[nodiscard]] u64 getSize() const noexcept { return m_end - m_begin; }
 
   [[nodiscard]] u64 getCapacity() const noexcept { return m_capacity; }
+
+  [[nodiscard]] bool isEmpty() const noexcept { return getSize() == 0; }
 
   [[nodiscard]] List clone() const;
 
@@ -247,6 +253,40 @@ void List<T, N>::remove(const T& elem) {
 template <typename T, u64 N>
 void List<T, N>::removeAt(u64 pos) {
   remove(m_begin + pos);
+}
+
+template <typename T, u64 N>
+template <typename Fn>
+void List<T, N>::removeIf(Fn fn) {
+  static_assert(isInvocable<Fn, const T&>,
+                "Cannot call 'Fn', is it a function with argument 'const T&'?");
+  static_assert(isSame<InvokeResultT<Fn, const T&>, bool>,
+                "The return type of 'Fn' is not bool.");
+
+  if (isEmpty()) return;
+
+  // swap
+  T* lastElem = m_end - 1;
+  T* swapIter = lastElem;
+  for (T* elem = lastElem; elem >= m_begin; --elem) {
+    if (fn(*elem)) {
+      dc::swap(*elem, *swapIter);
+      --swapIter;
+
+      // Now also restore the order of the swapped elem.
+      // Would be more efficent to do in a restore passa after,
+      // but lets keep it simple for now.
+      for (T* restoreElem = elem; restoreElem < swapIter; ++restoreElem) {
+        dc::swap(*restoreElem, *(restoreElem + 1));
+      }
+    }
+  }
+
+  // destruct
+  for (T* elem = lastElem; elem >= swapIter; --elem) {
+    elem->~T();
+  }
+  m_end = swapIter + 1;
 }
 
 template <typename T, u64 N>
