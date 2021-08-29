@@ -117,56 +117,8 @@ class [[nodiscard]] StringView {
 
 /// String
 ///
-/// Has small string optimization. It may start as small string, but if it needs
-/// to allocate, it will never be small again.
+/// Utilizes List for small string optimization.
 class [[nodiscard]] String {
- public:
-  class [[nodiscard]] Iterator {
-   public:
-    Iterator(u8* data, u64 pos) : m_data(data), m_pos(pos) {}
-
-    [[nodiscard]] u8& operator*() { return m_data[m_pos]; }
-    [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
-
-    [[nodiscard]] u8* operator->() { return &m_data[m_pos]; }
-    [[nodiscard]] const u8* operator->() const { return &m_data[m_pos]; }
-
-    [[nodiscard]] constexpr bool operator==(const Iterator& other) const {
-      return m_data == other.m_data && m_pos == other.m_pos;
-    }
-    [[nodiscard]] constexpr bool operator!=(const Iterator& other) const {
-      return m_data != other.m_data || m_pos != other.m_pos;
-    }
-
-    constexpr void operator++() { ++m_pos; }
-
-   private:
-    u8* m_data;
-    u64 m_pos;
-  };
-
-  class [[nodiscard]] CIterator {
-   public:
-    CIterator(const u8* data, u64 pos) : m_data(data), m_pos(pos) {}
-
-    [[nodiscard]] const u8& operator*() const { return m_data[m_pos]; }
-
-    [[nodiscard]] const u8* operator->() const { return &m_data[m_pos]; }
-
-    [[nodiscard]] constexpr bool operator==(const CIterator& other) const {
-      return m_data == other.m_data && m_pos == other.m_pos;
-    }
-    [[nodiscard]] constexpr bool operator!=(const CIterator& other) const {
-      return m_data != other.m_data || m_pos != other.m_pos;
-    }
-
-    constexpr void operator++() { ++m_pos; }
-
-   private:
-    const u8* m_data;
-    u64 m_pos;
-  };
-
  public:
   String(IAllocator& = getDefaultAllocator());
   String(const char* str, IAllocator& = getDefaultAllocator());
@@ -174,13 +126,14 @@ class [[nodiscard]] String {
   String(StringView view);
   String(String&& other) noexcept;
 
-  ~String();
-
   String& operator=(String&& other) noexcept;
+
+  /// Try to avoid this function, has to measure the length of the c string.
+  // TODO cgustafsson: refer user to something else
   void operator=(const char* str);
 
   // use clone() instead
-  String(const String& other);
+  String(const String& other) = delete;
   String& operator=(const String& other) = delete;
 
   /// Make a copy of this string instance.
@@ -191,19 +144,38 @@ class [[nodiscard]] String {
   // TODO cgustafsson:
   // String substr() const;
 
+  // TODO cgustafsson: should this be deleted, or kept for legacy reason?
   [[nodiscard]] const char* c_str() const;
-  [[nodiscard]] const u8* getData() const;
-  [[nodiscard]] u8* getData();
 
-  [[nodiscard]] u8& operator[](const u64 pos) { return getData()[pos]; }
-  [[nodiscard]] const u8& operator[](const u64 pos) const {
-    return getData()[pos];
-  }
+  // TODO cgustafsson: getData, getRaw, getCStr, CStr, c_str, getString, get
+  /// Access raw data of the string. Note that utf-8 encodes its characters
+  /// across multiple char's.
+  [[nodiscard]] const char* getData() const;
+  [[nodiscard]] char* getData();
 
+  // TODO cgustafsson: Should this be in terms of raw char's, or in unicode
+  // cp's?
+  // [[nodiscard]] char& operator[](const u64 pos) { return m_list[pos]; }
+  // [[nodiscard]] const char& operator[](const u64 pos) const {
+  //   return m_list[pos];
+  // }
+
+  /// Raw data access. Users responsibility to not disturb utf-8 validity.
+  char getDataAt(u64 pos) const;
+  void setDataAt(u64 pos, char data);
+
+  /// @return Number of bytes used by the string, excluding the null terminator.
   [[nodiscard]] u64 getSize() const;
+
+  /// @return Number of unicode code points used by the string, excluding null
+  /// terminator.
   [[nodiscard]] u64 getLength() const;
+
+  /// @return Number of bytes that is reserved for, and usable by, the string.
+  /// Excluding the null terminator.
   [[nodiscard]] u64 getCapacity() const;
 
+  /// @return Is the string empty, excluding the null terminator.
   [[nodiscard]] bool isEmpty() const;
 
   [[nodiscard]] bool operator==(const String& other) const;
@@ -213,30 +185,30 @@ class [[nodiscard]] String {
   [[nodiscard]] bool operator!=(const char* other) const;
 
   void operator+=(const String& other);
-  void operator+=(u8 codePoint);
+  void operator+=(u8 data);
   void operator+=(const char* str);
 
-  [[nodiscard]] Iterator begin() { return Iterator(getData(), 0); }
+  [[nodiscard]] Utf8Iterator begin() {
+    return Utf8Iterator(c_str(), getSize(), 0);
+  }
 
-  [[nodiscard]] Iterator end() { return Iterator(getData(), getSize()); }
-
-  [[nodiscard]] CIterator cbegin() const { return CIterator(getData(), 0); }
-  [[nodiscard]] CIterator cend() const {
-    return CIterator(getData(), getSize());
+  [[nodiscard]] Utf8Iterator end() {
+    return Utf8Iterator(c_str(), getSize(), getSize());
   }
 
   /// Append to the back of the string.
-  void append(const u8* str, u64 size);
+  void append(const char* str, u64 size);
 
   /// Insert into the string, may allocate if needed. Will overwrite if not
   /// at end of string.
   /// @param size Byte size of str, without the null termination.
-  void insert(const u8* str, u64 size, u64 offset);
+  void insert(const char* str, u64 size, u64 offset);
   void insert(const char* str, u64 offset);
 
   /// Resize the internal buffer.
-  /// @param size
-  /// @return
+  /// @param size The new size. The internal buffer size will be size + 1, to
+  /// also contain the null terminator.
+  /// @return The new size.
   u64 resize(u64 size);
 
   /// @retval Some with position if found
@@ -244,61 +216,10 @@ class [[nodiscard]] String {
   Option<u64> find(StringView pattern) const;
 
  private:
-  struct [[nodiscard]] BigString {
-    u8* string;
-    u64 size;
-    u64 capacity;
-  };
-  static_assert(isPod<BigString>);
-
-  struct [[nodiscard]] SmallString {
-    static constexpr u64 kSize =
-        sizeof(BigString) - 1;  //< last byte reserved for null terminator
-    u8 string[sizeof(BigString)];
-
-    [[nodiscard]] constexpr bool isEmpty() const { return getSize() == 0; }
-    [[nodiscard]] constexpr u64 getSize() const {
-      return kSize - string[kSize];
-    }
-    [[nodiscard]] constexpr u64 getCapacity() const { return kSize; }
-    void setSize(u64 newSize);
-    void clear();
-  };
-  static_assert(isPod<SmallString>);
-
-  enum class State : uintptr_t {
-    BigString = 0,
-    SmallString = 1,
-  };
-  static constexpr uintptr_t kFlagStateBit = 0;
-  static constexpr uintptr_t kFlagStateMask = 1;
+  String(List<char>&& list);
 
  private:
-  [[nodiscard]] State getState() const;
-  void setState(State state);
-
-  /// Set the size in the correct string state.
-  /// This is the raw internal set size method.
-  void setSize(u64 size);
-
-  [[nodiscard]] IAllocator& getAllocator() const;
-
-  /// Clear our data, if we have allocated, free.
-  void destroyAndClear();
-
-  /// Take ownership of the other's data.
-  void take(String&& other);
-
-  /// When an allocation fails, set our string to a memory alloc failed state.
-  void onAllocFailed();
-
- private:
-  IAllocator* m_allocator;  //< used to store flags, do not access directly.
-
-  union {
-    BigString m_bigString;
-    SmallString m_smallString;
-  };
+  List<char> m_list;
 };
 
 bool operator==(const char* a, const dc::String& b);
@@ -314,7 +235,7 @@ namespace dc {
 String vformat(fmt::string_view formatStr, fmt::format_args args);
 
 template <typename... Args>
-inline String format(fmt::string_view formatStr, Args... args) {
+inline String format(fmt::string_view formatStr, Args&&... args) {
   return dc::vformat(formatStr, fmt::make_format_args(args...));
 }
 

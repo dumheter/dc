@@ -38,6 +38,7 @@ void* BufferAwareAllocator::realloc(void* data, usize count, usize align) {
     return m_pair.getPointer()->realloc(data, count, align);
   }
 
+  m_pair.setInt(kHaveAllocated);
   void* newData = m_pair.getPointer()->alloc(count, align);
   memcpy(newData, data, count);
   return newData;

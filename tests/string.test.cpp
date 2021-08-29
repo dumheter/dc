@@ -148,6 +148,7 @@ DTEST(stringViewRunTime) {
   String runtimeString("runtime length");
   StringView view = runtimeString.toView();
 
+  ASSERT_EQ(runtimeString.getSize(), view.getSize());
   ASSERT_EQ(view.getSize(), strlen("runtime length"));
   ASSERT_TRUE(strcmp(view.c_str(), "runtime length") == 0);
 }
@@ -251,7 +252,7 @@ DTEST(isSameAsCStringLooong) {
 DTEST(canIterate) {
   String str = "The quick brown fox jumps over the fence.";
   usize i = 0;
-  for (u8 c : str) {
+  for (utf8::CodePoint c : str) {
     (void)c;
     ++i;
   }
@@ -276,9 +277,9 @@ DTEST(lengthOfMultiCodePointString) {
 
 DTEST(appendSmallToBig) {
   String str = "small";
-  ASSERT_TRUE(str.getCapacity() < sizeof(String));
+  ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
   str += " The quick brown fox jumps over the fence.";
-  ASSERT_TRUE(str.getCapacity() > sizeof(String));
+  ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
 }
 
 DTEST(insertInMiddleOfString) {

@@ -67,15 +67,21 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
           .match([](Callstack&& cs) { return move(cs.toString()); },
                  [](CallstackErr&& err) { return err.toString(); });
 
-  if (callstack[callstack.getSize() - 1] == '\n')  //< remove last newline
-    callstack[callstack.getSize() - 1] = '\0';
+  if (callstack.getDataAt(callstack.getSize() - 1) ==
+      '\n')  //< remove last newline
+    callstack.setDataAt(callstack.getSize() - 1, '\0');
 
-  dc::String fmt = dc::format(
+  // dc::String fmt = dc::format(
+  //     "Assertion failed: [{}] in [{}:{} @ {}]. "
+  //     "Callstack:\n{}",
+  //     msg, file, line, func, callstack.c_str());
+
+  // LOG_ERROR("{}", fmt);
+
+  LOG_ERROR(
       "Assertion failed: [{}] in [{}:{} @ {}]. "
       "Callstack:\n{}",
-      msg, file, line, func, callstack.c_str());
-
-  LOG_ERROR("{}", fmt);
+      msg, file, line, func, callstack);
 
 #if defined(DC_ASSERT_DIALOG)
 #if defined(DC_PLATFORM_WINDOWS)

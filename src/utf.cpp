@@ -66,7 +66,7 @@ void encode(CodePoint cp, String& string) {
       (cp <= kOctetUpperBound4) && (cp > kOctetUpperBound3);
 
   const usize size = string.getSize();
-  u8* ptr = string.getData();
+  char* ptr = string.getData();
 
   if (hasOctetCount1) {
     string.resize(size + 1);
