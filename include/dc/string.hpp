@@ -205,7 +205,7 @@ class [[nodiscard]] String {
   void insert(const char* str, u64 size, u64 offset);
   void insert(const char* str, u64 offset);
 
-  /// Resize the internal buffer.
+  /// Resize the internal buffer. Will also put a null terminator after size.
   /// @param size The new size. The internal buffer size will be size + 1, to
   /// also contain the null terminator.
   /// @return The new size.

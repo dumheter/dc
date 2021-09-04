@@ -85,29 +85,26 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
   out.baseAddr = moduleInfo.lpBaseOfDll;
   out.loadSize = moduleInfo.SizeOfImage;
 
-  constexpr int bufSize = 1024;
-  std::vector<char> img(bufSize);
-  DWORD len = GetModuleFileNameEx(process, module, img.data(),
-                                  static_cast<DWORD>(img.size()));
+  out.imageName.resize(1024);
+  DWORD len = GetModuleFileNameEx(process, module, out.imageName.getData(),
+                                  static_cast<DWORD>(out.imageName.getSize()));
   if (len == 0)
     return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
-  img.resize(len);
-  out.imageName = img.data();
+  out.imageName.resize(len);
 
-  std::vector<char> mod(bufSize);
-  len = GetModuleBaseName(process, module, mod.data(),
-                          static_cast<DWORD>(mod.size()));
+  out.moduleName.resize(1024);
+  len = GetModuleBaseName(process, module, out.moduleName.getData(),
+                          static_cast<DWORD>(out.moduleName.getSize()));
   if (len == 0)
     return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
-  mod.resize(len);
-  out.moduleName = mod.data();
+  out.moduleName.resize(len);
 
   HANDLE file = NULL;               //< no file
   PMODLOAD_DATA headerData = NULL;  //< extra header info, not needed
   DWORD flags = 0;                  //< no extra flags
-  DWORD64 okLoad = SymLoadModuleEx(process, file, img.data(), mod.data(),
-                                   reinterpret_cast<DWORD64>(out.baseAddr),
-                                   out.loadSize, headerData, flags);
+  DWORD64 okLoad = SymLoadModuleEx(
+      process, file, out.imageName.getData(), out.moduleName.getData(),
+      reinterpret_cast<DWORD64>(out.baseAddr), out.loadSize, headerData, flags);
   if (okLoad == 0)
     return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
@@ -132,7 +129,7 @@ class Symbol {
 
   Symbol(Symbol&& other) : m_sym(other.m_sym) { other.m_sym = nullptr; }
   Symbol& operator=(Symbol&& other) {
-    if (this != &other) std::swap(m_sym, other.m_sym);
+    if (this != &other) dc::swap(m_sym, other.m_sym);
 
     return *this;
   }
@@ -210,28 +207,30 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   symOptions |= SYMOPT_LOAD_LINES | SYMOPT_UNDNAME;
   SymSetOptions(symOptions);
 
-  std::vector<HMODULE> moduleHandles(1);
+  List<HMODULE> moduleHandles;
+  moduleHandles.resize(10);
   DWORD bytesNeeded;
   bool ok = EnumProcessModules(
-      process, moduleHandles.data(),
-      static_cast<DWORD>(moduleHandles.size() * sizeof(HMODULE)), &bytesNeeded);
+      process, moduleHandles.begin(),
+      static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
+      &bytesNeeded);
   if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
 
   if (bytesNeeded > 0) {
     moduleHandles.resize(bytesNeeded / sizeof(HMODULE));
     ok = EnumProcessModules(
-        process, moduleHandles.data(),
-        static_cast<DWORD>(moduleHandles.size() * sizeof(HMODULE)),
+        process, moduleHandles.begin(),
+        static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
         &bytesNeeded);
     if (!ok)
       return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
   }
 
   // TODO cgustafsson: why load all modules when only using 1?
-  std::vector<ModuleInfo> modules;
+  List<ModuleInfo> modules;
   for (HMODULE module : moduleHandles) {
     auto res = ModuleInfo::create(process, module);
-    if (res.isOk()) modules.push_back(dc::move(res).unwrap());
+    if (res.isOk()) modules.add(dc::move(res).unwrap());
     // else
     //   return dc::move(res).map([](ModuleInfo&&) { return Callstack(); });
   }
@@ -262,6 +261,8 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 #error "platform not supported"
 #endif
 
+  // TODO cgustafsson: need a new way to format into a buffer, without
+  // creating new String's.
   std::vector<char> buffer;
   buffer.reserve(2048);
 

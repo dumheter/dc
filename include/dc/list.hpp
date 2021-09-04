@@ -133,7 +133,11 @@ class List {
   /// Evaluate each element in list with @ref fn, remove those who match.
   /// @param Fn A function that takes a const T& and returns true if it should
   /// be removed
-  template <typename Fn>
+  template <typename Fn,
+            // TODO cgustafsson:  is it nicer to have trait req here, instead of
+            // impl?
+            bool enable = isInvocable<Fn, const T&>&&
+                isSame<InvokeResultT<Fn, const T&>, bool> >
   void removeIf(Fn fn);
 
   [[nodiscard]] u64 getSize() const noexcept { return m_end - m_begin; }
@@ -297,7 +301,7 @@ void List<T, N>::removeAt(u64 pos) {
 }
 
 template <typename T, u64 N>
-template <typename Fn>
+template <typename Fn, bool enable>
 void List<T, N>::removeIf(Fn fn) {
   static_assert(isInvocable<Fn, const T&>,
                 "Cannot call 'Fn', is it a function with argument 'const T&'?");

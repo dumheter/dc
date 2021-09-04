@@ -203,21 +203,6 @@ DTEST(find) {
 DTEST(clone) {
   List<int> v;
 
-  List<int*> a;
-  (void)a;
-  LOG_INFO("List<int> size: {}, List<int*> size: {}, N<int*>: {}, N<int>: {}",
-           sizeof(v), sizeof(a), List<int*>::kInternalBuffer,
-           List<int>::kInternalBuffer);
-  LOG_INFO(
-      "List<int, 8> size: {}, List<int*, 4> size: {}, N<int*, 4>: {}, N<int, "
-      "8>: {}",
-      sizeof(List<int, 8>), sizeof(List<int*, 4>),
-      List<int*, 4>::kInternalBuffer, List<int, 8>::kInternalBuffer);
-  LOG_INFO("sizeof(BufferAwareAllocator): {}",
-           sizeof(detail::BufferAwareAllocator));
-  LOG_INFO("sizeof(PointerIntPair): {}",
-           sizeof(PointerIntPair<IAllocator*, u32>));
-
   v.add(10);
   v.add(20);
   v.add(30);

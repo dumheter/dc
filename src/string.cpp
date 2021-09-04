@@ -287,6 +287,7 @@ void String::insert(const char* str, u64 offset) {
 
 u64 String::resize(u64 size) {
   m_list.resize(size + 1);
+  m_list[size] = 0;
   return getSize();
 }
 
