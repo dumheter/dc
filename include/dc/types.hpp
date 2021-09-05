@@ -51,3 +51,6 @@ using f32 = float;
 using f64 = double;
 static_assert(sizeof(f32) == 4, "f32 is not 32-bits large");
 static_assert(sizeof(f64) == 8, "f64 is not 64-bits large");
+
+using uintptr = uintptr_t;
+using intptr = intptr_t;
