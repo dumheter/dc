@@ -259,3 +259,28 @@ DTEST(addRangeForTrivialElementType) {
   ASSERT_EQ(v.getLast(), 0);
   ASSERT_TRUE(strcmp(v.begin(), "hello world") == 0);
 }
+
+DTEST(addRangeForNonTrivialElementType) {
+	struct A{
+		int a;
+		bool operator==(int other) const { return a == other; }
+	};
+
+	List<A> l0;
+	l0.add(A{20});
+	l0.add(A{21});
+	l0.add(A{22});
+
+	List<A> l1;
+	l1.add(A{18});
+	l1.add(A{19});
+
+	l1.addRange(l0.begin(), l0.end());
+
+	ASSERT_EQ(l1.getSize(), 5);
+	ASSERT_EQ(l1[0], 18);
+	ASSERT_EQ(l1[1], 19);
+	ASSERT_EQ(l1[2], 20);
+	ASSERT_EQ(l1[3], 21);
+	ASSERT_EQ(l1[4], 22);
+}

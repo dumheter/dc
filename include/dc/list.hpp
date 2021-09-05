@@ -313,16 +313,11 @@ void List<T, N>::addRange(const T* begin, const T* end) {
     resize(getSize() + (end - begin));
     memcpy(oldEnd, begin, (end - begin));
   } else {
-    DC_FATAL_ASSERT(false,
-                    "addRange for non-trivial types is not tested yet, and "
-                    "ahven't decided if it should be an anti pattern.");
-    /*
     T* newIt = m_end;
     resize(getSize() + (end - begin));
     while (begin != end) {
             new (newIt++) T(*begin++);
     }
-    */
   }
 }
 
