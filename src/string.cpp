@@ -88,7 +88,7 @@ bool Utf8Iterator::hasValidOffset() const {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-char StringView::operator[](u64 pos) const {
+char8 StringView::operator[](u64 pos) const {
   DC_ASSERT(pos <= m_size, "Trying to read outside the StringView memory.");
   return m_string[pos];
 }
@@ -185,10 +185,10 @@ Option<u64> StringView::find(StringView pattern) const {
 
 String::String(IAllocator& allocator) : m_list(allocator) {}
 
-String::String(const char* str, IAllocator& allocator)
+String::String(const char8* str, IAllocator& allocator)
     : String(str, strlen(str), allocator) {}
 
-String::String(const char* str, u64 size, IAllocator& allocator)
+String::String(const char8* str, u64 size, IAllocator& allocator)
     : m_list(allocator) {
   m_list.resize(size + 1);
   memcpy(m_list.begin(), str, size);
@@ -199,6 +199,12 @@ String::String(StringView view) : String(view.c_str(), view.getSize()) {}
 
 String::String(String&& other) noexcept : m_list(dc::move(other.m_list)){};
 
+// TODO cgustafsson: does the forward here skip a move?
+String::String(List<char8>&& list) noexcept
+    : m_list(dc::forward<List<char8>&&>(list)) {
+  if (!m_list.isEmpty()) *(m_list.end() - 1) = 0;
+}
+
 String& String::operator=(String&& other) noexcept {
   if (this != &other) {
     m_list = dc::move(other.m_list);
@@ -206,7 +212,7 @@ String& String::operator=(String&& other) noexcept {
   return *this;
 }
 
-void String::operator=(const char* str) {
+void String::operator=(const char8* str) {
   const u64 size = strlen(str);
 
   m_list.resize(size + 1);
@@ -218,15 +224,15 @@ String String::clone() const {
   return out;
 }
 
-const char* String::c_str() const { return m_list.begin(); }
+const char8* String::c_str() const { return m_list.begin(); }
 
-const char* String::getData() const { return m_list.begin(); }
+const char8* String::getData() const { return m_list.begin(); }
 
-char* String::getData() { return m_list.begin(); }
+char8* String::getData() { return m_list.begin(); }
 
-char String::getDataAt(u64 pos) const { return m_list[pos]; }
+char8 String::getDataAt(u64 pos) const { return m_list[pos]; }
 
-void String::setDataAt(u64 pos, char data) { m_list[pos] = data; }
+void String::setDataAt(u64 pos, char8 data) { m_list[pos] = data; }
 
 u64 String::getSize() const {
   const auto size = m_list.getSize();
@@ -259,15 +265,17 @@ bool String::operator==(const String& other) const {
 
 bool String::operator!=(const String& other) const { return !(*this == other); }
 
-bool String::operator==(const char* other) const {
+bool String::operator==(const char8* other) const {
   return getSize() == strlen(other) && memcmp(getData(), other, getSize()) == 0;
 }
 
-bool String::operator!=(const char* other) const { return !(*this == other); }
+bool String::operator!=(const char8* other) const { return !(*this == other); }
 
-void String::append(const char* str, u64 size) { insert(str, size, getSize()); }
+void String::append(const char8* str, u64 size) {
+  insert(str, size, getSize());
+}
 
-void String::insert(const char* str, u64 size, u64 offset) {
+void String::insert(const char8* str, u64 size, u64 offset) {
   const u64 thisSize = getSize();
   DC_ASSERT(offset <= thisSize,
             "Cannot have an offset larger than the size of String.");
@@ -280,7 +288,7 @@ void String::insert(const char* str, u64 size, u64 offset) {
   memcpy(m_list.begin() + offset, str, size);
 }
 
-void String::insert(const char* str, u64 offset) {
+void String::insert(const char8* str, u64 offset) {
   const u64 size = strlen(str);
   insert(str, size, offset);
 }
@@ -300,19 +308,16 @@ void String::operator+=(const String& other) {
   append(other.getData(), other.getSize());
 }
 
-void String::operator+=(u8 data) { append((char*)&data, 1); }
+void String::operator+=(u8 data) { append((char8*)&data, 1); }
 
-void String::operator+=(const char* str) { append(str, strlen(str)); }
+void String::operator+=(const char8* str) { append(str, strlen(str)); }
 
-bool operator==(const char* a, const dc::String& b) { return b.operator==(a); }
-
-// TODO cgustafsson: does the forward here skip a move?
-String::String(List<char>&& list) : m_list(dc::forward<List<char>&&>(list)) {}
+bool operator==(const char8* a, const dc::String& b) { return b.operator==(a); }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 String vformat(fmt::string_view formatStr, fmt::format_args args) {
-  fmt::basic_memory_buffer<char, fmt::inline_buffer_size> buffer;
+  fmt::basic_memory_buffer<char8, fmt::inline_buffer_size> buffer;
   fmt::vformat_to(buffer, formatStr, args);
   return String(buffer.data(), buffer.size());
 }

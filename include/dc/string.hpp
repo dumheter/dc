@@ -41,13 +41,11 @@ namespace dc {
 /// Iterator to a utf-8 encoded string.
 class [[nodiscard]] Utf8Iterator {
  public:
-  Utf8Iterator(const char* string, u64 size, s64 offset)
+  Utf8Iterator(const char8* string, u64 size, s64 offset)
       : m_string(string), m_size(size), m_offset(offset) {}
 
   /// @return The code point at the current offset.
   [[nodiscard]] utf8::CodePoint operator*();
-
-  //[[nodiscard]] utf8::CodePoint operator->() const;
 
   [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
 
@@ -62,7 +60,7 @@ class [[nodiscard]] Utf8Iterator {
   [[nodiscard]] bool hasValidOffset() const;
 
  private:
-  const char* m_string = nullptr;
+  const char8* m_string = nullptr;
   u64 m_size = 0;
   s64 m_offset = 0;
 };
@@ -79,12 +77,13 @@ class [[nodiscard]] StringView {
   // TODO cgustafsson: How to allow this constexpr size constructor?
   // constexpr StringView(const char (&string)[kSize])
   //    : m_string(string), m_size(kSize - 1) {}
+  StringView() = default;
 
-  StringView(const char* string) : StringView(string, strlen(string)) {}
+  StringView(const char8* string) : StringView(string, strlen(string)) {}
 
-  StringView(const char* string, u64 size) : m_string(string), m_size(size) {}
+  StringView(const char8* string, u64 size) : m_string(string), m_size(size) {}
 
-  [[nodiscard]] constexpr const char* c_str() const { return m_string; }
+  [[nodiscard]] constexpr const char8* c_str() const { return m_string; }
 
   [[nodiscard]] constexpr const u8* getData() const {
     return (const u8*)m_string;
@@ -96,10 +95,11 @@ class [[nodiscard]] StringView {
 
   [[nodiscard]] constexpr bool isEmpty() const { return m_size == 0; }
 
-  [[nodiscard]] char operator[](u64 pos) const;
+  [[nodiscard]] char8 operator[](u64 pos) const;
 
-  // [[nodiscard]] constexpr const char* begin() const { return m_string; }
-  // [[nodiscard]] constexpr const char* end() const { return m_string + m_size;
+  // [[nodiscard]] constexpr const char8* begin() const { return m_string; }
+  // [[nodiscard]] constexpr const char8* end() const { return m_string +
+  // m_size;
   // }
   [[nodiscard]] Utf8Iterator begin() const {
     return Utf8Iterator(m_string, m_size, 0);
@@ -108,10 +108,13 @@ class [[nodiscard]] StringView {
     return Utf8Iterator(m_string, m_size, m_size);
   }
 
+  [[nodiscard]] const char8* beginChar8() const { return m_string; }
+  [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
+
   [[nodiscard]] Option<u64> find(StringView pattern) const;
 
  private:
-  const char* m_string = nullptr;
+  const char8* m_string = nullptr;
   u64 m_size = 0;
 };
 
@@ -121,16 +124,20 @@ class [[nodiscard]] StringView {
 class [[nodiscard]] String {
  public:
   String(IAllocator& = getDefaultAllocator());
-  String(const char* str, IAllocator& = getDefaultAllocator());
-  String(const char* str, u64 size, IAllocator& = getDefaultAllocator());
+  String(const char8* str, IAllocator& = getDefaultAllocator());
+  String(const char8* str, u64 size, IAllocator& = getDefaultAllocator());
   String(StringView view);
   String(String&& other) noexcept;
+
+  /// Construct by taking ownership of an already existing list.
+  /// Will null terminate the list
+  String(List<char8>&& list) noexcept;
 
   String& operator=(String&& other) noexcept;
 
   /// Try to avoid this function, has to measure the length of the c string.
   // TODO cgustafsson: refer user to something else
-  void operator=(const char* str);
+  void operator=(const char8* str);
 
   // use clone() instead
   String(const String& other) = delete;
@@ -145,24 +152,24 @@ class [[nodiscard]] String {
   // String substr() const;
 
   // TODO cgustafsson: should this be deleted, or kept for legacy reason?
-  [[nodiscard]] const char* c_str() const;
+  [[nodiscard]] const char8* c_str() const;
 
   // TODO cgustafsson: getData, getRaw, getCStr, CStr, c_str, getString, get
   /// Access raw data of the string. Note that utf-8 encodes its characters
   /// across multiple char's.
-  [[nodiscard]] const char* getData() const;
-  [[nodiscard]] char* getData();
+  [[nodiscard]] const char8* getData() const;
+  [[nodiscard]] char8* getData();
 
   // TODO cgustafsson: Should this be in terms of raw char's, or in unicode
   // cp's?
-  // [[nodiscard]] char& operator[](const u64 pos) { return m_list[pos]; }
-  // [[nodiscard]] const char& operator[](const u64 pos) const {
+  // [[nodiscard]] char8& operator[](const u64 pos) { return m_list[pos]; }
+  // [[nodiscard]] const char8& operator[](const u64 pos) const {
   //   return m_list[pos];
   // }
 
   /// Raw data access. Users responsibility to not disturb utf-8 validity.
-  char getDataAt(u64 pos) const;
-  void setDataAt(u64 pos, char data);
+  char8 getDataAt(u64 pos) const;
+  void setDataAt(u64 pos, char8 data);
 
   /// @return Number of bytes used by the string, excluding the null terminator.
   [[nodiscard]] u64 getSize() const;
@@ -181,12 +188,12 @@ class [[nodiscard]] String {
   [[nodiscard]] bool operator==(const String& other) const;
   [[nodiscard]] bool operator!=(const String& other) const;
 
-  [[nodiscard]] bool operator==(const char* other) const;
-  [[nodiscard]] bool operator!=(const char* other) const;
+  [[nodiscard]] bool operator==(const char8* other) const;
+  [[nodiscard]] bool operator!=(const char8* other) const;
 
   void operator+=(const String& other);
   void operator+=(u8 data);
-  void operator+=(const char* str);
+  void operator+=(const char8* str);
 
   [[nodiscard]] Utf8Iterator begin() {
     return Utf8Iterator(c_str(), getSize(), 0);
@@ -197,13 +204,13 @@ class [[nodiscard]] String {
   }
 
   /// Append to the back of the string.
-  void append(const char* str, u64 size);
+  void append(const char8* str, u64 size);
 
   /// Insert into the string, may allocate if needed. Will overwrite if not
   /// at end of string.
   /// @param size Byte size of str, without the null termination.
-  void insert(const char* str, u64 size, u64 offset);
-  void insert(const char* str, u64 offset);
+  void insert(const char8* str, u64 size, u64 offset);
+  void insert(const char8* str, u64 offset);
 
   /// Resize the internal buffer. Will also put a null terminator after size.
   /// @param size The new size. The internal buffer size will be size + 1, to
@@ -215,14 +222,14 @@ class [[nodiscard]] String {
   /// @retval None if not found
   Option<u64> find(StringView pattern) const;
 
- private:
-  String(List<char>&& list);
+  List<char8>& getInternalList() { return m_list; }
+  const List<char8>& getInternalList() const { return m_list; }
 
  private:
-  List<char> m_list;
+  List<char8> m_list;
 };
 
-bool operator==(const char* a, const dc::String& b);
+bool operator==(const char8* a, const dc::String& b);
 
 }  // namespace dc
 
