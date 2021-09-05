@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <dc/types.hpp>
+
 namespace dc {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -677,5 +679,84 @@ struct IsPod<T[N]> : public IsPod<T> {};
 
 template <typename T>
 constexpr bool isPod = IsPod<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct FloatingPoint : public FalseType {};
+
+template <>
+struct FloatingPoint<f32> : public TrueType {};
+
+template <>
+struct FloatingPoint<f64> : public TrueType {};
+
+template <typename T>
+constexpr bool isFloatingPoint = FloatingPoint<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct Integral : public FalseType {};
+
+template <>
+struct Integral<bool> : public TrueType {};
+
+template <>
+struct Integral<u8> : public TrueType {};
+
+template <>
+struct Integral<s8> : public TrueType {};
+
+template <>
+struct Integral<u16> : public TrueType {};
+
+template <>
+struct Integral<s16> : public TrueType {};
+
+template <>
+struct Integral<u32> : public TrueType {};
+
+template <>
+struct Integral<s32> : public TrueType {};
+
+template <>
+struct Integral<u64> : public TrueType {};
+
+template <>
+struct Integral<s64> : public TrueType {};
+
+template <>
+struct Integral<char8> : public TrueType {};
+
+template <typename T>
+constexpr bool isIntegral = Integral<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct Arithmetic
+    : public IntegralConstant<bool, isIntegral<T> || isFloatingPoint<T>> {};
+
+template <typename T>
+constexpr bool isArithmetic = Arithmetic<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct Fundamental
+    : public IntegralConstant<bool, isArithmetic<T> || isVoid<T>> {};
+
+template <typename T>
+constexpr bool isFundamental = Fundamental<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct TriviallyRelocatable : public IntegralConstant<bool, isFundamental<T>> {
+};
+
+template <typename T>
+constexpr bool isTriviallyRelocatable = TriviallyRelocatable<T>::value;
 
 }  // namespace dc
