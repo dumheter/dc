@@ -752,9 +752,13 @@ constexpr bool isFundamental = Fundamental<T>::value;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
+template <typename T, typename = void>
 struct TriviallyRelocatable : public IntegralConstant<bool, isFundamental<T>> {
 };
+
+template <typename T>
+struct TriviallyRelocatable<T, VoidArgs<typename T::IsTriviallyRelocatable>>
+    : public TrueType {};
 
 template <typename T>
 constexpr bool isTriviallyRelocatable = TriviallyRelocatable<T>::value;

@@ -308,3 +308,97 @@ DTEST(isPod) {
 
   ASSERT_TRUE(true);
 }
+
+DTEST(isFloatingPoint) {
+  static_assert(isFloatingPoint<f32>);
+  static_assert(isFloatingPoint<f64>);
+  static_assert(!isFloatingPoint<s32>);
+
+  ASSERT_TRUE(true);
+}
+
+DTEST(isIntegral) {
+  static_assert(isIntegral<bool>);
+  static_assert(isIntegral<u8>);
+  static_assert(isIntegral<s8>);
+  static_assert(isIntegral<u16>);
+  static_assert(isIntegral<s16>);
+  static_assert(isIntegral<u32>);
+  static_assert(isIntegral<s32>);
+  static_assert(isIntegral<u64>);
+  static_assert(isIntegral<s64>);
+  static_assert(isIntegral<char8>);
+
+  static_assert(!isIntegral<f32>);
+
+  ASSERT_TRUE(true);
+}
+
+DTEST(isArithmetic) {
+  static_assert(isArithmetic<bool>);
+  static_assert(isArithmetic<u8>);
+  static_assert(isArithmetic<s8>);
+  static_assert(isArithmetic<u16>);
+  static_assert(isArithmetic<s16>);
+  static_assert(isArithmetic<u32>);
+  static_assert(isArithmetic<s32>);
+  static_assert(isArithmetic<u64>);
+  static_assert(isArithmetic<s64>);
+  static_assert(isArithmetic<char8>);
+
+  static_assert(isArithmetic<f32>);
+  static_assert(isArithmetic<f64>);
+
+  static_assert(!isArithmetic<DummyStruct>);
+
+  ASSERT_TRUE(true);
+}
+
+DTEST(isFundamental) {
+  static_assert(isFundamental<bool>);
+  static_assert(isFundamental<u8>);
+  static_assert(isFundamental<s8>);
+  static_assert(isFundamental<u16>);
+  static_assert(isFundamental<s16>);
+  static_assert(isFundamental<u32>);
+  static_assert(isFundamental<s32>);
+  static_assert(isFundamental<u64>);
+  static_assert(isFundamental<s64>);
+  static_assert(isFundamental<char8>);
+
+  static_assert(isFundamental<f32>);
+  static_assert(isFundamental<f64>);
+
+  static_assert(isFundamental<void>);
+
+  static_assert(!isFundamental<DummyStruct>);
+
+  ASSERT_TRUE(true);
+}
+
+DTEST(isTriviallyRelocatable) {
+  static_assert(isTriviallyRelocatable<bool>);
+  static_assert(isTriviallyRelocatable<u8>);
+  static_assert(isTriviallyRelocatable<s8>);
+  static_assert(isTriviallyRelocatable<u16>);
+  static_assert(isTriviallyRelocatable<s16>);
+  static_assert(isTriviallyRelocatable<u32>);
+  static_assert(isTriviallyRelocatable<s32>);
+  static_assert(isTriviallyRelocatable<u64>);
+  static_assert(isTriviallyRelocatable<s64>);
+  static_assert(isTriviallyRelocatable<char8>);
+
+  static_assert(isTriviallyRelocatable<f32>);
+  static_assert(isTriviallyRelocatable<f64>);
+
+  static_assert(isTriviallyRelocatable<void>);
+
+  static_assert(!isTriviallyRelocatable<DummyStruct>);
+
+  struct Rel {
+    using IsTriviallyRelocatable = bool;
+  };
+  static_assert(isTriviallyRelocatable<Rel>);
+
+  ASSERT_TRUE(true);
+}
