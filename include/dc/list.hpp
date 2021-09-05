@@ -119,7 +119,18 @@ class List {
 
   ~List();
 
+  /// Add to the end of the list
   void add(T elem);
+
+  /// Default construct a T at the end of the list, then return a reference to
+  /// it.
+  T& add();
+
+  /// Add to the end of the list, a range of elements.
+  /// Only enabled for trivially relocatable types since it uses memcpy.
+  /// @param begin Pointer to the first element.
+  /// @param end Pointer to one element _past_ the last element.
+  void addRange(const T* begin, const T* end);
 
   /// Remove a specific entry in the list.
   void remove(T* elem);
@@ -165,8 +176,22 @@ class List {
   [[nodiscard]] T& operator[](u64 pos);
   [[nodiscard]] const T& operator[](u64 pos) const;
 
+  /// Get a reference to the first element in the list.
+  T& getFirst() {
+    DC_ASSERT(!isEmpty(), "Tried to access first element when empty.");
+    return *m_begin;
+  }
+
+  /// Get a reference to the last element in the list.
+  T& getLast() {
+    DC_ASSERT(!isEmpty(), "Tried to access last element when empty.");
+    return *(m_end - 1);
+  }
+
+  /// Iterator to first element.
   constexpr T* begin() const { return m_begin; }
 
+  /// Iterator to one element _past_ the last elements.
   constexpr T* end() const { return m_end; }
 
   /// @return Pointer to the element on found, or pointer to m_end on not found.
@@ -261,12 +286,44 @@ List<T, N>::~List() {
   m_begin = nullptr;
 }
 
+constexpr u64 kDefaultExtraBytes = 32;
+
 template <typename T, u64 N>
 void List<T, N>::add(T elem) {
-  if (getSize() >= m_capacity) reserve(getSize() * 2 + 32);
+  if (getSize() >= m_capacity) reserve(getSize() * 2 + kDefaultExtraBytes);
 
   new (m_end) T(dc::move(elem));
   m_end += 1;
+}
+
+template <typename T, u64 N>
+T& List<T, N>::add() {
+  if (getSize() >= m_capacity) reserve(getSize() * 2 + kDefaultExtraBytes);
+
+  T& elem = new (m_end) T();
+  m_end += 1;
+  return elem;
+}
+
+template <typename T, u64 N>
+void List<T, N>::addRange(const T* begin, const T* end) {
+  DC_FATAL_ASSERT(end >= begin, "end is less than begin.");
+  if constexpr (isTriviallyRelocatable<T>) {
+    T* oldEnd = m_end;
+    resize(getSize() + (end - begin));
+    memcpy(oldEnd, begin, (end - begin));
+  } else {
+    DC_FATAL_ASSERT(false,
+                    "addRange for non-trivial types is not tested yet, and "
+                    "ahven't decided if it should be an anti pattern.");
+    /*
+    T* newIt = m_end;
+    resize(getSize() + (end - begin));
+    while (begin != end) {
+            new (newIt++) T(*begin++);
+    }
+    */
+  }
 }
 
 template <typename T, u64 N>

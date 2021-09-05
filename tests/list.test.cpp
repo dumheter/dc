@@ -241,3 +241,21 @@ DTEST(mutableIterator) {
 
   ASSERT_EQ(sum, 10);
 }
+
+DTEST(addRangeForTrivialElementType) {
+  List<char8> v;
+
+  const char8* str = " world";
+
+  v.add('h');
+  v.add('e');
+  v.add('l');
+  v.add('l');
+  v.add('o');
+
+  v.addRange(str, str + strlen(str) + 1);
+
+  ASSERT_EQ(v.getSize(), strlen("hello world") + 1);  // +1 for null terminator
+  ASSERT_EQ(v.getLast(), 0);
+  ASSERT_TRUE(strcmp(v.begin(), "hello world") == 0);
+}
