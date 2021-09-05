@@ -752,6 +752,12 @@ constexpr bool isFundamental = Fundamental<T>::value;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Mark your custom type by defining the type `IsTriviallyRelocatable`.
+///
+/// Example:
+///   struct Rel { using IsTriviallyRelocatable = bool; };
+///   static_assert(isTriviallyRelocatable<Rel>);
+///
 template <typename T, typename = void>
 struct TriviallyRelocatable : public IntegralConstant<bool, isFundamental<T>> {
 };
