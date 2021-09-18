@@ -266,7 +266,8 @@ bool String::operator==(const String& other) const {
 bool String::operator!=(const String& other) const { return !(*this == other); }
 
 bool String::operator==(const char8* other) const {
-  return getSize() == strlen(other) && memcmp(getData(), other, getSize()) == 0;
+  const auto size = getSize();
+  return size == strlen(other) && memcmp(getData(), other, size) == 0;
 }
 
 bool String::operator!=(const char8* other) const { return !(*this == other); }

@@ -59,6 +59,10 @@ class [[nodiscard]] Utf8Iterator {
 
   [[nodiscard]] bool hasValidOffset() const;
 
+  [[nodiscard]] const char8* beginChar8() const { return m_string + m_offset; }
+
+  [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
+
  private:
   const char8* m_string = nullptr;
   u64 m_size = 0;

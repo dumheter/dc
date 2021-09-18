@@ -309,14 +309,15 @@ template <typename T, u64 N>
 void List<T, N>::addRange(const T* begin, const T* end) {
   DC_FATAL_ASSERT(end >= begin, "end is less than begin.");
   if constexpr (isTriviallyRelocatable<T>) {
-    T* oldEnd = m_end;
+    const u64 oldSize = getSize();
     resize(getSize() + (end - begin));
-    memcpy(oldEnd, begin, (end - begin));
+    memcpy(m_begin + oldSize, begin, (end - begin));
   } else {
-    T* newIt = m_end;
+    const u64 oldSize = getSize();
     resize(getSize() + (end - begin));
+    T* newIt = m_begin + oldSize;
     while (begin != end) {
-            new (newIt++) T(*begin++);
+      new (newIt++) T(*begin++);
     }
   }
 }

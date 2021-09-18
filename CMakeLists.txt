@@ -51,6 +51,7 @@ set(DC_SOURCES
   src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp
+  src/fmt.cpp
   src/log.cpp
   src/file.cpp
   src/mac.cpp
