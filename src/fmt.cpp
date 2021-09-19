@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <cfloat>
 #include <cstring>
 #include <dc/fmt.hpp>
 
@@ -439,7 +440,7 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
   while (numStart != numEnd) {
     DC_FATAL_ASSERT(numEnd - numStart - 1 < 20,
                     "todo handle x^y where y is more than 19");
-    out += (*numStart - '0') * stbsp__powten[numEnd - numStart - 1];
+    out += (*numStart - '0') * (u32)stbsp__powten[numEnd - numStart - 1];
     ++numStart;
   }
 
@@ -466,7 +467,61 @@ struct Formatter<u64> {
     return Ok(dc::move(it));
   }
 
-  void format(u64 value, FormatContext& ctx) {}
+  void format(u64 value, FormatContext& ctx) {
+    constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
+    char8 buf[kBufSize];
+
+    char8* s = buf + kBufSize;
+    u32 n;
+    for (;;) {
+      // do in 32-bit chunks (avoid lots of 64-bit divides even with
+      // constant denominators)
+      char* o = s - 8;
+      if (value >= 100000000) {
+        n = (u32)(value % 100000000);
+        value /= 100000000;
+      } else {
+        n = (u32)value;
+        value = 0;
+      }
+      // if ((fl & STBSP__TRIPLET_COMMA) == 0) {
+      //   do {
+      //     s -= 2;
+      //     *(stbsp__uint16 *)s =
+      //         *(stbsp__uint16 *)&stbsp__digitpair.pair[(n % 100) * 2];
+      //     n /= 100;
+      //   } while (n);
+      // }
+      while (n) {
+        // if ((fl & STBSP__TRIPLET_COMMA) && (l++ == 3)) {
+        //   l = 0;
+        //   *--s = stbsp__comma;
+        //   --o;
+        // } else {
+        *--s = (char8)(n % 10) + '0';
+        n /= 10;
+        //}
+      }
+      if (value == 0) {
+        if ((s[0] == '0') && (s != (buf + kBufSize))) ++s;
+        break;
+      }
+      while (s != o)
+        // if ((fl & STBSP__TRIPLET_COMMA) && (l++ == 3)) {
+        //   l = 0;
+        //   *--s = stbsp__comma;
+        //   --o;
+        // } else {
+        *--s = '0';
+      //}
+    }
+
+    if (((buf + kBufSize) - s) == 0) {
+      *--s = '0';
+    }
+
+    ctx.out.addRange(s, buf + kBufSize);
+  }
 
   bool negative = false;
 };
@@ -498,7 +553,7 @@ struct Formatter<f64> {
   void format(f64 value, FormatContext& ctx) {
     char const* start;
     u32 len;
-    char buf[100];  // TODO cgustafsson:
+    char buf[512];  // big enough for e308 (with commas) or e-307
     s32 decimalPos;
     s32 sign =
         stbsp__real_to_str(&start, &len, buf, &decimalPos, value, decimals);
@@ -510,7 +565,7 @@ struct Formatter<f64> {
     ctx.out.addRange(start + decimalPos, start + len);
   }
 
-  u32 decimals = 14;  // f64: 17-3, f32: 9-3
+  u32 decimals = DBL_DIG;
 };
 
 template <>
@@ -580,7 +635,7 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     f64 value;
     if (formatArg.type == FormatArg::Types::F32Type) {
       value = formatArg.f32Value;
-      f.decimals = 6;
+      f.decimals = FLT_DIG;
     } else /* if (formatArg.type == FormatArg::Types::F64Type) */
       value = formatArg.f64Value;
     auto res = f.parse(parseCtx);

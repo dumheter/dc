@@ -1,8 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/fmt.hpp>
 
-DTEST_VIP;
-
 using namespace dc;
 
 DTEST(formatF32) {
@@ -37,8 +35,16 @@ DTEST(formatDefaultF64Precision) {
   f64 a = 3.14159265358979323;
   auto res = dc::xfmt::format("{}", a);
   ASSERT_TRUE(res.isOk());
-  ASSERT_EQ(res.value(), "3.14159265358979");
+  ASSERT_EQ(res.value(), "3.141592653589793");
 }
+
+// DTEST(formatLargeF64) {
+// 	f64 a = 1e+301;
+// 	auto res = dc::xfmt::format("{}", a);
+// 	// TODO cgustafsson: this is not working
+// 	ASSERT_TRUE(res.isOk());
+// 	//ASSERT_EQ(res.value(), "3.14159265358979");
+// }
 
 DTEST(usingWrongPrecisionSignGivesErr) {
   f32 a = 3.141592653f;
@@ -81,21 +87,21 @@ DTEST(formatCString) {
 
 // TODO cgustafsson: test specifying a large number in precision field
 
-/*
-DTEST(formatS32) {
-  s32 a = 7;
-  String res = dc::xfmt::format("hello {}", a);
-
-  ASSERT_EQ(res, "hello 7");
-}
-
 DTEST(formatU64) {
-  u64 a = 2'500;
-  String res = dc::xfmt::format("hello {}", a);
-
-  ASSERT_EQ(res, "hello 2500");
+  u64 value = 1234567890;
+  auto res = dc::xfmt::format("hello {}!", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "hello 1234567890!");
 }
 
+DTEST(formatLargeU64) {
+  u64 value = ULLONG_MAX;
+  auto res = dc::xfmt::format("hello {}!", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "hello 18446744073709551615!");
+}
+
+/*
 DTEST(formatString) {
   String a("world");
   String res = dc::xfmt::format("hello {}", a);
