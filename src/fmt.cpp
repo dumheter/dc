@@ -471,6 +471,7 @@ struct Formatter<u64> {
     constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
     char8 buf[kBufSize];
 
+	// NOTE: from stb's sprintf
     char8* s = buf + kBufSize;
     u32 n;
     for (;;) {
@@ -654,16 +655,5 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
   }
   return Ok(parseCtx.pattern.beginChar8());
 }
-
-// template <>
-// Result<const char8*, FormatErr> FormatArg::formatCustomArg<String>(const
-// void* value, ParseContext& parseCtx,
-// FormatContext& formatCtx) {
-//     Formatter<String> f;
-//     Result<const char8*, FormatErr> res = f.parse(parseCtx);
-// 	if (res.isOk())
-// 		f.format(*static_cast<const String*>(value), formatCtx);
-// 	return res;
-// }
 
 }  // namespace dc::xfmt
