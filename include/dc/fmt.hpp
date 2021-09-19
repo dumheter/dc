@@ -46,28 +46,63 @@ enum class FormatErr {
   CannotFormatType,
 };
 
+const char8* toString(FormatErr err);
+
+///////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 struct Formatter {
   Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
-      if (*it == '}') break;
-    }
-    static_assert(false, "todo");
+    (void)ctx;
+    static_assert(false, "You need to specialize Formatter for type 'T'.");
 
-    return Ok(dc::move(it));
+    return Err(FormatErr::CannotFormatType);
   }
 
   void format(const T& item, FormatContext& ctx) {
     (void)item;
     (void)ctx;
-    // formatTo(ctx.out,)
-    DC_FATAL_ASSERT(false, "Cannot format type 'T'.");
-    static_assert(false, "todo");
+    static_assert(false, "You need to specialize Formatter for type 'T'.");
   }
 };
 
-const char8* toString(FormatErr err);
+///////////////////////////////////////////////////////////////////////////////
+
+Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end);
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <>
+struct Formatter<String> {
+  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
+    auto it = ctx.pattern.beginChar8();
+    for (; it != ctx.pattern.endChar8(); ++it) {
+      if (*it == '}')
+        break;
+      else if (*it == '.') {
+        // TODO cgustafsson: constexpr
+        Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
+        if (res.isOk())
+          precision = res.value();
+        else  // TODO cgustafsson: trivial type should be copyable (lvalue)
+          return Err(dc::move(res).unwrapErr());
+
+        --it;  // revert the increase we did
+      } else
+        return Err(FormatErr::ParseInvalidChar);
+    }
+
+    // TODO cgustafsson: dont move primitive types
+    return Ok(dc::move(it));
+  }
+
+  void format(const String& str, FormatContext& ctx) {
+    u64 len = dc::min(str.getSize(), precision);
+    ctx.out.addRange(str.c_str(), str.c_str() + len);
+  }
+
+  u64 precision = ~0llu;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -78,8 +113,9 @@ const char8* toString(FormatErr err);
 
 struct CustomValue {
   const void* value;
-  void (*format)(const void* value, ParseContext& parseCtx,
-                 FormatContext& formatCtx);
+  Result<const char8*, FormatErr> (*format)(const void* value,
+                                            ParseContext& parseCtx,
+                                            FormatContext& formatCtx);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -164,12 +200,12 @@ struct FormatArg {
 
  private:
   template <typename T>
-  static void formatCustomArg(const void* value, ParseContext& parseCtx,
-                              FormatContext& formatCtx) {
+  static Result<const char8*, FormatErr> formatCustomArg(
+      const void* value, ParseContext& parseCtx, FormatContext& formatCtx) {
     Formatter<T> f;
-    const Result<NoneType, NoneType> res = f.parse(parseCtx);
-    (void)res;  // TODO cgustafsson: what to do on parse error?
-    f.format(*static_cast<const T*>(value), formatCtx);
+    Result<const char8*, FormatErr> res = f.parse(parseCtx);
+    if (res.isOk()) f.format(*static_cast<const T*>(value), formatCtx);
+    return res;
   }
 };
 

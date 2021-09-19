@@ -101,11 +101,9 @@ DTEST(formatLargeU64) {
   ASSERT_EQ(res.value(), "hello 18446744073709551615!");
 }
 
-/*
 DTEST(formatString) {
-  String a("world");
-  String res = dc::xfmt::format("hello {}", a);
-
-  ASSERT_EQ(res, "hello world");
+  String fact("Yellow is a color.");
+  auto res = dc::xfmt::format("Fact: {}", fact);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "Fact: Yellow is a color.");
 }
-*/

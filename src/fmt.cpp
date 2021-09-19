@@ -628,7 +628,7 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
       value = formatArg.u32Value;
     else /* if (formatArg.type == FormatArg::Types::U64Type) */
       value = formatArg.u64Value;
-    f.format(value, formatCtx);
+    if (res.isOk()) f.format(value, formatCtx);
     return res;
   } else if (formatArg.type < FormatArg::Types::LastFloatType) {
     Formatter<f64> f;
@@ -639,17 +639,31 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     } else /* if (formatArg.type == FormatArg::Types::F64Type) */
       value = formatArg.f64Value;
     auto res = f.parse(parseCtx);
-    f.format(value, formatCtx);
+    if (res.isOk()) f.format(value, formatCtx);
     return res;
   } else if (formatArg.type == FormatArg::Types::CStringType) {
     Formatter<const char8*> f;
     auto res = f.parse(parseCtx);
-    f.format(formatArg.cstringValue, formatCtx);
+    if (res.isOk()) f.format(formatArg.cstringValue, formatCtx);
     return res;
+  } else if (formatArg.type == FormatArg::Types::CustomType) {
+    return formatArg.customValue.format(formatArg.customValue.value, parseCtx,
+                                        formatCtx);
   } else {
-    // return doFormatOthers(parseCtx, formatCtx, formatArg);
+    return Err(FormatErr::CannotFormatType);
   }
   return Ok(parseCtx.pattern.beginChar8());
 }
+
+// template <>
+// Result<const char8*, FormatErr> FormatArg::formatCustomArg<String>(const
+// void* value, ParseContext& parseCtx,
+// FormatContext& formatCtx) {
+//     Formatter<String> f;
+//     Result<const char8*, FormatErr> res = f.parse(parseCtx);
+// 	if (res.isOk())
+// 		f.format(*static_cast<const String*>(value), formatCtx);
+// 	return res;
+// }
 
 }  // namespace dc::xfmt
