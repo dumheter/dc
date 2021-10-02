@@ -75,6 +75,128 @@ String toString(const FormatErr& err, StringView pattern) {
   return out;
 }
 
+Result<const char8*, FormatErr> Formatter<u64>::parse(ParseContext& ctx) {
+  auto it = ctx.pattern.beginChar8();
+  auto end = ctx.pattern.endChar8();
+  for (; it != end; ++it) {
+    if (*it == '}')
+      break;
+    else if (*it == 'b')
+      presentation = Presentation::Binary;
+    else if (*it == 'x')
+      presentation = Presentation::Hex;
+    else if (*it == '#')
+      prefix = true;
+    else if (*it == '<' || *it == '>' || *it == '^') {
+      // next char will be our filler char
+      if (it + 1 == end)
+        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                             (u64)(ctx.pattern.beginChar8() - it + 1)});
+      align = Some(Align{});
+      switch (*it) {
+        case '>':
+          align->orientation = Align::Orientation::Right;
+          break;
+        case '^':
+          align->orientation = Align::Orientation::Center;
+          break;
+        case '<':
+        default:
+          align->orientation = Align::Orientation::Left;
+          break;
+      }
+      align->filler = *(it + 1);
+      ++it;  // move past the filler char
+    } else
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                           (u64)(ctx.pattern.beginChar8() - it)});
+  }
+
+  return Ok(it);
+}
+
+Result<const char8*, FormatErr> Formatter<StringView>::parse(
+    ParseContext& ctx) {
+  auto it = ctx.pattern.beginChar8();
+  for (; it != ctx.pattern.endChar8(); ++it) {
+    if (*it == '}')
+      break;
+    else if (*it == '.') {
+      // TODO cgustafsson: constexpr
+      Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
+      if (res.isOk())
+        precision = res.value();
+      else
+        return Err(res.errValue());
+
+      --it;  // revert the increase we did
+    } else
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                           (u64)(ctx.pattern.beginChar8() - it)});
+  }
+
+  return Ok(it);
+}
+
+Result<NoneType, FormatErr> Formatter<StringView>::format(const StringView& str,
+                                                          FormatContext& ctx) {
+  auto len = dc::min(str.getSize(), precision);
+  ctx.out.addRange(str.c_str(), str.c_str() + len);
+  return Ok(None);
+}
+
+Result<NoneType, FormatErr> Formatter<u64>::format(u64 value,
+                                                   FormatContext& ctx) {
+  // TODO cgustafsson: is this the correct len?
+  constexpr u32 kBufSize = 20;  // len("18446744073709551616") == 20
+  char8 buf[kBufSize];
+
+  auto viewOrErr = toString(value, buf, kBufSize, presentation);
+  if (viewOrErr.isErr())
+    // TODO cgustafsson: fill in error pos ?
+    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+  if (prefix) {
+    auto res = getPresentationChar();
+    if (res.isErr()) {
+      // TODO cgustafsson: fill in error pos?
+      return Err(FormatErr{res.errValue(), 0});
+    }
+    ctx.out.add('0');
+    ctx.out.add(*res);
+  }
+  if (negative) ctx.out.add('-');
+  ctx.out.addRange(viewOrErr->beginChar8(), viewOrErr->endChar8());
+  return Ok(None);
+}
+
+Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
+  switch (presentation) {
+    case Presentation::Binary:
+      return Ok('b');
+    case Presentation::Hex:
+      return Ok('x');
+    default:
+      return Err(FormatErr::Kind::InvalidSpecification);
+  }
+}
+
+Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
+                                                   FormatContext& ctx) {
+  // TODO cgustafsson: is this the correct len?
+  constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
+  char8 buf[kBufSize];
+
+  auto viewOrErr = toString(value, buf, kBufSize, presentation);
+  if (viewOrErr.isErr())
+    // TODO cgustafsson: how to get position
+    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+  ctx.out.addRange(viewOrErr.value().beginChar8(),
+                   viewOrErr.value().endChar8());
+  return Ok(NoneType());
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // stb_sprintf
 //
@@ -540,8 +662,6 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
                                             FormatContext& formatCtx,
                                             FormatArg& formatArg) {
   if (formatArg.type < FormatArg::Types::LastIntegerType) {
-    // TODO cgustafsson: No longer need to do this, created formatters for them
-    // all
     Formatter<u64> f;
     auto res = f.parse(parseCtx);
     u64 value;
@@ -634,13 +754,14 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
 // 	auto fd = _fileno(f);
 // 	if (_isatty(fd)) {
 // 		detail::utf8_to_utf16 u16(string_view(buffer.data(),
-// buffer.size())); 		auto written = detail::dword(); 		if
+// buffer.size())); 		auto written = detail::dword(); if
 // (detail::WriteConsoleW(reinterpret_cast<void*>(_get_osfhandle(fd)),
 // 								  u16.c_str(),
-// static_cast<uint32_t>(u16.size()), 								  &written, nullptr)) { 			return;
+// static_cast<uint32_t>(u16.size()),
+// &written, nullptr)) { 			return;
 // 		}
-// 		// Fallback to fwrite on failure. It can happen if the output has
-// been
+// 		// Fallback to fwrite on failure. It can happen if the output
+// has been
 // 		// redirected to NUL.
 // 	}
 // #endif

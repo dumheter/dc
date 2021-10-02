@@ -24,11 +24,12 @@
 
 #pragma once
 
-#include <cstdio>
+#include <cstdio>  // for FILE
 #include <dc/list.hpp>
 #include <dc/result.hpp>
 #include <dc/string.hpp>
 #include <dc/types.hpp>
+#include <dc/utf.hpp>
 
 namespace dc {
 
@@ -112,34 +113,9 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end);
 /// string-like types. Look at Formatter<String> for a good example.
 template <>
 struct Formatter<StringView> {
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
-      if (*it == '}')
-        break;
-      else if (*it == '.') {
-        // TODO cgustafsson: constexpr
-        Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
-        if (res.isOk())
-          precision = res.value();
-        else
-          return Err(res.errValue());
+  Result<const char8*, FormatErr> parse(ParseContext& ctx);
 
-        --it;  // revert the increase we did
-      } else
-        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             (u64)(ctx.pattern.beginChar8() - it)});
-    }
-
-    return Ok(it);
-  }
-
-  Result<NoneType, FormatErr> format(const StringView& str,
-                                     FormatContext& ctx) {
-    auto len = dc::min(str.getSize(), precision);
-    ctx.out.addRange(str.c_str(), str.c_str() + len);
-    return Ok(None);
-  }
+  Result<NoneType, FormatErr> format(const StringView& str, FormatContext& ctx);
 
   u64 precision = ~0llu;
 };
@@ -162,59 +138,11 @@ struct Formatter<const char8*> : Formatter<StringView> {
 
 template <>
 struct Formatter<u64> {
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
-      if (*it == '}')
-        break;
-      else if (*it == 'b')
-        presentation = Presentation::Binary;
-      else if (*it == 'x')
-        presentation = Presentation::Hex;
-      else if (*it == '#')
-        prefix = true;
-      else
-        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             (u64)(ctx.pattern.beginChar8() - it)});
-    }
+  Result<const char8*, FormatErr> parse(ParseContext& ctx);
 
-    return Ok(it);
-  }
+  Result<NoneType, FormatErr> format(u64 value, FormatContext& ctx);
 
-  Result<NoneType, FormatErr> format(u64 value, FormatContext& ctx) {
-    // TODO cgustafsson: is this the correct len?
-    constexpr u32 kBufSize = 20;  // len("18446744073709551616") == 20
-    char8 buf[kBufSize];
-
-    auto viewOrErr = toString(value, buf, kBufSize, presentation);
-    if (viewOrErr.isErr())
-      // TODO cgustafsson: fill in error pos ?
-      return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
-
-    if (prefix) {
-      auto res = getPresentationChar();
-      if (res.isErr()) {
-        // TODO cgustafsson: fill in error pos?
-        return Err(FormatErr{res.errValue(), 0});
-      }
-      ctx.out.add('0');
-      ctx.out.add(*res);
-    }
-    if (negative) ctx.out.add('-');
-    ctx.out.addRange(viewOrErr->beginChar8(), viewOrErr->endChar8());
-    return Ok(None);
-  }
-
-  Result<char8, FormatErr::Kind> getPresentationChar() const {
-    switch (presentation) {
-      case Presentation::Binary:
-        return Ok('b');
-      case Presentation::Hex:
-        return Ok('x');
-      default:
-        return Err(FormatErr::Kind::InvalidSpecification);
-    }
-  }
+  Result<char8, FormatErr::Kind> getPresentationChar() const;
 
   Presentation presentation = Presentation::Decimal;
 
@@ -222,25 +150,30 @@ struct Formatter<u64> {
   /// presentation types.
   bool prefix = false;
 
+  /// Write '-' in front of the number.
   bool negative = false;
+
+  struct Align {
+    enum class Orientation {
+      Left,
+      Right,
+      Center,
+    } orientation;
+    utf8::CodePoint filler;
+  };
+
+  /// Align the number at a certain spacing, with a certain filler.
+  /// Example
+  ///   Given:
+  ///     number: 7, spacing: 3, filler: 0, align: <
+  ///   Outputs:
+  ///     "007"
+  Option<Align> align;
 };
 
 template <>
 struct Formatter<s64> : Formatter<u64> {
-  Result<NoneType, FormatErr> format(s64 value, FormatContext& ctx) {
-    // TODO cgustafsson: is this the correct len?
-    constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
-    char8 buf[kBufSize];
-
-    auto viewOrErr = toString(value, buf, kBufSize, presentation);
-    if (viewOrErr.isErr())
-      // TODO cgustafsson: how to get position
-      return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
-
-    ctx.out.addRange(viewOrErr.value().beginChar8(),
-                     viewOrErr.value().endChar8());
-    return Ok(NoneType());
-  }
+  Result<NoneType, FormatErr> format(s64 value, FormatContext& ctx);
 };
 
 /// Specialize the formatter for a type that can be cast to another.
