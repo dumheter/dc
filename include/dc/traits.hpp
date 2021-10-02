@@ -744,14 +744,52 @@ constexpr bool isArithmetic = Arithmetic<T>::value;
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
+struct Enum : public IntegralConstant<bool, __is_enum(T)> {};
+
+template <typename T>
+constexpr bool isEnum = Enum<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct Pointer : public FalseType {};
+
+template <typename T>
+struct Pointer<T*> : public TrueType {};
+
+template <typename T>
+struct Pointer<T* const> : public TrueType {};
+
+template <typename T>
+struct Pointer<T* volatile> : public TrueType {};
+
+template <typename T>
+struct Pointer<T* const volatile> : public TrueType {};
+
+/// Is type 'T' a pointer? Unlike the standard, this includes pointers to
+/// members.
+template <typename T>
+constexpr bool isPointer = Pointer<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
 struct Fundamental
-    : public IntegralConstant<bool, isArithmetic<T> || isVoid<T>> {};
+    : public IntegralConstant<bool, isArithmetic<T> || isVoid<T> || isEnum<T> ||
+                                        isPointer<T>> {};
 
 template <typename T>
 constexpr bool isFundamental = Fundamental<T>::value;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Is type 'T' trivial to copy, as in, a simple memcpy of an instance fully
+/// initializes the object, no call to constructor needed.
+///
+/// A case of a class that is not trivially relocatable: A class that holds a
+/// pointer to memory inside itself. If we simply copy the object, then the copy
+/// will hold a pointer to the original memory.
+///
 /// Mark your custom type by defining the type `IsTriviallyRelocatable`.
 ///
 /// Example:

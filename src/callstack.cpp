@@ -23,11 +23,10 @@
  */
 
 #include <dc/callstack.hpp>
+#include <dc/fmt.hpp>
 #include <dc/log.hpp>
 #include <dc/platform.hpp>
 #include <dc/traits.hpp>
-#include <iterator>
-#include <vector>
 
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
@@ -81,7 +80,9 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
   MODULEINFO moduleInfo;
   bool ok =
       GetModuleInformation(process, module, &moduleInfo, sizeof(moduleInfo));
-  if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+  if (!ok)
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
   out.baseAddr = moduleInfo.lpBaseOfDll;
   out.loadSize = moduleInfo.SizeOfImage;
 
@@ -89,14 +90,16 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
   DWORD len = GetModuleFileNameEx(process, module, out.imageName.getData(),
                                   static_cast<DWORD>(out.imageName.getSize()));
   if (len == 0)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
   out.imageName.resize(len);
 
   out.moduleName.resize(1024);
   len = GetModuleBaseName(process, module, out.moduleName.getData(),
                           static_cast<DWORD>(out.moduleName.getSize()));
   if (len == 0)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
   out.moduleName.resize(len);
 
   HANDLE file = NULL;               //< no file
@@ -106,7 +109,8 @@ Result<ModuleInfo, CallstackErr> ModuleInfo::create(HANDLE process,
       process, file, out.imageName.getData(), out.moduleName.getData(),
       reinterpret_cast<DWORD64>(out.baseAddr), out.loadSize, headerData, flags);
   if (okLoad == 0)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
 
   return Ok(dc::move(out));
 };
@@ -124,7 +128,8 @@ class Symbol {
     if (ok)
       return Ok(dc::move(symbol));
     else
-      return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+      return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                              CallstackErr::ErrType::Sys, __LINE__});
   }
 
   Symbol(Symbol&& other) : m_sym(other.m_sym) { other.m_sym = nullptr; }
@@ -147,7 +152,8 @@ class Symbol {
         m_sym->Name, reinterpret_cast<char*>(name.getData()),
         static_cast<DWORD>(name.getSize()), UNDNAME_COMPLETE);
     if (bytesWritten == 0)
-      return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+      return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                              CallstackErr::ErrType::Sys, __LINE__});
 
     name.resize(bytesWritten);
     return Ok<String>(dc::move(name));
@@ -188,7 +194,8 @@ Result<Callstack, CallstackErr> buildCallstack() {
   Result<Callstack, CallstackErr> out =
       SymInitialize(process, NULL, false)
           ? buildCallstackAux(process, thread, &context)
-          : Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+          : Err(CallstackErr{static_cast<u64>(GetLastError()),
+                             CallstackErr::ErrType::Sys, __LINE__});
 
   SymCleanup(process);
 
@@ -201,7 +208,8 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
                                                          HANDLE thread,
                                                          CONTEXT* context) {
   if (!SymInitialize(process, NULL, false))
-    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
 
   DWORD symOptions = SymGetOptions();
   symOptions |= SYMOPT_LOAD_LINES | SYMOPT_UNDNAME;
@@ -214,7 +222,9 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       process, moduleHandles.begin(),
       static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
       &bytesNeeded);
-  if (!ok) return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+  if (!ok)
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
 
   if (bytesNeeded > 0) {
     moduleHandles.resize(bytesNeeded / sizeof(HMODULE));
@@ -223,7 +233,8 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
         static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
         &bytesNeeded);
     if (!ok)
-      return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+      return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                              CallstackErr::ErrType::Sys, __LINE__});
   }
 
   // TODO cgustafsson: why load all modules when only using 1?
@@ -238,7 +249,8 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   void* base = modules[0].baseAddr;
   IMAGE_NT_HEADERS* imageHeader = ImageNtHeader(base);
   if (!imageHeader)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()), __LINE__});
+    return Err(CallstackErr{static_cast<u64>(GetLastError()),
+                            CallstackErr::ErrType::Sys, __LINE__});
   const DWORD machineType = imageHeader->FileHeader.Machine;
 
 #if defined(_M_X64)
@@ -261,10 +273,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 #error "platform not supported"
 #endif
 
-  // TODO cgustafsson: need a new way to format into a buffer, without
-  // creating new String's.
-  std::vector<char> buffer;
-  buffer.reserve(2048);
+  String str;
 
   IMAGEHLP_LINE64 line;
   line.SizeOfStruct = sizeof(line);
@@ -278,31 +287,40 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       Result<String, CallstackErr> fnName = symbol.match(
           [](const Symbol& symbol) { return symbol.undecoratedName(); },
           [frame](const CallstackErr&) -> Result<String, CallstackErr> {
-            return Ok<String>(dc::format("{:#08x}", frame.AddrPC.Offset));
+            return dc::move(dc::format("{#x}", frame.AddrPC.Offset))
+                .mapErr([](const FormatErr& err) {
+                  return CallstackErr(static_cast<u64>(err.kind),
+                                      CallstackErr::ErrType::Fmt, __LINE__);
+                });
           });
 
       if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
-        fmt::format_to(
-            std::back_inserter(buffer), "{}",
+        auto res = formatTo(
+            str, "{}",
             fnName.match(
                 [](const String& s) -> String { return s.clone(); },
                 [](const CallstackErr&) -> String { return String("?fn?"); }));
+        if (res.isErr())
+          return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
 
         if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
                                  &offsetFromSymbol, &line))
-          fmt::format_to(std::back_inserter(buffer), " [{}:{}]\n",
-                         line.FileName, line.LineNumber);
+          res = formatTo(str, " [{}:{}]\n", line.FileName, line.LineNumber);
         else
-          fmt::format_to(std::back_inserter(buffer), " [?:?]\n");
+          res = formatTo(str, " [?:?]\n");
+        if (res.isErr())
+          return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
       }
 
       // TODO cgustafsson: how to handle RaiseException
       if (fnName.isOk() && fnName.value() == "RaiseException") break;
 
       if (fnName.isOk() && fnName.value() == "main") break;
-    } else
-      fmt::format_to(std::back_inserter(buffer),
-                     "(No symbols: AddrPC.Offset == 0)");
+    } else {
+      auto res = formatTo(str, "(No symbols: AddrPC.Offset == 0)");
+      if (res.isErr())
+        return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
+    }
 
     if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
                      SymFunctionTableAccess64, SymGetModuleBase64, NULL))
@@ -312,24 +330,31 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   for (const ModuleInfo& module : modules)
     SymUnloadModule64(process, (DWORD64)module.baseAddr);
 
-  Result<Callstack, CallstackErr> out =
-      Ok(Callstack(StringView(buffer.data(), buffer.size())));
-  return out;
+  return Ok(Callstack{dc::move(str)});
 }
 
 String CallstackErr::toString() const {
-  LPVOID lpMsgBuf;
+  switch (errType) {
+    case ErrType::Sys: {
+      LPVOID lpMsgBuf;
 
-  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                    FORMAT_MESSAGE_IGNORE_INSERTS,
-                NULL, static_cast<DWORD>(m_err),
-                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0,
-                NULL);
+      FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                        FORMAT_MESSAGE_FROM_SYSTEM |
+                        FORMAT_MESSAGE_IGNORE_INSERTS,
+                    NULL, static_cast<DWORD>(errCode),
+                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                    (LPTSTR)&lpMsgBuf, 0, NULL);
 
-  String out(static_cast<char*>(lpMsgBuf));
-  LocalFree(lpMsgBuf);
+      String out(static_cast<char*>(lpMsgBuf));
+      LocalFree(lpMsgBuf);
 
-  return out;
+      return out;
+    }
+
+    case ErrType::Fmt:
+    default:
+      return String(dc::toString(static_cast<FormatErr::Kind>(errCode)));
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -364,7 +389,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
                                          &fnBufferLen, &status);
 
 #if 0
-			fmt::format_to(std::back_inserter(out), "fn: {}\nstatus: {}\nfunction return address: {}\nfname: {}\nfbase: {}\nsaddr: {}\noffset: {:#x}\n",
+			fmt::format_to(std::back_inserter(out), "fn: {}\nstatus: {}\nfunction return address: {}\nfname: {}\nfbase: {}\nsaddr: {}\noffset: {#x}\n",
 						   fnName ? fnName : fnBuffer,
 						   status,
 						   fnRetAddr[i],
@@ -386,7 +411,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
       LOG_WARNING("failed to dladdr");
       symInfo.dli_fname = nullptr;
       symInfo.dli_sname = nullptr;
-      fmt::format_to(std::back_inserter(out), "{:#x}", fnRetAddr[i]);
+      fmt::format_to(std::back_inserter(out), "{#x}", fnRetAddr[i]);
     }
 
     // fmt::format_to(std::back_inserter(out), "\n");

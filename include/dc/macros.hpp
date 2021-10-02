@@ -72,6 +72,12 @@
 #error "DC_INLINE not defined for your compiler"
 #endif
 
+#ifdef _MSC_VER
+#define DC_UNUSED(v) (void)(v)
+#else
+#define DC_UNUSED(v) (void)sizeof(v)
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // ctor & dtor
 //

@@ -24,12 +24,17 @@
 
 #pragma once
 
+#include <cstdio>
 #include <dc/list.hpp>
 #include <dc/result.hpp>
 #include <dc/string.hpp>
 #include <dc/types.hpp>
 
-namespace dc::xfmt {
+namespace dc {
+
+///////////////////////////////////////////////////////////////////////////////
+// Format Util
+//
 
 struct ParseContext {
   StringView pattern;
@@ -37,43 +42,76 @@ struct ParseContext {
 
 struct FormatContext {
   List<char8>& out;
+  StringView pattern;
 };
 
-///////////////////////////////////////////////////////////////////////////////
+struct FormatErr {
+  enum class Kind {
+    InvalidSpecification,
+    CannotFormatType,
+    CannotWriteToFile,
+    OutOfMemory,
+  } kind = Kind::InvalidSpecification;  //< What kind of error.
 
-enum class FormatErr {
-  ParseInvalidChar,
-  CannotFormatType,
+  /// Where in the pattern did we encounter an error.
+  u64 pos = 0;
 };
 
-const char8* toString(FormatErr err);
+const char8* toString(FormatErr::Kind kind);
 
-///////////////////////////////////////////////////////////////////////////////
+///@param err
+///@param pattern The pattern that was used when the error happened.
+String toString(const FormatErr& err, StringView pattern);
 
+enum class Presentation {
+  Decimal,
+  Binary,
+  Hex,
+};
+
+/// Convert int to string.
+///
+/// Example
+///    100 -> "100"
+///   -100 -> "-100"
+///
+/// @return View of the resulting string on Ok. Required bytes to format the int
+/// on Err.
+Result<StringView, u64> toString(s64 value, char8* buf, u64 bufSize,
+                                 Presentation);
+Result<StringView, u64> toString(u64 value, char8* buf, u64 bufSize,
+                                 Presentation);
+
+/// Specialize this struct and its two functions to format your type!
+///
+/// See Formatter<String> for an example of how to use existing formatters
+/// for another type.
 template <typename T>
 struct Formatter {
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    (void)ctx;
+  Result<const char8*, FormatErr> parse(ParseContext&) {
     static_assert(false, "You need to specialize Formatter for type 'T'.");
-
-    return Err(FormatErr::CannotFormatType);
+    return Err(FormatErr{FormatErr::Kind::CannotFormatType, 0});
   }
 
-  void format(const T& item, FormatContext& ctx) {
-    (void)item;
-    (void)ctx;
+  Result<NoneType, FormatErr> format(const T&, FormatContext&) {
     static_assert(false, "You need to specialize Formatter for type 'T'.");
+    return Err(FormatErr{FormatErr::Kind::CannotFormatType, 0});
   }
 };
 
-///////////////////////////////////////////////////////////////////////////////
-
+/// Example
+///   "123" -> 123
+///   "123}abc" -> 123
+///   "abc123}" -> Err
+/// @param it Pointer to start of string, is also output param, will point to
+/// after the end of the number.
+/// @param end, will stop at end. Will not read end.
 Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end);
 
-///////////////////////////////////////////////////////////////////////////////
-
+/// Specialization for Formatter for StringView. Can be used for other
+/// string-like types. Look at Formatter<String> for a good example.
 template <>
-struct Formatter<String> {
+struct Formatter<StringView> {
   Result<const char8*, FormatErr> parse(ParseContext& ctx) {
     auto it = ctx.pattern.beginChar8();
     for (; it != ctx.pattern.endChar8(); ++it) {
@@ -84,30 +122,143 @@ struct Formatter<String> {
         Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
         if (res.isOk())
           precision = res.value();
-        else  // TODO cgustafsson: trivial type should be copyable (lvalue)
-          return Err(dc::move(res).unwrapErr());
+        else
+          return Err(res.errValue());
 
         --it;  // revert the increase we did
       } else
-        return Err(FormatErr::ParseInvalidChar);
+        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                             (u64)(ctx.pattern.beginChar8() - it)});
     }
 
-    // TODO cgustafsson: dont move primitive types
-    return Ok(dc::move(it));
+    return Ok(it);
   }
 
-  void format(const String& str, FormatContext& ctx) {
-    u64 len = dc::min(str.getSize(), precision);
+  Result<NoneType, FormatErr> format(const StringView& str,
+                                     FormatContext& ctx) {
+    auto len = dc::min(str.getSize(), precision);
     ctx.out.addRange(str.c_str(), str.c_str() + len);
+    return Ok(None);
   }
 
   u64 precision = ~0llu;
 };
 
-///////////////////////////////////////////////////////////////////////////////
+/// Specialize Formatter for String. Inherit from StringView to reuse its
+/// formatter.
+template <>
+struct Formatter<String> : Formatter<StringView> {
+  Result<NoneType, FormatErr> format(const String& str, FormatContext& ctx) {
+    return Formatter<StringView>::format(str.toView(), ctx);
+  }
+};
 
-// template <typename ContextT>
-// struct ArgMapper {};
+template <>
+struct Formatter<const char8*> : Formatter<StringView> {
+  Result<NoneType, FormatErr> format(const char8* str, FormatContext& ctx) {
+    return Formatter<StringView>::format(StringView{str}, ctx);
+  }
+};
+
+template <>
+struct Formatter<u64> {
+  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
+    auto it = ctx.pattern.beginChar8();
+    for (; it != ctx.pattern.endChar8(); ++it) {
+      if (*it == '}')
+        break;
+      else if (*it == 'b')
+        presentation = Presentation::Binary;
+      else if (*it == 'x')
+        presentation = Presentation::Hex;
+      else if (*it == '#')
+        prefix = true;
+      else
+        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                             (u64)(ctx.pattern.beginChar8() - it)});
+    }
+
+    return Ok(it);
+  }
+
+  Result<NoneType, FormatErr> format(u64 value, FormatContext& ctx) {
+    // TODO cgustafsson: is this the correct len?
+    constexpr u32 kBufSize = 20;  // len("18446744073709551616") == 20
+    char8 buf[kBufSize];
+
+    auto viewOrErr = toString(value, buf, kBufSize, presentation);
+    if (viewOrErr.isErr())
+      // TODO cgustafsson: fill in error pos ?
+      return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+    if (prefix) {
+      auto res = getPresentationChar();
+      if (res.isErr()) {
+        // TODO cgustafsson: fill in error pos?
+        return Err(FormatErr{res.errValue(), 0});
+      }
+      ctx.out.add('0');
+      ctx.out.add(*res);
+    }
+    if (negative) ctx.out.add('-');
+    ctx.out.addRange(viewOrErr->beginChar8(), viewOrErr->endChar8());
+    return Ok(None);
+  }
+
+  Result<char8, FormatErr::Kind> getPresentationChar() const {
+    switch (presentation) {
+      case Presentation::Binary:
+        return Ok('b');
+      case Presentation::Hex:
+        return Ok('x');
+      default:
+        return Err(FormatErr::Kind::InvalidSpecification);
+    }
+  }
+
+  Presentation presentation = Presentation::Decimal;
+
+  /// On hex, prefix with '0x', on binary, prefix with '0b', error with other
+  /// presentation types.
+  bool prefix = false;
+
+  bool negative = false;
+};
+
+template <>
+struct Formatter<s64> : Formatter<u64> {
+  Result<NoneType, FormatErr> format(s64 value, FormatContext& ctx) {
+    // TODO cgustafsson: is this the correct len?
+    constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
+    char8 buf[kBufSize];
+
+    auto viewOrErr = toString(value, buf, kBufSize, presentation);
+    if (viewOrErr.isErr())
+      // TODO cgustafsson: how to get position
+      return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+    ctx.out.addRange(viewOrErr.value().beginChar8(),
+                     viewOrErr.value().endChar8());
+    return Ok(NoneType());
+  }
+};
+
+/// Specialize the formatter for a type that can be cast to another.
+#define DC_FORMAT_AS(Type, Base)                                     \
+  template <>                                                        \
+  struct Formatter<Type> : Formatter<Base> {                         \
+    Result<NoneType, FormatErr> format(const Type& value,            \
+                                       FormatContext& ctx) {         \
+      return Formatter<Base>::format(static_cast<Base>(value), ctx); \
+    }                                                                \
+  };
+
+DC_FORMAT_AS(u8, u64);
+DC_FORMAT_AS(s8, s64);
+DC_FORMAT_AS(u16, u64);
+DC_FORMAT_AS(s16, s64);
+DC_FORMAT_AS(u32, u64);
+DC_FORMAT_AS(s32, s64);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -123,10 +274,6 @@ struct CustomValue {
 struct FormatArg {
   enum class Types {
     NoneType,
-    /*s8,
-    u8,
-    s16,
-    u16,*/
     S32Type,
     S64Type,
     LastSignedIntegerType,
@@ -141,17 +288,13 @@ struct FormatArg {
     BoolType,
 
     CStringType,
-    StringType,
+    StringViewType,
     PointerType,
 
     CustomType,
   };
 
   union {
-    /*		s8 s8Value;
-    u8 u8Value;
-    s16 s16Value;
-    u16 u16Value;*/
     s32 s32Value;
     s64 s64Value;
     u32 u32Value;
@@ -164,8 +307,8 @@ struct FormatArg {
 
     // TODO cgustafsson: add char8 type?
 
-    const char* cstringValue;
-    StringView stringValue;
+    const char8* cstringValue;
+    StringView stringViewValue;
     const void* pointerValue;
 
     CustomValue customValue;
@@ -176,13 +319,19 @@ struct FormatArg {
   constexpr FormatArg(s64 value) : s64Value(value), type(Types::S64Type) {}
   constexpr FormatArg(u32 value) : u32Value(value), type(Types::U32Type) {}
   constexpr FormatArg(u64 value) : u64Value(value), type(Types::U64Type) {}
+
+  // TODO cgustafsson: why is not unsigned long same as u64?
+  constexpr FormatArg(unsigned long value)
+      : u64Value(value), type(Types::U64Type) {}
   constexpr FormatArg(f32 value) : f32Value(value), type(Types::F32Type) {}
   constexpr FormatArg(f64 value) : f64Value(value), type(Types::F64Type) {}
   constexpr FormatArg(bool value) : boolValue(value), type(Types::BoolType) {}
-  constexpr FormatArg(const char* value)
+  constexpr FormatArg(const char8* value)
+      : cstringValue(value), type(Types::CStringType) {}
+  constexpr FormatArg(char8* value)
       : cstringValue(value), type(Types::CStringType) {}
   constexpr FormatArg(StringView value)
-      : stringValue(value), type(Types::StringType) {}
+      : stringViewValue(value), type(Types::StringViewType) {}
   constexpr FormatArg(const void* value)
       : pointerValue(value), type(Types::PointerType) {}
   template <typename T>
@@ -204,7 +353,11 @@ struct FormatArg {
       const void* value, ParseContext& parseCtx, FormatContext& formatCtx) {
     Formatter<T> f;
     Result<const char8*, FormatErr> res = f.parse(parseCtx);
-    if (res.isOk()) f.format(*static_cast<const T*>(value), formatCtx);
+    if (res.isOk()) {
+      Result<NoneType, FormatErr> formatRes =
+          f.format(*static_cast<const T*>(value), formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
     return res;
   }
 };
@@ -255,7 +408,11 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
 
   constexpr u32 kArgCount = FormatArgs<Args...>::kArgCount;
 
-  // we ignore utf8 and just scan in ascii
+  // If the current buffer of char8's is null terminated, remove it.
+  if (!out.isEmpty() && *(out.end() - 1) == '\0') out.remove(out.end() - 1);
+
+  // We ignore utf8 and just scan in ascii, since fmt standard format specifiers
+  // are all valid ascii characters.
   const char8* it = fmt.beginChar8();
   const char8* end = fmt.endChar8();
   const char8* a = it;
@@ -280,13 +437,19 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
         //  a          b parseCtx
         out.addRange(a, b);
         FormatArg& formatArg = formatArgs.args[usedArgs++];
-        ParseContext parseCtx{StringView(it + 1, end - it)};
-        FormatContext formatCtx{out};
+        StringView pattern(it + 1, end - it);
+        ParseContext parseCtx{pattern};
+        FormatContext formatCtx{out, pattern};
         auto res = doFormatArg(parseCtx, formatCtx, formatArg);
-        if (res.isOk())
+        if (res.isOk()) {
+          // did doFormatArg null terminate the string before we are done?
+          if (!out.isEmpty() && *(out.end() - 1) == '\0')
+            out.remove(out.end() - 1);
           it = res.value();
-        else  // TODO cgustafsson: dont move primitive types
+        } else {
+          res.errValue().pos += (u64)(it + 1 - fmt.beginChar8());
           return Err(dc::move(res).unwrapErr());
+        }
         a = it + 1;
       }
     } else if (*it == '}') {
@@ -332,11 +495,40 @@ Result<String, FormatErr> format(const StringView fmt, Args&&... args) {
 // print
 //
 
-template <typename... Args>
-Result<NoneType, FormatErr> print(StringView str, Args&&... args) {
-  (void)str;
-  (void)sizeof...(args);
-  // ...
+namespace detail {
+void printCallstack();
 }
 
-}  // namespace dc::xfmt
+/// Print.
+/// On error, returns Err.
+template <typename... Args>
+Result<NoneType, FormatErr> printE(StringView str, Args&&... args) {
+  return printTo(stdout, str, dc::forward<Args>(args)...);
+}
+
+/// Print.
+/// On error, print the Err instead of the requested message.
+template <typename... Args>
+void print(StringView str, Args&&... args) {
+  auto res = printTo(stdout, str, dc::forward<Args>(args)...);
+  if (res.isErr()) {
+    // If we fail this print, we don't care, user didnt handle error themself.
+    auto errMsg = toString(res.errValue(), str);
+    if (!errMsg.endsWith('\n')) errMsg += '\n';
+    rawPrint(stdout, errMsg.toView());
+    // TODO cgustafsson: would make more sense to print callstack in reverse
+    // order
+    detail::printCallstack();
+  }
+}
+
+Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str);
+
+template <typename... Args>
+Result<NoneType, FormatErr> printTo(FILE* f, StringView str, Args&&... args) {
+  auto res = format(str, dc::forward<Args>(args)...);
+  if (res.isOk()) return rawPrint(f, res.value().toView());
+  return Err(dc::move(res).unwrapErr());
+}
+
+}  // namespace dc

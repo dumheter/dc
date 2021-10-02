@@ -19,6 +19,36 @@ DTEST(ResultOk) {
 // DATA ACCESS
 //
 
+DTEST(accessViaStarOperator) {
+  const dc::Result<int, NoneType> value = Ok(1337);
+  ASSERT_TRUE(*value == 1337);
+}
+
+DTEST(SetViaStarOperator) {
+  dc::Result<int, NoneType> value = Ok(1337);
+  *value = 2021;
+  ASSERT_TRUE(*value == 2021);
+}
+
+DTEST(accessViaArrowOperator) {
+  struct Foo {
+    s32 foo() const { return 1337; }
+  };
+  const dc::Result<Foo, NoneType> value = Ok(Foo{});
+  ASSERT_TRUE(value->foo() == 1337);
+}
+
+DTEST(modificationViaArrowOperator) {
+  struct Foo {
+    void setFoo(s32 foo) { m_foo = foo; }
+    s32 getFoo() { return m_foo; }
+    s32 m_foo;
+  };
+  dc::Result<Foo, NoneType> value = Ok(Foo{});
+  value->setFoo(-81);
+  ASSERT_TRUE(value->getFoo() == -81);
+}
+
 DTEST(ok) {
   auto result = dc::makeOk<int, dc::String>(27);
   auto maybeInt = dc::move(result).ok();
@@ -319,4 +349,30 @@ DTEST(makeOk) {
 DTEST(makeErr) {
   auto result = makeErr<int, String>("hey");
   ASSERT_TRUE(result.isErr());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// MAP
+//
+
+DTEST(map) {
+  dc::Result<int, int> res0 = Ok(10);
+  dc::Result<char8, int> res1 = dc::move(res0).map([](int v) {
+    if (v == 10)
+      return 'y';
+    else
+      return 'n';
+  });
+  ASSERT_EQ(*res1, 'y');
+}
+
+DTEST(mapErr) {
+  dc::Result<int, int> res0 = Err(-103);
+  dc::Result<int, char8> res1 = dc::move(res0).mapErr([](int v) {
+    if (v == 10)
+      return 'y';
+    else
+      return 'n';
+  });
+  ASSERT_EQ(res1.errValue(), 'n');
 }

@@ -80,6 +80,8 @@ struct [[nodiscard]] NoneType {
   [[nodiscard]] constexpr bool operator!=(const Some<V>&) const noexcept {
     return true;
   }
+
+  bool IsTriviallyRelocatable = true;
 };
 
 constexpr const NoneType None{};
@@ -98,13 +100,8 @@ struct [[nodiscard]] Some {
 
   explicit constexpr Some(V&& value) : m_value(dc::forward<V&&>(value)) {}
 
-  /// Allow copy construct for small things.
-  template <typename = EnableIf<(sizeof(V) <= 16) && (isPod<V>)>>
-  explicit constexpr Some(const V& value) : m_value(value) {
-    static_assert(sizeof(V) <= 16 && (isPod<V>),
-                  "Trying to copy construct when the object is not cheap to "
-                  "copy, or not POD. Use move constructor instead.");
-  }
+  // TODO cgustafsson: how to disable when move would suit better
+  explicit constexpr Some(const V& value) : m_value(value) {}
 
   constexpr Some(const Some<V>& other) = default;
   constexpr Some& operator=(const Some<V>& other) = default;
@@ -157,7 +154,7 @@ struct [[nodiscard]] Some {
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename V>
-class [[nodiscard]] Option {
+class Option {
  public:
   static_assert(isMovable<V>, "Value type 'V' in 'Option<V>' must be movable.");
   static_assert(!isReference<V>,
@@ -457,6 +454,9 @@ struct [[nodiscard]] Ok {
   /// dc::MutRef to capture references to non owned objects.
   explicit constexpr Ok(V&& value) : m_value(dc::forward<V&&>(value)) {}
 
+  // TODO cgustafsson: how to disable when move would suit better
+  explicit constexpr Ok(const V& value) : m_value(value) {}
+
   constexpr Ok(const Ok&) = default;
   constexpr Ok& operator=(const Ok&) = default;
   constexpr Ok(Ok&&) = default;
@@ -510,6 +510,9 @@ struct [[nodiscard]] Err {
   using value_type = E;
 
   Err(E&& value) : m_value(dc::move(value)) {}
+
+  // TODO cgustafsson: how to disable when move would suit better
+  Err(const E& value) : m_value(value) {}
 
   constexpr Err(const Err&) = default;
   constexpr Err& operator=(const Err&) = default;
@@ -574,7 +577,7 @@ struct [[nodiscard]] Err {
 /// @tparam V Value type.
 /// @tparam E Error type.
 template <typename V, typename E>
-class [[nodiscard]] Result {
+class Result {
  public:
   static_assert(isMovable<V>,
                 "Value type 'V' in 'Result<V, E>' must be movable.");
@@ -593,6 +596,7 @@ class [[nodiscard]] Result {
   using error_type = E;
 
   Result(Ok<V>&& ok) : m_value(dc::forward<V>(ok.value())), m_isOk(true) {}
+
   Result(Err<E>&& err) : m_err(dc::forward<E>(err.value())), m_isOk(false) {}
 
   Result(Result&& other) : m_isOk(other.m_isOk) {
@@ -682,6 +686,18 @@ class [[nodiscard]] Result {
       return Err<E>(dc::move(errRef()));
   }
 
+  template <typename Fn>
+  [[nodiscard]] constexpr auto mapErr(
+      Fn&& op) && -> Result<V, InvokeResultT<Fn&&, E&&>> {
+    static_assert(isInvocable<Fn&&, E&&>,
+                  "Cannot call 'Fn', is it a function with argument 'E&&'?");
+    if (isOk())
+      return Ok<V>(dc::move(valueRef()));
+    else
+      return Err<InvokeResultT<Fn&&, E&&>>(
+          dc::forward<Fn&&>(op)(dc::move(errRef())));
+  }
+
   [[nodiscard]] V& value() & noexcept {
     DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
     return valueRef();
@@ -700,6 +716,26 @@ class [[nodiscard]] Result {
   [[nodiscard]] const E& errValue() const& noexcept {
     DC_ASSERT(isErr(), "Tried to access 'err' when 'isErr()' is false.");
     return errCRef();
+  }
+
+  [[nodiscard]] V& operator*() & noexcept {
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    return valueRef();
+  }
+
+  [[nodiscard]] const V& operator*() const& noexcept {
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    return valueCRef();
+  }
+
+  [[nodiscard]] V* operator->() & noexcept {
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    return &m_value;
+  }
+
+  [[nodiscard]] const V* operator->() const& noexcept {
+    DC_ASSERT(isOk(), "Tried to access 'value' when 'isOk()' is false.");
+    return &m_value;
   }
 
   /// Create a non owning result, referencing the immutable data of the

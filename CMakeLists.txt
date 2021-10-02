@@ -8,18 +8,9 @@ set(CMAKE_CXX_STANDARD 17)
 option(DC_BUILD_TESTS "Should the test build be generated?" OFF)
 option(DC_PEDANTIC "Enable extra compiler checks." ON)
 option(DC_WERROR "Compiler warning is error." ON)
-option(DC_PROVIDES_FMT "DC brings in fmt, if you are providing it yourself, turn this off." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." OFF)
 option(DC_LOG_DEBUG "Enable extra debugging options for dc::log." OFF)
 option(DC_COPY_COMPILE_COMMANDS "Copy compile_commands file to top level." OFF)
-
-#//////////////////////////////////////////////////////////////////////////////
-#// Fmt
-
-if (DC_PROVIDES_FMT)
-  add_subdirectory(thirdparty/fmt)
-  include_directories(thirdparty/fmt/include)
-endif ()
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Moodycamel
@@ -128,9 +119,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}>)
 
 if (WIN32)
-  target_link_libraries(${PROJECT_NAME} fmt)
+  target_link_libraries(${PROJECT_NAME} )
 else ()
-  target_link_libraries(${PROJECT_NAME} fmt pthread dl)
+  target_link_libraries(${PROJECT_NAME} pthread dl)
 
   # TODO: bad idea? Forcing extra linker stuff in the exe for better callstack?
   target_link_options(${PROJECT_NAME} PUBLIC -rdynamic)

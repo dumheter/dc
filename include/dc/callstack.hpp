@@ -56,54 +56,31 @@ int main(int, char**) {
 
 namespace dc {
 
-class Callstack;
-class CallstackErr;
+struct Callstack;
+struct CallstackErr;
 
 Result<Callstack, CallstackErr> buildCallstack();
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class Callstack {
- public:
-  Callstack(StringView callstack) : m_callstack(callstack) {}
-
-  Callstack(Callstack&& other) noexcept
-      : m_callstack(dc::move(other.m_callstack)) {}
-
-  Callstack& operator=(Callstack&& other) {
-    if (this != &other) m_callstack = dc::move(other.m_callstack);
-
-    return *this;
-  }
-
-  // use .clone() to explicitly copy
-  DC_DELETE_COPY(Callstack);
-
-  const String& toString() const { return m_callstack; }
-  String& toString() { return m_callstack; }
-
-  Callstack clone() const { return Callstack(m_callstack); }
-
- private:
-  Callstack(const String& callstack) : m_callstack(callstack.clone()) {}
-
- private:
-  String m_callstack;
+struct Callstack {
+  String callstack;
 };
 
-class CallstackErr {
- public:
-  CallstackErr(u64 err, int line) : m_err(err), m_line(line) {}
+struct CallstackErr {
+  enum class ErrType {
+    Sys,
+    Fmt,
+  };
 
-  u64 getErrCode() const { return m_err; }
+  CallstackErr(u64 err, ErrType errType, int line)
+      : errCode(err), errType(errType), line(line) {}
 
   String toString() const;
 
-  int getLine() const { return m_line; }
-
- private:
-  u64 m_err;
-  int m_line;
+  u64 errCode;
+  ErrType errType;
+  int line;
 };
 
 }  // namespace dc

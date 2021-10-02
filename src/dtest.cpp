@@ -135,7 +135,7 @@ int runTests() {
                  Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
-      LOG_INFO("\t{} {} {} in {:.6f}s, {} asserts.", i,
+      LOG_INFO("\t{} {} {} in {.6}s, {} asserts.", i,
                Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
                    .c_str(),
                !test.state.fail ? Paint("PASSED", Color::Green).c_str()
@@ -145,7 +145,7 @@ int runTests() {
     }
     const u64 catAfter = dc::getTimeUs();
 
-    LOG_INFO("{} {} in {:.6f}s", Paint(category.name, Color::Magenta).c_str(),
+    LOG_INFO("{} {} in {.6}s", Paint(category.name, Color::Magenta).c_str(),
              !category.fail ? Paint("PASSED", Color::Green).c_str()
                             : Paint("FAILED", Color::Red).c_str(),
              (catAfter - catBefore) / 1'000'000.f);
@@ -155,7 +155,7 @@ int runTests() {
 
   LOG_INFO(
       "----------------------------------------------------------------------");
-  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.9f}s )",
+  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {.9}s )",
            testCount, assertCount, stopwatch.fs());
 
   int failedCategories = 0;

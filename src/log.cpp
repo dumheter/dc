@@ -25,6 +25,7 @@
 #include <moodycamel/blockingconcurrentqueue.h>
 #include <moodycamel/lightweightsemaphore.h>
 
+#include <dc/fmt.hpp>
 #include <dc/log.hpp>
 #include <dc/math.hpp>
 #include <dc/platform.hpp>
@@ -117,8 +118,8 @@ bool Logger::stop(u64 timeoutUs) {
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;
-  fmt::print("\033[93m#{:dp}# logger shutdown time: {:.6f}s.\033[0m\n",
-             makeTimestamp(), diff / 1'000'000.f);
+  print("\033[93m#{dp}# logger shutdown time: {.6}s.\033[0m\n", makeTimestamp(),
+        diff / 1'000'000.f);
 #endif
 
   return didDieOk;
@@ -161,8 +162,8 @@ void Logger::run() {
 
 #if defined(DC_LOG_DEBUG)
   const u64 drained = dc::getTimeUs();
-  fmt::print(
-      "\033[93m#{:dp}# logger exit code detected, dying. drainTime: {:.6f}s, "
+  print(
+      "\033[93m#{dp}# logger exit code detected, dying. drainTime: {.6}s, "
       "drainedPayloads: {}\033[0m\n",
       makeTimestamp(), (drained - now) / 1'000'000.0, payloadsDrained);
 #endif
@@ -192,25 +193,25 @@ Logger& Logger::detachSink(const char* name) {
 void ConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
-      fmt::print(
+      print(
           "["
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{:dp} "
+          "{dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{:d} "
+          "{d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{:p} "
+          "{p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
           "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "{:7} "
+          "{7} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           "{}"
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
-          "{:10}"
+          "{10}"
 #endif
           "] {}\n",
 #if DC_LOG_PREFIX_DATETIME > 0
@@ -220,7 +221,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.level,
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          fmt::format("{}:{}", payload.fileName, payload.lineno),
+          format("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,
@@ -228,7 +229,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.msg);
 
     } else if (payload.level == Level::Raw)
-      fmt::print("{}", payload.msg);
+      print("{}", payload.msg);
   }
 }
 
@@ -252,19 +253,19 @@ static Color colorFromLevel(Level level) {
 void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
-      fmt::print(
+      print(
           "["
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{:dp} "
+          "{dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{:d} "
+          "{d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{:p} "
+          "{p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
           "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "{:16} "
+          "{16} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           "{}"
@@ -277,11 +278,11 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.timestamp,
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          Paint<17>(fmt::format("{}", payload.level).c_str(),
+          Paint<17>(format("{}", payload.level).c_str(),
                     colorFromLevel(payload.level)),
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          fmt::format("{}:{}", payload.fileName, payload.lineno),
+          format("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,
@@ -289,7 +290,7 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.msg);
 
     } else if (payload.level == Level::Raw)
-      fmt::print("{}", payload.msg);
+      print("{}", payload.msg);
   }
 }
 

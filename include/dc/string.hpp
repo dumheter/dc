@@ -24,8 +24,7 @@
 
 #pragma once
 
-#include <fmt/format.h>
-
+#include <cstring>
 #include <dc/allocator.hpp>
 #include <dc/list.hpp>
 #include <dc/traits.hpp>
@@ -207,6 +206,13 @@ class [[nodiscard]] String {
     return Utf8Iterator(c_str(), getSize(), getSize());
   }
 
+  [[nodiscard]] const char8* beginChar8() const { return m_list.begin(); }
+
+  [[nodiscard]] const char8* endChar8() const {
+    // skip the null terminator
+    return !m_list.isEmpty() ? m_list.end() - 1 : m_list.end();
+  }
+
   /// Append to the back of the string.
   void append(const char8* str, u64 size);
 
@@ -226,6 +232,8 @@ class [[nodiscard]] String {
   /// @retval None if not found
   Option<u64> find(StringView pattern) const;
 
+  bool endsWith(char8 c) const;
+
   List<char8>& getInternalList() { return m_list; }
   const List<char8>& getInternalList() const { return m_list; }
 
@@ -236,27 +244,3 @@ class [[nodiscard]] String {
 bool operator==(const char8* a, const dc::String& b);
 
 }  // namespace dc
-
-///////////////////////////////////////////////////////////////////////////////
-// Fmt
-//
-
-namespace dc {
-
-String vformat(fmt::string_view formatStr, fmt::format_args args);
-
-template <typename... Args>
-inline String format(fmt::string_view formatStr, Args&&... args) {
-  return dc::vformat(formatStr, fmt::make_format_args(args...));
-}
-
-}  // namespace dc
-
-template <>
-struct fmt::formatter<dc::String> : formatter<string_view> {
-  template <typename FormatContext>
-  auto format(const dc::String& string, FormatContext& ctx) {
-    string_view str(string.c_str(), string.getSize());
-    return formatter<string_view>::format(str, ctx);
-  }
-};

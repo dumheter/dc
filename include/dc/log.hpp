@@ -24,9 +24,8 @@
 
 #pragma once
 
-#include <fmt/format.h>
-
 #include <dc/assert.hpp>
+#include <dc/fmt.hpp>
 #include <dc/macros.hpp>
 #include <dc/string.hpp>
 #include <dc/time.hpp>
@@ -278,7 +277,17 @@ void makePayload(const char* fileName, const char* functionName, int lineno,
   payload.lineno = lineno;
   payload.level = level;
   payload.timestamp = makeTimestamp();
-  payload.msg = dc::format(dc::forward<Args>(args)...);
+  {
+    auto res = formatTo(payload.msg, dc::forward<Args>(args)...);
+    if (res.isErr()) {
+      // TODO cgustafsson: dont allocate memory here
+      String str;
+      [[maybe_unused]] auto _ =
+          formatTo(str, "Failed to format, with error [{}].",
+                   toString(res.errValue(), payload.msg.toView()));
+      DC_ASSERT(false, str.c_str());
+    }
+  }
 
   // Can fail if we cannot allocate memory.
   const bool res = logger.enqueue(dc::move(payload));
@@ -348,11 +357,12 @@ class Paint {
 // Fmt specialization
 //
 
+namespace dc {
+
 template <>
-struct fmt::formatter<dc::log::Level> : formatter<string_view> {
-  template <typename FormatContext>
-  auto format(dc::log::Level level, FormatContext& ctx) {
-    string_view str;
+struct Formatter<log::Level> : public Formatter<StringView> {
+  Result<NoneType, FormatErr> format(log::Level level, FormatContext& ctx) {
+    StringView str;
     switch (level) {
       case dc::log::Level::Verbose:
         str = "verbose";
@@ -369,62 +379,63 @@ struct fmt::formatter<dc::log::Level> : formatter<string_view> {
       default:
         str = "unknown";
     }
-    return formatter<string_view>::format(str, ctx);
+    ctx.out.addRange(str.beginChar8(), str.endChar8());
+    return Ok(None);
   }
 };
 
 template <>
-struct fmt::formatter<dc::Timestamp> {
+struct Formatter<Timestamp> {
   bool printDate = false;
   bool highPrecisionTime = false;
 
   /// Formatting options:
   ///   'd': Turn on date print.
   ///   'p': Turn on microsecond precision time print.
-  constexpr auto parse(format_parse_context& ctx) {
-    auto it = ctx.begin();
-    auto end = ctx.end();
-
-    for (;;) {
-      if (it != end) {
-        if (*it == 'd')
-          printDate = true;
-        else if (*it == 'p')
-          highPrecisionTime = true;
-        else if (*it == '}')
-          break;
-        else
-          throw format_error("invalid format");
-      } else
+  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
+    auto it = ctx.pattern.beginChar8();
+    for (; it != ctx.pattern.endChar8(); ++it) {
+      if (*it == '}')
         break;
-      ++it;
+      else if (*it == 'd')
+        printDate = true;
+      else if (*it == 'p')
+        highPrecisionTime = true;
+      else
+        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                             (u64)(ctx.pattern.beginChar8() - it)});
     }
-
-    return it;
+    return Ok(it);
   }
 
-  template <typename FormatContext>
-  auto format(const dc::Timestamp& t, FormatContext& ctx) {
-    if (printDate && highPrecisionTime)
-      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>9.6f}",
-                       t.year, t.month, t.day, t.hour, t.minute, t.second);
-    else if (printDate && !highPrecisionTime)
-      return format_to(ctx.out(), "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>6.3f}",
-                       t.year, t.month, t.day, t.hour, t.minute, t.second);
-    else if (!printDate && highPrecisionTime)
-      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>9.6f}", t.hour, t.minute,
-                       t.second);
-    else /* if (!printDate && !highPrecisionTime) */
-      return format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>6.3f}", t.hour, t.minute,
-                       t.second);
+  Result<NoneType, FormatErr> format(const dc::Timestamp& t,
+                                     FormatContext& ctx) {
+    return formatTo(ctx.out, "{}:{}:{.3}", t.hour, t.minute, t.second);
+
+    // TODO cgustafsson: handle all these
+    // if (printDate && highPrecisionTime)
+    // return formatTo(ctx.out, "{}-{0>2}-{0>2} {0>2}:{0>2}:{0>9.6}",
+    //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
+    // else if (printDate && !highPrecisionTime)
+    //   return formatTo(ctx.out, "{}-{0>2}-{0>2} {0>2}:{0>2}:{0>6.3}",
+    //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
+    // else if (!printDate && highPrecisionTime)
+    //   return formatTo(ctx.out, "{0>2}:{0>2}:{0>9.6}", t.hour, t.minute,
+    //                    t.second);
+    // else /* if (!printDate && !highPrecisionTime) */
+    //   return formatTo(ctx.out, "{0>2}:{0>2}:{0>6.3}", t.hour, t.minute,
+    //                    t.second);
+  }
+};
+
+// template <>
+template <u64 kStrLen>
+struct Formatter<log::Paint<kStrLen>> : Formatter<StringView> {
+  Result<NoneType, FormatErr> format(log::Paint<kStrLen>& paint,
+                                     FormatContext& ctx) {
+    ctx.out.addRange(paint.c_str(), paint.c_str() + paint.size());
+    return Ok(None);
   }
 };
 
-template <usize kStrLen>
-struct fmt::formatter<dc::log::Paint<kStrLen>> : formatter<string_view> {
-  template <typename FormatContext>
-  auto format(const dc::log::Paint<kStrLen>& paint, FormatContext& ctx) {
-    string_view str(paint.c_str(), paint.size());
-    return formatter<string_view>::format(str, ctx);
-  }
-};
+}  // namespace dc

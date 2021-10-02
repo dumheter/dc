@@ -305,6 +305,10 @@ Option<u64> String::find(StringView pattern) const {
   return thisString.find(pattern);
 }
 
+bool String::endsWith(char8 c) const {
+  return isEmpty() ? false : c == *(endChar8() - 1);
+}
+
 void String::operator+=(const String& other) {
   append(other.getData(), other.getSize());
 }
@@ -314,13 +318,5 @@ void String::operator+=(u8 data) { append((char8*)&data, 1); }
 void String::operator+=(const char8* str) { append(str, strlen(str)); }
 
 bool operator==(const char8* a, const dc::String& b) { return b.operator==(a); }
-
-///////////////////////////////////////////////////////////////////////////////
-
-String vformat(fmt::string_view formatStr, fmt::format_args args) {
-  fmt::basic_memory_buffer<char8, fmt::inline_buffer_size> buffer;
-  fmt::vformat_to(buffer, formatStr, args);
-  return String(buffer.data(), buffer.size());
-}
 
 }  // namespace dc

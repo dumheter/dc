@@ -24,22 +24,55 @@
 
 #include <cfloat>
 #include <cstring>
+#include <dc/assert.hpp>
+#include <dc/callstack.hpp>
 #include <dc/fmt.hpp>
 
-namespace dc::xfmt {
+namespace dc {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-const char8* toString(FormatErr err) {
-  switch (err) {
-    case FormatErr::ParseInvalidChar:
-      return "Parsed invalid format fields.";
-    case FormatErr::CannotFormatType:
+const char8* toString(FormatErr::Kind kind) {
+  switch (kind) {
+    case FormatErr::Kind::InvalidSpecification:
+      return "Parsed invalid format specification.";
+    case FormatErr::Kind::CannotFormatType:
       return "Cannot format type. Specialize the struct Formatter<T> for your "
              "type.";
+    case FormatErr::Kind::CannotWriteToFile:
+      return "CannotWriteToFile.";
+    case FormatErr::Kind::OutOfMemory:
+      return "Supplied buffer too small, or memory allocation failed.";
     default:
       return "Internal error.";
   }
+}
+
+String toString(const FormatErr& err, StringView pattern) {
+  String out;
+
+  Result<NoneType, FormatErr> res = Err(FormatErr{});
+
+  if (!pattern.isEmpty())
+    res = formatTo(out,
+                   "Format error: \"{}\", at position {}, when formatting:\n{}",
+                   toString(err.kind), err.pos, pattern);
+  else
+    res = formatTo(out, "Format error: \"{}\"", toString(err.kind));
+
+  if (res.isErr()) {
+    // we faild to format the error, probably out of memory
+    return String(toString(err.kind));
+  }
+
+  if (err.pos != 0 && !pattern.isEmpty()) {
+    if (!out.endsWith('\n')) out += '\n';
+    for (u64 i = 0; i < err.pos; ++i) out += ' ';
+
+    out += '^';
+  }
+
+  return out;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -433,19 +466,20 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
 
   while (it != end && *it >= '0' && *it <= '9') ++it;
 
-  if (numStart == it) return Err(FormatErr::ParseInvalidChar);
+  if (numStart == it)
+    return Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0});
 
   const char8* numEnd = it;
   u32 out = 0;
   while (numStart != numEnd) {
-    DC_FATAL_ASSERT(numEnd - numStart - 1 < 20,
-                    "todo handle x^y where y is more than 19");
+    if (numEnd - numStart - 1 >= 20) {  // powten only goes [0, 20)
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0});
+    }
     out += (*numStart - '0') * (u32)stbsp__powten[numEnd - numStart - 1];
     ++numStart;
   }
 
-  // TODO cgustafsson: no move for primitive type
-  return Ok(dc::move(out));
+  return Ok(out);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -453,26 +487,199 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
 //
 
 template <>
-struct Formatter<u64> {
+struct Formatter<f64> {
   Result<const char8*, FormatErr> parse(ParseContext& ctx) {
     auto it = ctx.pattern.beginChar8();
     for (; it != ctx.pattern.endChar8(); ++it) {
       if (*it == '}')
         break;
-      else
-        return Err(FormatErr::ParseInvalidChar);
+      else if (*it == '.') {
+        // TODO cgustafsson: constexpr
+        Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
+        if (res.isOk())
+          decimals = res.value();
+        else
+          return Err(res.errValue());
+
+        --it;  // revert the increase we did
+      } else
+        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                             (u64)(ctx.pattern.beginChar8() - it)});
     }
 
-    // TODO cgustafsson: don't move primitive types
-    return Ok(dc::move(it));
+    return Ok(it);
   }
 
-  void format(u64 value, FormatContext& ctx) {
-    constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
-    char8 buf[kBufSize];
+  Result<NoneType, FormatErr> format(f64 value, FormatContext& ctx) {
+    char const* start;
+    u32 len;
+    char buf[512];  // big enough for e308 (with commas) or e-307
+    s32 decimalPos;
+    s32 sign =
+        stbsp__real_to_str(&start, &len, buf, &decimalPos, value, decimals);
 
-	// NOTE: from stb's sprintf
-    char8* s = buf + kBufSize;
+    // TODO cgustafsson: missing code when decimal pos is negative
+    // ex 3.999e^-6
+    if (decimalPos < 1) decimalPos = 0;  // TODO cgustafsson: remove
+    if (sign == 1) ctx.out.add('-');
+    ctx.out.addRange(start, start + decimalPos);
+    constexpr char kDecimal = '.';  // TODO cgustafsson: support locales?
+    ctx.out.add(kDecimal);
+    ctx.out.addRange(start + decimalPos, start + len);
+    return Ok(NoneType());
+  }
+
+  u32 decimals = DBL_DIG;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// doFormat
+//
+
+Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
+                                            FormatContext& formatCtx,
+                                            FormatArg& formatArg) {
+  if (formatArg.type < FormatArg::Types::LastIntegerType) {
+    // TODO cgustafsson: No longer need to do this, created formatters for them
+    // all
+    Formatter<u64> f;
+    auto res = f.parse(parseCtx);
+    u64 value;
+    if (formatArg.type == FormatArg::Types::S32Type) {
+      if (formatArg.s32Value < 0) {
+        value = (u64)-formatArg.s32Value;
+        f.negative = true;
+      } else
+        value = (u64)formatArg.s32Value;
+    } else if (formatArg.type == FormatArg::Types::S64Type) {
+      if (formatArg.s64Value < 0) {
+        value = (u64)-formatArg.s64Value;
+        f.negative = true;
+      } else
+        value = (u64)formatArg.s64Value;
+    } else if (formatArg.type == FormatArg::Types::U32Type)
+      value = formatArg.u32Value;
+    else /* if (formatArg.type == FormatArg::Types::U64Type) */
+      value = formatArg.u64Value;
+    if (res.isOk()) {
+      auto formatRes = f.format(value, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type < FormatArg::Types::LastFloatType) {
+    Formatter<f64> f;
+    f64 value;
+    if (formatArg.type == FormatArg::Types::F32Type) {
+      value = formatArg.f32Value;
+      f.decimals = FLT_DIG;
+    } else /* if (formatArg.type == FormatArg::Types::F64Type) */
+      value = formatArg.f64Value;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format(value, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::CStringType) {
+    Formatter<const char8*> f;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format(formatArg.cstringValue, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::StringViewType) {
+    Formatter<StringView> f;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format(formatArg.stringViewValue, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::PointerType) {
+    Formatter<u64> f;
+    f.prefix = true;
+    f.presentation = Presentation::Hex;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format((u64)formatArg.pointerValue, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::CustomType) {
+    return formatArg.customValue.format(formatArg.customValue.value, parseCtx,
+                                        formatCtx);
+  } else {
+    return Err(FormatErr{FormatErr::Kind::CannotFormatType,
+                         (u64)(parseCtx.pattern.getLength())});
+  }
+  return Ok(parseCtx.pattern.beginChar8());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Print
+//
+
+// #ifdef _WIN32
+// namespace detail {
+// using dword = Conditional<sizeof(long) == 4, unsigned long, unsigned>;
+// extern "C" __declspec(dllimport) int __stdcall WriteConsoleW(  //
+//     void*, const void*, dword, dword*, void*);
+// }  // namespace detail
+// #endif
+
+// Result<NoneType, FormatErr> rawPrintIfWChar(StringView str)
+// {
+// #ifdef _WIN32
+// 	auto fd = _fileno(f);
+// 	if (_isatty(fd)) {
+// 		detail::utf8_to_utf16 u16(string_view(buffer.data(),
+// buffer.size())); 		auto written = detail::dword(); 		if
+// (detail::WriteConsoleW(reinterpret_cast<void*>(_get_osfhandle(fd)),
+// 								  u16.c_str(),
+// static_cast<uint32_t>(u16.size()), 								  &written, nullptr)) { 			return;
+// 		}
+// 		// Fallback to fwrite on failure. It can happen if the output has
+// been
+// 		// redirected to NUL.
+// 	}
+// #endif
+// 	detail::fwrite_fully(buffer.data(), 1, buffer.size(), f);
+// }
+
+// TODO cgustafsson: wchar for windows
+Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str) {
+  // if (std::fputws(str.c_str(), f) == -1)
+  // 	return Err(FormatErr::CannotWriteToFile);
+  if (fputs(str.beginChar8(), f) == EOF)
+    return Err(FormatErr{FormatErr::Kind::CannotWriteToFile, 0});
+  return Ok(None);
+}
+
+Result<StringView, u64> toString(s64 ivalue, char8* buf, u64 bufSize,
+                                 Presentation presentation) {
+  u64 uvalue;
+  if (ivalue < 0) {
+    uvalue = (u64)-ivalue;
+    auto StrOrErr = toString(uvalue, buf, bufSize, presentation);
+    if (StrOrErr.isErr()) return StrOrErr;
+    if (StrOrErr.value().c_str() == buf) return Err(bufSize + 1);
+    char8* begin = (char8*)((StrOrErr.value().c_str()) - 1);
+    *(buf) = '-';
+    return Ok(StringView{begin, (u64)buf + bufSize});
+  } else {
+    uvalue = (u64)ivalue;
+    return toString(uvalue, buf, bufSize, presentation);
+  }
+}
+
+Result<StringView, u64> toString(u64 value, char8* buf, u64 bufSize,
+                                 Presentation presentation) {
+  char8* s = buf + bufSize;
+
+  if (presentation == Presentation::Decimal) {
+    // NOTE: from stb's sprintf
+
     u32 n;
     for (;;) {
       // do in 32-bit chunks (avoid lots of 64-bit divides even with
@@ -504,7 +711,7 @@ struct Formatter<u64> {
         //}
       }
       if (value == 0) {
-        if ((s[0] == '0') && (s != (buf + kBufSize))) ++s;
+        if ((s[0] == '0') && (s != (buf + bufSize))) ++s;
         break;
       }
       while (s != o)
@@ -517,143 +724,44 @@ struct Formatter<u64> {
       //}
     }
 
-    if (((buf + kBufSize) - s) == 0) {
+    if (((buf + bufSize) - s) == 0) {
       *--s = '0';
     }
-
-    ctx.out.addRange(s, buf + kBufSize);
+  } else if (presentation == Presentation::Hex) {
+    static char hex[] = "0123456789abcdefxp";
+    u32 l = (4 << 4) | (4 << 8);
+    u32 pr = 0;  // TODO cgustafsson: what is this?
+    for (;;) {
+      *--s = hex[value & ((1 << (l >> 8)) - 1)];
+      value >>= (l >> 8);
+      if (!((value) || ((s32)((buf + bufSize) - s) < pr))) break;
+      // if (fl & STBSP__TRIPLET_COMMA) {
+      // 	++l;
+      // 	if ((l & 15) == ((l >> 4) & 15)) {
+      // 		l &= ~15;
+      // 		*--s = stbsp__comma;
+      // 	}
+      // }
+    };
+    // get the tens and the comma pos
+    // u32 cs = (u32)((buf + bufSize) - s) +
+    // 		 ((((l >> 4) & 15)) << 24);
+    // // get the length that we copied
+    // l = (u32)((buf + bufSize) - s);
+  } else if (presentation == Presentation::Binary) {
+    DC_FATAL_ASSERT(false, "todo");
   }
 
-  bool negative = false;
-};
-
-template <>
-struct Formatter<f64> {
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
-      if (*it == '}')
-        break;
-      else if (*it == '.') {
-        // TODO cgustafsson: constexpr
-        Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
-        if (res.isOk())
-          decimals = res.value();
-        else  // TODO cgustafsson: trivial type should be copyable (lvalue)
-          return Err(dc::move(res).unwrapErr());
-
-        --it;  // revert the increase we did
-      } else
-        return Err(FormatErr::ParseInvalidChar);
-    }
-
-    // TODO cgustafsson: trivial type
-    return Ok(dc::move(it));
-  }
-
-  void format(f64 value, FormatContext& ctx) {
-    char const* start;
-    u32 len;
-    char buf[512];  // big enough for e308 (with commas) or e-307
-    s32 decimalPos;
-    s32 sign =
-        stbsp__real_to_str(&start, &len, buf, &decimalPos, value, decimals);
-
-    if (sign == 1) ctx.out.add('-');
-    ctx.out.addRange(start, start + decimalPos);
-    constexpr char kDecimal = '.';  // TODO cgustafsson: support locales?
-    ctx.out.add(kDecimal);
-    ctx.out.addRange(start + decimalPos, start + len);
-  }
-
-  u32 decimals = DBL_DIG;
-};
-
-template <>
-struct Formatter<const char8*> {
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
-      if (*it == '}')
-        break;
-      else if (*it == '.') {
-        // TODO cgustafsson: constexpr
-        Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
-        if (res.isOk())
-          precision = res.value();
-        else  // TODO cgustafsson: trivial type should be copyable (lvalue)
-          return Err(dc::move(res).unwrapErr());
-
-        --it;  // revert the increase we did
-      } else
-        return Err(FormatErr::ParseInvalidChar);
-    }
-
-    // TODO cgustafsson: dont move primitive types
-    return Ok(dc::move(it));
-  }
-
-  void format(const char8* str, FormatContext& ctx) {
-    u64 len = strlen(str);
-    len = dc::min(len, precision);
-    ctx.out.addRange(str, str + len);
-  }
-
-  u64 precision = ~0llu;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// doFormat
-//
-
-Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
-                                            FormatContext& formatCtx,
-                                            FormatArg& formatArg) {
-  if (formatArg.type < FormatArg::Types::LastIntegerType) {
-    Formatter<u64> f;
-    auto res = f.parse(parseCtx);
-    u64 value;
-    if (formatArg.type == FormatArg::Types::S32Type) {
-      if (formatArg.s32Value < 0) {
-        value = (u64)-formatArg.s32Value;
-        f.negative = true;
-      } else
-        value = (u64)formatArg.s32Value;
-    } else if (formatArg.type == FormatArg::Types::S64Type) {
-      if (formatArg.s64Value < 0) {
-        value = (u64)-formatArg.s64Value;
-        f.negative = true;
-      } else
-        value = (u64)formatArg.s64Value;
-    } else if (formatArg.type == FormatArg::Types::U32Type)
-      value = formatArg.u32Value;
-    else /* if (formatArg.type == FormatArg::Types::U64Type) */
-      value = formatArg.u64Value;
-    if (res.isOk()) f.format(value, formatCtx);
-    return res;
-  } else if (formatArg.type < FormatArg::Types::LastFloatType) {
-    Formatter<f64> f;
-    f64 value;
-    if (formatArg.type == FormatArg::Types::F32Type) {
-      value = formatArg.f32Value;
-      f.decimals = FLT_DIG;
-    } else /* if (formatArg.type == FormatArg::Types::F64Type) */
-      value = formatArg.f64Value;
-    auto res = f.parse(parseCtx);
-    if (res.isOk()) f.format(value, formatCtx);
-    return res;
-  } else if (formatArg.type == FormatArg::Types::CStringType) {
-    Formatter<const char8*> f;
-    auto res = f.parse(parseCtx);
-    if (res.isOk()) f.format(formatArg.cstringValue, formatCtx);
-    return res;
-  } else if (formatArg.type == FormatArg::Types::CustomType) {
-    return formatArg.customValue.format(formatArg.customValue.value, parseCtx,
-                                        formatCtx);
-  } else {
-    return Err(FormatErr::CannotFormatType);
-  }
-  return Ok(parseCtx.pattern.beginChar8());
+  return Ok(StringView{s, (u64)((buf + bufSize) - s)});
 }
 
-}  // namespace dc::xfmt
+namespace detail {
+void printCallstack() {
+  auto res = buildCallstack();
+  if (res.isOk()) {
+    rawPrint(stdout, res->callstack.toView());
+  }
+}
+}  // namespace detail
+
+}  // namespace dc

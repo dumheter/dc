@@ -64,7 +64,7 @@ DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
   auto callstackResult = buildCallstack();
   dc::String callstack =
       dc::move(callstackResult)
-          .match([](Callstack&& cs) { return move(cs.toString()); },
+          .match([](Callstack&& cs) { return move(cs.callstack); },
                  [](CallstackErr&& err) { return err.toString(); });
 
   if (callstack.getDataAt(callstack.getSize() - 1) ==
