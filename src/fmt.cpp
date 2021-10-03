@@ -651,7 +651,8 @@ struct Formatter<f64> {
 Result<const char8*, FormatErr> Formatter<StringView>::parse(
     ParseContext& ctx) {
   auto it = ctx.pattern.beginChar8();
-  for (; it != ctx.pattern.endChar8(); ++it) {
+  const auto end = ctx.pattern.endChar8();
+  for (; it != end; ++it) {
     if (*it == '}')
       break;
     else if (*it == '.') {
@@ -662,7 +663,13 @@ Result<const char8*, FormatErr> Formatter<StringView>::parse(
       else
         return Err(res.errValue());
 
-      --it;  // revert the increase we did
+      --it;  // Adjust for the for loop increasing it once as well.
+    } else if (auto res = FormatFill::parse(it, end)) {
+      if (res->isOk()) {
+        fill = Some(res->value());
+        --it;  // Adjust for the for loop increasing it once as well.
+      } else
+        return Err(res->errValue());
     } else
       return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
                            it - ctx.pattern.beginChar8()});
@@ -674,8 +681,7 @@ Result<const char8*, FormatErr> Formatter<StringView>::parse(
 Result<NoneType, FormatErr> Formatter<StringView>::format(const StringView& str,
                                                           FormatContext& ctx) {
   auto len = dc::min(str.getSize(), precision);
-  ctx.out.addRange(str.c_str(), str.c_str() + len);
-  return Ok(None);
+  return FormatFill::format(fill, StringView{str.c_str(), len}, ctx);
 }
 
 Result<const char8*, FormatErr> Formatter<u64>::parse(ParseContext& ctx) {
@@ -749,6 +755,7 @@ Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
   }
 }
 
+// TODO cgustafsson: is this used?
 Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
                                                    FormatContext& ctx) {
   // TODO cgustafsson: is this the correct len?

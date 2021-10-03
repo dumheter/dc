@@ -144,6 +144,8 @@ struct Formatter<StringView> {
   Result<NoneType, FormatErr> format(const StringView& str, FormatContext& ctx);
 
   u64 precision = ~0llu;
+
+  Option<FormatFill> fill;
 };
 
 /// Specialize Formatter for String. Inherit from StringView to reuse its

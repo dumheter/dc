@@ -150,26 +150,56 @@ DTEST(formatIntAsHexWithPrefix) {
   ASSERT_EQ(*res, "0xf5c6f515");
 }
 
-DTEST(formatWithLeftFill) {
+DTEST(formatWithLeftFillInt) {
   auto res = dc::format("{<03}", 7);
   ASSERT_TRUE(res);
   ASSERT_EQ(*res, "700");
 }
 
-DTEST(formatWithRightFill) {
+DTEST(formatWithRightFillInt) {
   auto res = dc::format("{>03}", 7);
   ASSERT_TRUE(res);
   ASSERT_EQ(*res, "007");
 }
 
-DTEST(formatWithCenterFill) {
+DTEST(formatWithCenterFillInt) {
   auto res = dc::format("{^03}", 7);
   ASSERT_TRUE(res);
   ASSERT_EQ(*res, "070");
 }
 
-DTEST(formatu8) {
-  auto res = dc::format("{}", (u8)18);
+DTEST(formatWithLeftFillFloat) {
+  auto res = dc::format("{<05.1}", 7.1f);
   ASSERT_TRUE(res);
-  ASSERT_EQ(*res, "18");
+  ASSERT_EQ(*res, "7.100");
+}
+
+DTEST(formatWithRightFillFloat) {
+  auto res = dc::format("{>05.1}", 7.1f);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "007.1");
+}
+
+DTEST(formatWithCenterFillFloat) {
+  auto res = dc::format("{^05.1}", 7.1f);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "07.10");
+}
+
+DTEST(formatWithLeftFillString) {
+  auto res = dc::format("[{<~7}]", "TEST");
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "[TEST~~~]");
+}
+
+DTEST(formatWithRightFillString) {
+  auto res = dc::format("[{>~7}]", "TEST");
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "[~~~TEST]");
+}
+
+DTEST(formatWithCenterFillString) {
+  auto res = dc::format("[{^~7}]", "TEST");
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "[~~TEST~]");
 }

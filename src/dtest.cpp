@@ -98,7 +98,7 @@ int runTests() {
 
   const bool vipActive = r.hasVipCategories();
 
-  LOG_INFO("___|_ D T E S T _|___");
+  LOG_INFO("~~~ D T E S T ~~~");
   LOG_INFO("{}Running {} test categories.", vipActive ? "! VIP Active ! " : "",
            vipActive ? static_cast<int>(r.vipCount())
                      : static_cast<int>(r.getTestCategories().size()));
