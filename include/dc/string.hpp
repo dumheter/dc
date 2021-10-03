@@ -86,6 +86,11 @@ class [[nodiscard]] StringView {
 
   StringView(const char8* string, u64 size) : m_string(string), m_size(size) {}
 
+  StringView(const char8* begin, const char8* end)
+      : m_string(begin), m_size(end - begin) {
+    DC_ASSERT(end >= begin, "End iterator must be larger than begin iterator.");
+  }
+
   [[nodiscard]] constexpr const char8* c_str() const { return m_string; }
 
   [[nodiscard]] constexpr const u8* getData() const {

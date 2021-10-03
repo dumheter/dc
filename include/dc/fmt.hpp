@@ -52,10 +52,11 @@ struct FormatErr {
     CannotFormatType,
     CannotWriteToFile,
     OutOfMemory,
+    ParseReturnedBadIterator,
   } kind = Kind::InvalidSpecification;  //< What kind of error.
 
   /// Where in the pattern did we encounter an error.
-  u64 pos = 0;
+  s64 pos = 0;
 };
 
 const char8* toString(FormatErr::Kind kind);
@@ -78,9 +79,9 @@ enum class Presentation {
 ///
 /// @return View of the resulting string on Ok. Required bytes to format the int
 /// on Err.
-Result<StringView, u64> toString(s64 value, char8* buf, u64 bufSize,
+Result<StringView, s64> toString(s64 value, char8* buf, s64 bufSize,
                                  Presentation);
-Result<StringView, u64> toString(u64 value, char8* buf, u64 bufSize,
+Result<StringView, s64> toString(u64 value, char8* buf, s64 bufSize,
                                  Presentation);
 
 /// Specialize this struct and its two functions to format your type!
@@ -108,6 +109,31 @@ struct Formatter {
 /// after the end of the number.
 /// @param end, will stop at end. Will not read end.
 Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end);
+
+/// Example:
+/// Fill 7, <03 -> 007
+/// Fill wow, ^-7 -> --wow--
+struct FormatFill {
+  /// If you Formatter::parse should handle "fill", then just pass this when
+  /// you iterate on the format specification. And it will only start "activate"
+  /// when it sees the '<', '>' or '^' characters.
+  /// @retval Some(Ok) when it parsed a "fill" successfully.
+  /// @retval None() when it didnt wasnt a "fill".
+  /// @retval Some(Err) when it was a "fill" but failed to parse.
+  static Option<Result<FormatFill, FormatErr>> parse(const char8*& it,
+                                                     const char8* end);
+
+  static Result<NoneType, FormatErr> format(const Option<FormatFill>& fill,
+                                            StringView str, FormatContext& ctx);
+
+  enum class Align {
+    Left,
+    Right,
+    Center,
+  } align;
+  utf8::CodePoint sign;
+  u32 space;
+};
 
 /// Specialization for Formatter for StringView. Can be used for other
 /// string-like types. Look at Formatter<String> for a good example.
@@ -153,22 +179,7 @@ struct Formatter<u64> {
   /// Write '-' in front of the number.
   bool negative = false;
 
-  struct Align {
-    enum class Orientation {
-      Left,
-      Right,
-      Center,
-    } orientation;
-    utf8::CodePoint filler;
-  };
-
-  /// Align the number at a certain spacing, with a certain filler.
-  /// Example
-  ///   Given:
-  ///     number: 7, spacing: 3, filler: 0, align: <
-  ///   Outputs:
-  ///     "007"
-  Option<Align> align;
+  Option<FormatFill> fill;
 };
 
 template <>
@@ -248,8 +259,12 @@ struct FormatArg {
   };
 
   constexpr FormatArg() : boolValue(false), type(Types::NoneType) {}
+  constexpr FormatArg(s8 value) : s32Value(value), type(Types::S32Type) {}
+  constexpr FormatArg(s16 value) : s32Value(value), type(Types::S32Type) {}
   constexpr FormatArg(s32 value) : s32Value(value), type(Types::S32Type) {}
   constexpr FormatArg(s64 value) : s64Value(value), type(Types::S64Type) {}
+  constexpr FormatArg(u8 value) : u32Value(value), type(Types::U32Type) {}
+  constexpr FormatArg(u16 value) : u32Value(value), type(Types::U32Type) {}
   constexpr FormatArg(u32 value) : u32Value(value), type(Types::U32Type) {}
   constexpr FormatArg(u64 value) : u64Value(value), type(Types::U64Type) {}
 
@@ -346,7 +361,8 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
 
   // We ignore utf8 and just scan in ascii, since fmt standard format specifiers
   // are all valid ascii characters.
-  const char8* it = fmt.beginChar8();
+  const char8* begin = fmt.beginChar8();
+  const char8* it = begin;
   const char8* end = fmt.endChar8();
   const char8* a = it;
   const char8* b = it;
@@ -370,7 +386,7 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
         //  a          b parseCtx
         out.addRange(a, b);
         FormatArg& formatArg = formatArgs.args[usedArgs++];
-        StringView pattern(it + 1, end - it);
+        StringView pattern(it + 1, end - (it + 1));
         ParseContext parseCtx{pattern};
         FormatContext formatCtx{out, pattern};
         auto res = doFormatArg(parseCtx, formatCtx, formatArg);
@@ -380,9 +396,20 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
             out.remove(out.end() - 1);
           it = res.value();
         } else {
-          res.errValue().pos += (u64)(it + 1 - fmt.beginChar8());
+          res.errValue().pos += it + 1 - fmt.beginChar8();
           return Err(dc::move(res).unwrapErr());
         }
+
+        // protect from the format returning invalid iterator
+        // TODO cgustafsson: dont silently fix errors
+        // if (it >= end) --it;
+        if (it >= end)
+          return Err(
+              FormatErr{FormatErr::Kind::ParseReturnedBadIterator, it - begin});
+        else if (it < begin)
+          return Err(
+              FormatErr{FormatErr::Kind::ParseReturnedBadIterator, it - begin});
+
         a = it + 1;
       }
     } else if (*it == '}') {

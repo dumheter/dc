@@ -1,6 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/fmt.hpp>
-
+DTEST_VIP;
 using namespace dc;
 
 DTEST(formatF32) {
@@ -148,4 +148,28 @@ DTEST(formatIntAsHexWithPrefix) {
   auto res = format("{#x}", 0xF5C6F515);
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "0xf5c6f515");
+}
+
+DTEST(formatWithLeftFill) {
+  auto res = dc::format("{<03}", 7);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "700");
+}
+
+DTEST(formatWithRightFill) {
+  auto res = dc::format("{>03}", 7);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "007");
+}
+
+DTEST(formatWithCenterFill) {
+  auto res = dc::format("{^03}", 7);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "070");
+}
+
+DTEST(formatu8) {
+  auto res = dc::format("{}", (u8)18);
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, "18");
 }

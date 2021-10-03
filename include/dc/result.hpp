@@ -309,19 +309,24 @@ class Option {
     return dc::move(value);
   }
 
-  [[nodiscard]] constexpr V& operator*() & {
+  [[nodiscard]] constexpr V& operator*() & noexcept {
     DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return valueRef();
   }
 
-  [[nodiscard]] constexpr const V& operator*() const& {
+  [[nodiscard]] constexpr const V& operator*() const& noexcept {
     DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
-    return valueRef();
+    return valueCRef();
   }
 
-  [[nodiscard]] constexpr V* operator->() & {
+  [[nodiscard]] constexpr V* operator->() & noexcept {
     DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
     return &valueRef();
+  }
+
+  [[nodiscard]] constexpr const V* operator->() const& noexcept {
+    DC_ASSERT(isSome(), "Tried to access value 'Some' when Option is 'None'.");
+    return &valueCRef();
   }
 
   // TODO cgustafsson: unwrapOrElse

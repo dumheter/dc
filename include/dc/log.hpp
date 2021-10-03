@@ -403,27 +403,26 @@ struct Formatter<Timestamp> {
         highPrecisionTime = true;
       else
         return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             (u64)(ctx.pattern.beginChar8() - it)});
+                             it - ctx.pattern.beginChar8()});
     }
     return Ok(it);
   }
 
   Result<NoneType, FormatErr> format(const dc::Timestamp& t,
                                      FormatContext& ctx) {
-    return formatTo(ctx.out, "{}:{}:{.3}", t.hour, t.minute, t.second);
+    return formatTo(ctx.out, "{<02}:{<02}:{<02.3}", t.hour, t.minute, t.second);
 
-    // TODO cgustafsson: handle all these
     // if (printDate && highPrecisionTime)
-    // return formatTo(ctx.out, "{}-{0>2}-{0>2} {0>2}:{0>2}:{0>9.6}",
+    // return formatTo(ctx.out, "{}-{>02}-{>02} {>02}:{>02}:{>09.6}",
     //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
     // else if (printDate && !highPrecisionTime)
-    //   return formatTo(ctx.out, "{}-{0>2}-{0>2} {0>2}:{0>2}:{0>6.3}",
+    //   return formatTo(ctx.out, "{}-{>02}-{>02} {>02}:{>02}:{>06.3}",
     //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
     // else if (!printDate && highPrecisionTime)
-    //   return formatTo(ctx.out, "{0>2}:{0>2}:{0>9.6}", t.hour, t.minute,
+    //   return formatTo(ctx.out, "{>02}:{>02}:{>09.6}", t.hour, t.minute,
     //                    t.second);
     // else /* if (!printDate && !highPrecisionTime) */
-    //   return formatTo(ctx.out, "{0>2}:{0>2}:{0>6.3}", t.hour, t.minute,
+    //   return formatTo(ctx.out, "{>02}:{>02}:{>06.3}", t.hour, t.minute,
     //                    t.second);
   }
 };

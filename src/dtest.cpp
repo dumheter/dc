@@ -97,6 +97,7 @@ int runTests() {
   Register& r = getRegister();
 
   const bool vipActive = r.hasVipCategories();
+
   LOG_INFO("___|_ D T E S T _|___");
   LOG_INFO("{}Running {} test categories.", vipActive ? "! VIP Active ! " : "",
            vipActive ? static_cast<int>(r.vipCount())

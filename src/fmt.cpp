@@ -30,8 +30,6 @@
 
 namespace dc {
 
-///////////////////////////////////////////////////////////////////////////////
-
 const char8* toString(FormatErr::Kind kind) {
   switch (kind) {
     case FormatErr::Kind::InvalidSpecification:
@@ -43,6 +41,8 @@ const char8* toString(FormatErr::Kind kind) {
       return "CannotWriteToFile.";
     case FormatErr::Kind::OutOfMemory:
       return "Supplied buffer too small, or memory allocation failed.";
+    case FormatErr::Kind::ParseReturnedBadIterator:
+      return "Parse returned bad iterator, past end or before begin.";
     default:
       return "Internal error.";
   }
@@ -65,136 +65,15 @@ String toString(const FormatErr& err, StringView pattern) {
     return String(toString(err.kind));
   }
 
-  if (err.pos != 0 && !pattern.isEmpty()) {
+  constexpr s64 kMaxDrawPos = 256;
+  if (err.pos != 0 && !pattern.isEmpty() && err.pos < kMaxDrawPos) {
     if (!out.endsWith('\n')) out += '\n';
-    for (u64 i = 0; i < err.pos; ++i) out += ' ';
+    for (s64 i = 0; i < err.pos; ++i) out += ' ';
 
     out += '^';
   }
 
   return out;
-}
-
-Result<const char8*, FormatErr> Formatter<u64>::parse(ParseContext& ctx) {
-  auto it = ctx.pattern.beginChar8();
-  auto end = ctx.pattern.endChar8();
-  for (; it != end; ++it) {
-    if (*it == '}')
-      break;
-    else if (*it == 'b')
-      presentation = Presentation::Binary;
-    else if (*it == 'x')
-      presentation = Presentation::Hex;
-    else if (*it == '#')
-      prefix = true;
-    else if (*it == '<' || *it == '>' || *it == '^') {
-      // next char will be our filler char
-      if (it + 1 == end)
-        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             (u64)(ctx.pattern.beginChar8() - it + 1)});
-      align = Some(Align{});
-      switch (*it) {
-        case '>':
-          align->orientation = Align::Orientation::Right;
-          break;
-        case '^':
-          align->orientation = Align::Orientation::Center;
-          break;
-        case '<':
-        default:
-          align->orientation = Align::Orientation::Left;
-          break;
-      }
-      align->filler = *(it + 1);
-      ++it;  // move past the filler char
-    } else
-      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                           (u64)(ctx.pattern.beginChar8() - it)});
-  }
-
-  return Ok(it);
-}
-
-Result<const char8*, FormatErr> Formatter<StringView>::parse(
-    ParseContext& ctx) {
-  auto it = ctx.pattern.beginChar8();
-  for (; it != ctx.pattern.endChar8(); ++it) {
-    if (*it == '}')
-      break;
-    else if (*it == '.') {
-      // TODO cgustafsson: constexpr
-      Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
-      if (res.isOk())
-        precision = res.value();
-      else
-        return Err(res.errValue());
-
-      --it;  // revert the increase we did
-    } else
-      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                           (u64)(ctx.pattern.beginChar8() - it)});
-  }
-
-  return Ok(it);
-}
-
-Result<NoneType, FormatErr> Formatter<StringView>::format(const StringView& str,
-                                                          FormatContext& ctx) {
-  auto len = dc::min(str.getSize(), precision);
-  ctx.out.addRange(str.c_str(), str.c_str() + len);
-  return Ok(None);
-}
-
-Result<NoneType, FormatErr> Formatter<u64>::format(u64 value,
-                                                   FormatContext& ctx) {
-  // TODO cgustafsson: is this the correct len?
-  constexpr u32 kBufSize = 20;  // len("18446744073709551616") == 20
-  char8 buf[kBufSize];
-
-  auto viewOrErr = toString(value, buf, kBufSize, presentation);
-  if (viewOrErr.isErr())
-    // TODO cgustafsson: fill in error pos ?
-    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
-
-  if (prefix) {
-    auto res = getPresentationChar();
-    if (res.isErr()) {
-      // TODO cgustafsson: fill in error pos?
-      return Err(FormatErr{res.errValue(), 0});
-    }
-    ctx.out.add('0');
-    ctx.out.add(*res);
-  }
-  if (negative) ctx.out.add('-');
-  ctx.out.addRange(viewOrErr->beginChar8(), viewOrErr->endChar8());
-  return Ok(None);
-}
-
-Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
-  switch (presentation) {
-    case Presentation::Binary:
-      return Ok('b');
-    case Presentation::Hex:
-      return Ok('x');
-    default:
-      return Err(FormatErr::Kind::InvalidSpecification);
-  }
-}
-
-Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
-                                                   FormatContext& ctx) {
-  // TODO cgustafsson: is this the correct len?
-  constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
-  char8 buf[kBufSize];
-
-  auto viewOrErr = toString(value, buf, kBufSize, presentation);
-  if (viewOrErr.isErr())
-    // TODO cgustafsson: how to get position
-    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
-
-  ctx.out.addRange(viewOrErr.value().beginChar8(),
-                   viewOrErr.value().endChar8());
-  return Ok(NoneType());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -604,6 +483,94 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
   return Ok(out);
 }
 
+Option<Result<FormatFill, FormatErr>> FormatFill::parse(const char8*& it,
+                                                        const char8* end) {
+  if (*it == '<' || *it == '>' || *it == '^') {
+    if (it + 3 > end)
+      return Some(Result<FormatFill, FormatErr>(
+          Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0})));
+
+    Result<FormatFill, FormatErr> out = Ok(FormatFill{});
+
+    if (*it == '<')
+      out->align = Align::Left;
+    else if (*it == '>')
+      out->align = Align::Right;
+    else
+      out->align = Align::Center;
+
+    const auto begin = it;
+    ++it;
+
+    auto size = utf8::validate(it);
+    const auto strSize = end - it;
+    if (!size || *size > strSize)
+      return Some(Result<FormatFill, FormatErr>(
+          Err(FormatErr{FormatErr::Kind::InvalidSpecification, it - begin})));
+
+    it += utf8::decode(it, 0, out->sign);
+
+    if (it >= end)
+      return Some(Result<FormatFill, FormatErr>(
+          Err(FormatErr{FormatErr::Kind::InvalidSpecification, it - begin})));
+
+    auto value = parseInteger(it, end);
+    if (value.isErr())
+      return Some(Result<FormatFill, FormatErr>(Err(value.errValue())));
+
+    out->space = *value;
+
+    return Some(dc::move(out));
+  }
+
+  return None;
+}
+
+Result<NoneType, FormatErr> FormatFill::format(const Option<FormatFill>& fill,
+                                               StringView str,
+                                               FormatContext& ctx) {
+  const auto begin = str.beginChar8();
+  const auto end = str.endChar8();
+  const auto len = end - begin;
+
+  if (fill && fill->space > len) {
+    if (fill->align == FormatFill::Align::Left) {
+      ctx.out.addRange(begin, end);
+
+      auto i = fill->space - len;
+      while (i-- > 0) {
+        ctx.out.add(fill->sign);
+      }
+    } else if (fill->align == FormatFill::Align::Right) {
+      auto i = fill->space - len;
+      while (i-- > 0) {
+        ctx.out.add(fill->sign);
+      }
+
+      ctx.out.addRange(begin, end);
+    } else /* if (fill->align == FormatFill::Align::Center) */ {
+      auto i = (fill->space - len) / 2;
+      while (i-- > 0) {
+        ctx.out.add(fill->sign);
+      }
+      if ((fill->space - len) % 2 == 1) {
+        ctx.out.add(fill->sign);
+      }
+
+      ctx.out.addRange(begin, end);
+
+      i = (fill->space - len) / 2;
+      while (i-- > 0) {
+        ctx.out.add(fill->sign);
+      }
+    }
+  } else {
+    ctx.out.addRange(begin, end);
+  }
+
+  return Ok(None);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Formatters
 //
@@ -612,7 +579,8 @@ template <>
 struct Formatter<f64> {
   Result<const char8*, FormatErr> parse(ParseContext& ctx) {
     auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
+    auto end = ctx.pattern.endChar8();
+    for (; it < end; ++it) {
       if (*it == '}')
         break;
       else if (*it == '.') {
@@ -623,40 +591,179 @@ struct Formatter<f64> {
         else
           return Err(res.errValue());
 
-        --it;  // revert the increase we did
+        --it;  // Adjust for the for loop increasing it once as well.
+      } else if (auto res = FormatFill::parse(it, end)) {
+        if (res->isOk()) {
+          fill = Some(res->value());
+          --it;  // Adjust for the for loop increasing it once as well.
+        } else
+          return Err(res->errValue());
       } else
         return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             (u64)(ctx.pattern.beginChar8() - it)});
+                             it - ctx.pattern.beginChar8()});
     }
 
     return Ok(it);
   }
 
   Result<NoneType, FormatErr> format(f64 value, FormatContext& ctx) {
-    char const* start;
+    // TODO cgustafsson: harden for large numbers
+    constexpr u32 kBufSize = 512;
+    char8 numBuf[kBufSize];  // big enough for e308 (with commas) or e-307
+    char8 const* outBegin;
     u32 len;
-    char buf[512];  // big enough for e308 (with commas) or e-307
     s32 decimalPos;
-    s32 sign =
-        stbsp__real_to_str(&start, &len, buf, &decimalPos, value, decimals);
+    s32 sign = stbsp__real_to_str(&outBegin, &len, numBuf, &decimalPos, value,
+                                  decimals);
+    char8* numBegin = (char8*)outBegin;
+    const char8* numEnd = numBuf + kBufSize;
+
+    constexpr u32 kPrefix = 1 + 1;  // '-' and '.'
+    char8 strBuf[kBufSize + kPrefix];
+    char8* strIt = strBuf;
+    // char8* strEnd = strBuf;
+
+    if (sign == 1) {
+      *(strIt++) = '-';
+    }
 
     // TODO cgustafsson: missing code when decimal pos is negative
     // ex 3.999e^-6
     if (decimalPos < 1) decimalPos = 0;  // TODO cgustafsson: remove
-    if (sign == 1) ctx.out.add('-');
-    ctx.out.addRange(start, start + decimalPos);
+    memcpy(strIt, numBegin, decimalPos);
+    strIt += decimalPos;
     constexpr char kDecimal = '.';  // TODO cgustafsson: support locales?
-    ctx.out.add(kDecimal);
-    ctx.out.addRange(start + decimalPos, start + len);
-    return Ok(NoneType());
+    *(strIt++) = kDecimal;
+    const auto sizeLeft =
+        (usize)(dc::clamp((usize)(len - decimalPos), (usize)0,
+                          (usize)(numEnd - (numBegin + decimalPos))));
+    memcpy(strIt, numBegin + decimalPos, sizeLeft);
+    strIt += sizeLeft;
+
+    return FormatFill::format(fill, StringView{strBuf, strIt}, ctx);
   }
 
   u32 decimals = DBL_DIG;
+
+  Option<FormatFill> fill;
 };
 
-///////////////////////////////////////////////////////////////////////////////
-// doFormat
-//
+Result<const char8*, FormatErr> Formatter<StringView>::parse(
+    ParseContext& ctx) {
+  auto it = ctx.pattern.beginChar8();
+  for (; it != ctx.pattern.endChar8(); ++it) {
+    if (*it == '}')
+      break;
+    else if (*it == '.') {
+      // TODO cgustafsson: constexpr
+      Result<u32, FormatErr> res = parseInteger(++it, ctx.pattern.endChar8());
+      if (res.isOk())
+        precision = res.value();
+      else
+        return Err(res.errValue());
+
+      --it;  // revert the increase we did
+    } else
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                           it - ctx.pattern.beginChar8()});
+  }
+
+  return Ok(it);
+}
+
+Result<NoneType, FormatErr> Formatter<StringView>::format(const StringView& str,
+                                                          FormatContext& ctx) {
+  auto len = dc::min(str.getSize(), precision);
+  ctx.out.addRange(str.c_str(), str.c_str() + len);
+  return Ok(None);
+}
+
+Result<const char8*, FormatErr> Formatter<u64>::parse(ParseContext& ctx) {
+  auto it = ctx.pattern.beginChar8();
+  auto end = ctx.pattern.endChar8();
+  for (; it != end; ++it) {
+    if (*it == '}')
+      break;
+    else if (*it == 'b')
+      presentation = Presentation::Binary;
+    else if (*it == 'x')
+      presentation = Presentation::Hex;
+    else if (*it == '#')
+      prefix = true;
+    else if (auto res = FormatFill::parse(it, end)) {
+      if (res->isOk()) {
+        fill = Some(res->value());
+        --it;  // Adjust for the for loop increasing it once as well.
+      } else
+        return Err(res->errValue());
+    } else
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                           it - ctx.pattern.beginChar8()});
+  }
+
+  return Ok(it);
+}
+
+Result<NoneType, FormatErr> Formatter<u64>::format(u64 value,
+                                                   FormatContext& ctx) {
+  constexpr u32 kPrefix = 1 + 2;          // '-' + '0x'
+  constexpr u32 kBufSize = 20 + kPrefix;  // len("18446744073709551616") == 20
+  char8 buf[kBufSize];
+  char8* bufStart = buf + kPrefix;
+
+  auto viewOrErr = toString(value, bufStart, kBufSize - kPrefix, presentation);
+  if (viewOrErr.isErr())
+    // TODO cgustafsson: fill in error pos ?
+    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+  bufStart = (char8*)viewOrErr->beginChar8();
+  const char8* bufEnd = viewOrErr->endChar8();
+
+  if (prefix) {
+    auto res = getPresentationChar();
+    if (res.isErr()) {
+      // TODO cgustafsson: fill in error pos?
+      return Err(FormatErr{res.errValue(), 0});
+    }
+    bufStart -= 2;
+    bufStart[0] = '0';
+    bufStart[1] = *res;
+  }
+
+  if (negative) {
+    bufStart -= 1;
+    bufStart[0] = '-';
+  }
+
+  return FormatFill::format(fill, StringView{bufStart, bufEnd}, ctx);
+}
+
+Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
+  switch (presentation) {
+    case Presentation::Binary:
+      return Ok('b');
+    case Presentation::Hex:
+      return Ok('x');
+    default:
+      return Err(FormatErr::Kind::InvalidSpecification);
+  }
+}
+
+Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
+                                                   FormatContext& ctx) {
+  // TODO cgustafsson: is this the correct len?
+  constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
+  char8 buf[kBufSize];
+
+  auto viewOrErr = toString(value, buf, kBufSize, presentation);
+  if (viewOrErr.isErr())
+    // TODO cgustafsson: how to get position
+    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+
+  ctx.out.addRange(viewOrErr.value().beginChar8(),
+                   viewOrErr.value().endChar8());
+  return Ok(NoneType());
+}
 
 Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
                                             FormatContext& formatCtx,
@@ -730,15 +837,10 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     return formatArg.customValue.format(formatArg.customValue.value, parseCtx,
                                         formatCtx);
   } else {
-    return Err(FormatErr{FormatErr::Kind::CannotFormatType,
-                         (u64)(parseCtx.pattern.getLength())});
+    return Err(FormatErr{FormatErr::Kind::CannotFormatType, 0});
   }
   return Ok(parseCtx.pattern.beginChar8());
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Print
-//
 
 // #ifdef _WIN32
 // namespace detail {
@@ -777,7 +879,7 @@ Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str) {
   return Ok(None);
 }
 
-Result<StringView, u64> toString(s64 ivalue, char8* buf, u64 bufSize,
+Result<StringView, s64> toString(s64 ivalue, char8* buf, s64 bufSize,
                                  Presentation presentation) {
   u64 uvalue;
   if (ivalue < 0) {
@@ -794,7 +896,7 @@ Result<StringView, u64> toString(s64 ivalue, char8* buf, u64 bufSize,
   }
 }
 
-Result<StringView, u64> toString(u64 value, char8* buf, u64 bufSize,
+Result<StringView, s64> toString(u64 value, char8* buf, s64 bufSize,
                                  Presentation presentation) {
   char8* s = buf + bufSize;
 
@@ -873,7 +975,7 @@ Result<StringView, u64> toString(u64 value, char8* buf, u64 bufSize,
     DC_FATAL_ASSERT(false, "todo");
   }
 
-  return Ok(StringView{s, (u64)((buf + bufSize) - s)});
+  return Ok(StringView{s, (u64)(buf + bufSize - s)});
 }
 
 namespace detail {
@@ -886,3 +988,16 @@ void printCallstack() {
 }  // namespace detail
 
 }  // namespace dc
+
+///////////////////////////////////////////////////////////////////////////////
+// cleanup macros
+//
+
+#undef STBSP__SPECIAL
+#undef STBSP__COPYFP
+#undef stbsp__tento19th
+#undef stbsp__ddmulthi
+#undef stbsp__ddtoS64
+#undef stbsp__ddrenorm
+#undef stbsp__ddmultlo
+#undef stbsp__ddmultlos

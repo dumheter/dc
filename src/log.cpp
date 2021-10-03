@@ -205,13 +205,13 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "{7} "
+          "{<7} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           "{}"
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
-          "{10}"
+          "{<10}"
 #endif
           "] {}\n",
 #if DC_LOG_PREFIX_DATETIME > 0
