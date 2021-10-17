@@ -289,6 +289,28 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
   getRegister().addTest(dc::forward<Fn>(fn), testName, fileName, filePathHash);
 }
 
+constexpr const char* kFallbackFormatString = "<cannot format type>";
+template <typename T>
+dc::String formatOrFallback(const T&) {
+  // TODO cgustafsson: have a better fallback formatter, format the
+  // raw bytes?
+  return dc::String(kFallbackFormatString);
+}
+
+template <typename T>
+dc::String formatOrFallback(
+    const typename dc::EnableIf<dc::isFundamental<T>, T>::Type& value) {
+  return dc::format("{}", value).unwrapOr(dc::String(kFallbackFormatString));
+}
+
+template <>
+dc::String formatOrFallback(const dc::String& value);
+
+template <>
+dc::String formatOrFallback<>(const dc::StringView& value);
+
+dc::String formatOrFallback(const char* value);
+
 }  // namespace dtest::internal
 
 #define DTEST_STRINGIFY(expr) #expr
@@ -345,6 +367,7 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} true " #expr " {}", line,                  \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      const auto exprFmt = dtest::internal::formatOrFallback(!!(expr));    \
       dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
@@ -358,6 +381,8 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} false " #expr " {}", line,                 \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      const auto exprFmt = dtest::internal::formatOrFallback(!!(expr));    \
+      LOG_INFO("\t\t- Actual value: {}", exprFmt);                         \
       dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
@@ -371,6 +396,9 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} " #a " == " #b " {}", line,                \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      const auto lhs = dtest::internal::formatOrFallback(a);               \
+      const auto rhs = dtest::internal::formatOrFallback(b);               \
+      LOG_INFO("\t\t- Actual values: {} == {}", lhs, rhs);                 \
       dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \
@@ -384,6 +412,9 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
       LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      const auto lhs = dtest::internal::formatOrFallback(a);               \
+      const auto rhs = dtest::internal::formatOrFallback(b);               \
+      LOG_INFO("\t\t- Actual values: {} != {}", lhs, rhs);                 \
       dc::details::debugBreak();                                           \
       return;                                                              \
     }                                                                      \

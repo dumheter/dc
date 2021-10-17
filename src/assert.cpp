@@ -58,8 +58,9 @@ namespace dc::details {
 
 DC_NOINLINE void dcDoAssert(const char* msg, const char* file, const char* func,
                             int line) {
-  // TODO cgustafsson: we are allocating in this function, maybe reseve static
-  // memory, such that asserts can always do something, even when low on memory.
+  // TODO cgustafsson: we are allocating in this function which is terrible,
+  // reseve static memory, such that asserts can always do something, even when
+  // low on memory.
 
   auto callstackResult = buildCallstack();
   dc::String callstack =
@@ -133,7 +134,13 @@ void dcFatalAssert(bool condition, const char* msg, const char* file,
 
 void debugBreak() {
 #if defined(DC_PLATFORM_WINDOWS)
-  DebugBreak();
+  __try {
+    DebugBreak();
+  } __except (GetExceptionCode() == EXCEPTION_BREAKPOINT
+                  ? EXCEPTION_EXECUTE_HANDLER
+                  : EXCEPTION_CONTINUE_SEARCH) {
+    // do nothing, just catch the exception
+  }
 #elif defined(DC_PLATFORM_LINUX)
   asm("int3");  //< software interrupt to set code breakpoint
 #else

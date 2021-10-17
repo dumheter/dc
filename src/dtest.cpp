@@ -156,8 +156,8 @@ int runTests() {
 
   LOG_INFO(
       "----------------------------------------------------------------------");
-  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {.9}s )",
-           testCount, assertCount, stopwatch.fs());
+  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {.9}s)", testCount,
+           assertCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {
@@ -175,6 +175,20 @@ int runTests() {
              Paint("warning(s)", Color::BrightYellow).c_str());
 
   return failedCategories;
+}
+
+template <>
+dc::String formatOrFallback(const dc::String& value) {
+  return dc::format("{}", value).unwrapOr(dc::String(kFallbackFormatString));
+}
+
+template <>
+dc::String formatOrFallback<>(const dc::StringView& value) {
+  return dc::format("{}", value).unwrapOr(dc::String(kFallbackFormatString));
+}
+
+dc::String formatOrFallback(const char* value) {
+  return dc::format("{}", value).unwrapOr(dc::String(kFallbackFormatString));
 }
 
 }  // namespace internal

@@ -81,7 +81,7 @@ struct [[nodiscard]] NoneType {
     return true;
   }
 
-  bool IsTriviallyRelocatable = true;
+  using IsTriviallyRelocatable = bool;
 };
 
 constexpr const NoneType None{};
