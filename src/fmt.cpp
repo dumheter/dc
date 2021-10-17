@@ -608,37 +608,208 @@ struct Formatter<f64> {
 
   Result<NoneType, FormatErr> format(f64 value, FormatContext& ctx) {
     // TODO cgustafsson: harden for large numbers
+
+    // This code is translated from stb_sprintf, if you ever need to look at
+    // that code again, here is a variable translation table: pr := decimals
+    // (precision) fl := (flags, we don't have those) fv := value l  := len dp
+    // := decimalPos cs := comma seprator logic, = 0 for comma seperator
+    // disabled s  := sn := outBegin num:= numBuf n  := u32
+
     constexpr u32 kBufSize = 512;
     char8 numBuf[kBufSize];  // big enough for e308 (with commas) or e-307
     char8 const* outBegin;
     u32 len;
     s32 decimalPos;
-    s32 sign = stbsp__real_to_str(&outBegin, &len, numBuf, &decimalPos, value,
-                                  decimals);
-    char8* numBegin = (char8*)outBegin;
-    const char8* numEnd = numBuf + kBufSize;
+    const auto isNegative = stbsp__real_to_str(&outBegin, &len, numBuf,
+                                               &decimalPos, value, decimals);
 
+    char8* s = numBuf + 64;
+    u32 n = 0, trailingZeros = 0;
+
+    // pre process the string
+    if (decimalPos <= 0) {
+      s32 i;
+      // handle 0.000*000xxxx
+      *s++ = '0';
+      if (decimals) *s++ = '.';
+      n = -decimalPos;
+      if (n > decimals) n = decimals;
+      i = n;
+      while (i) {
+        if ((((uintptr)s) & 3) == 0) break;
+        *s++ = '0';
+        --i;
+      }
+      // TODO cgustafsson: why a second pass on i?
+      while (i >= 4) {
+        *(u32*)s = 0x30303030;
+        s += 4;
+        i -= 4;
+      }
+      while (i) {
+        *s++ = '0';
+        --i;
+      }
+      if ((s32)(len + n) > decimals) len = decimals - n;
+      i = len;
+      while (i) {
+        *s++ = *outBegin++;
+        --i;
+      }
+      trailingZeros = decimals - (n + len);
+      // cs = 1 + (3 << 24);  // how many tens did we write (for commas below)
+    } else {
+      if ((u32)decimalPos >= len) {
+        // handle xxxx000*000.0
+        for (;;) {
+          *s++ = outBegin[n];
+          ++n;
+          if (n >= len) break;
+        }
+
+        if (n < (u32)decimalPos) {
+          n = decimalPos - n;
+          while (n) {
+            if ((((uintptr)s) & 3) == 0) break;
+            *s++ = '0';
+            --n;
+          }
+          while (n >= 4) {
+            *(u32*)s = 0x30303030;
+            s += 4;
+            n -= 4;
+          }
+          while (n) {
+            *s++ = '0';
+            --n;
+          }
+        }
+
+        // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
+        if (decimals) {
+          *s++ = '.';
+          trailingZeros = decimals;
+        }
+      } else {
+        // handle xxxxx.xxxx000*000
+        n = 0;
+        for (;;) {
+          *s++ = outBegin[n];
+          ++n;
+          if (n >= (u32)decimalPos) break;
+        }
+        // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
+        if (decimals) *s++ = '.';
+        if ((len - decimalPos) > decimals) len = decimals + decimalPos;
+        while (n < len) {
+          *s++ = outBegin[n];
+          ++n;
+        }
+        trailingZeros = decimals - (len - decimalPos);
+      }
+    }
+    // decimals = 0;
+
+    len = (u32)(s - (numBuf + 64));
+    s = numBuf + 64;
+
+    // get fw=leading/trailing space, pr=leading zeros
+    // if (pr < (stbsp__int32)l) pr = l;
+    // n = pr + lead[0] + tail[0] + tz;
+    // if (fw < (stbsp__int32)n) fw = n;
+    // fw -= n;
+    // pr -= l;
+
+    // handle right justify and leading zeros
+    // if ((fl & STBSP__LEFTJUST) == 0) {
+    // 	if (fl & STBSP__LEADINGZERO)  // if leading zeros, everything is in pr
+    // 	{
+    // 		pr = (fw > pr) ? fw : pr;
+    // 		fw = 0;
+    // 	} else {
+    // 		fl &= ~STBSP__TRIPLET_COMMA;  // if no leading zeros, then no
+    // commas
+    // 	}
+    // }
+
+    // ignoring lots of lines regarding leading
+
+    // TODO cgustafsson: this extra buffer is terrible and we should
+    // write directly to the output buffer
     constexpr u32 kPrefix = 1 + 1;  // '-' and '.'
     char8 strBuf[kBufSize + kPrefix];
     char8* strIt = strBuf;
     // char8* strEnd = strBuf;
 
-    if (sign == 1) {
-      *(strIt++) = '-';
+    if (isNegative) *strIt++ = '-';
+
+    // copy the string
+    n = len;
+    while (n) {
+      s32 i = n;  // clamp on callback buf size
+      // stbsp__cb_buf_clamp(i, n);
+      n -= i;
+      while (i >= 4) {
+        *(u32 volatile*)strIt = *(u32 volatile*)s;
+        strIt += 4;
+        s += 4;
+        i -= 4;
+      }
+      while (i) {
+        *strIt++ = *s++;
+        --i;
+      }
+      // flush our data by calling callback to take buf
+      // stbsp__chk_cb_buf(1);
     }
 
-    // TODO cgustafsson: missing code when decimal pos is negative
-    // ex 3.999e^-6
-    if (decimalPos < 1) decimalPos = 0;  // TODO cgustafsson: remove
-    memcpy(strIt, numBegin, decimalPos);
-    strIt += decimalPos;
-    constexpr char kDecimal = '.';  // TODO cgustafsson: support locales?
-    *(strIt++) = kDecimal;
-    const auto sizeLeft =
-        (usize)(dc::clamp((usize)(len - decimalPos), (usize)0,
-                          (usize)(numEnd - (numBegin + decimalPos))));
-    memcpy(strIt, numBegin + decimalPos, sizeLeft);
-    strIt += sizeLeft;
+    // copy trailing zeros
+    while (trailingZeros) {
+      s32 i = trailingZeros;
+      // stbsp__cb_buf_clamp(i, trailingZeros);
+      trailingZeros -= i;
+      while (i) {
+        if ((((uintptr)strIt) & 3) == 0) break;
+        *strIt++ = '0';
+        --i;
+      }
+      while (i >= 4) {
+        *(u32*)strIt = 0x30303030;
+        strIt += 4;
+        i -= 4;
+      }
+      while (i) {
+        *strIt++ = '0';
+        --i;
+      }
+      // flush our data by calling callback to take buf
+      // stbsp__chk_cb_buf(1);
+    }
+
+    // copy tail if there is one
+    // sn = tail + 1;
+    // while (tail[0]) {
+    // 	stbsp__int32 i;
+    // 	stbsp__cb_buf_clamp(i, tail[0]);
+    // 	tail[0] -= (char)i;
+    // 	while (i) {
+    // 		*bf++ = *sn++;
+    // 		--i;
+    // 	}
+    // 	stbsp__chk_cb_buf(1);
+    // }
+
+    // if (isNegative) {
+    // 	*(strIt++) = '-';
+    // }
+
+    if (decimalPos == STBSP__SPECIAL) {
+      // TODO cgustafsson: handle nan & inf
+      // s = (char *)sn;
+      // cs = 0;
+      // pr = 0;
+      // goto scopy;
+    }
 
     return FormatFill::format(fill, StringView{strBuf, strIt}, ctx);
   }

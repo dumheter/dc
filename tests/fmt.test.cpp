@@ -1,6 +1,6 @@
 #include <dc/dtest.hpp>
 #include <dc/fmt.hpp>
-DTEST_VIP;
+
 using namespace dc;
 
 DTEST(formatF32) {
@@ -40,10 +40,9 @@ DTEST(f32TrailingZero) {
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "123.0");
 
-  // TODO cgustafsson:
-  // res = dc::format("{}", 123.f);
-  // ASSERT_TRUE(res.isOk());
-  // ASSERT_EQ(res.value(), "123.0");
+  res = dc::format("{}", 123.f);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "123.000000");
 }
 
 DTEST(formatDefaultF64Precision) {
@@ -202,4 +201,11 @@ DTEST(formatWithCenterFillString) {
   auto res = dc::format("[{^~7}]", "TEST");
   ASSERT_TRUE(res);
   ASSERT_EQ(*res, "[~~TEST~]");
+}
+
+DTEST(correctDecimalWithLeadingZeros) {
+  auto res = dc::format("{}", 0.007f);
+  ASSERT_TRUE(res);
+  // by default, the trailing three 0's should be shown
+  ASSERT_EQ(*res, "0.007000");
 }
