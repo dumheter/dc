@@ -52,14 +52,6 @@ DTEST(formatDefaultF64Precision) {
   ASSERT_EQ(res.value(), "3.141592653589793");
 }
 
-// DTEST(formatLargeF64) {
-// 	f64 a = 1e+301;
-// 	auto res = dc::format("{}", a);
-// 	// TODO cgustafsson: this is not working
-// 	ASSERT_TRUE(res.isOk());
-// 	//ASSERT_EQ(res.value(), "3.14159265358979");
-// }
-
 DTEST(usingWrongPrecisionSignGivesErr) {
   f32 a = 3.141592653f;
   auto res = dc::format("{,1}", a);
@@ -94,11 +86,29 @@ DTEST(formatCString) {
       "What is the largest muscle in the human body? The gluteus maximus.");
 }
 
-// TODO cgustafsson: NaN 1 / 0.0
+DTEST(formatInfForF32) {
+  auto res = dc::format("{}", 1.f / 0.f);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "Inf");
+}
 
-// TODO cgustafsson: +/-inf
+DTEST(formatInfForF64) {
+  auto res = dc::format("{}", 1. / 0.);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "Inf");
+}
 
-// TODO cgustafsson: test specifying a large number in precision field
+DTEST(formatNaNForF32) {
+  auto res = dc::format("{}", 0.f / 0.f);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "NaN");
+}
+
+DTEST(formatNaNForF64) {
+  auto res = dc::format("{}", 0. / 0.);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(res.value(), "NaN");
+}
 
 DTEST(formatU64) {
   u64 value = 1234567890;
@@ -121,15 +131,12 @@ DTEST(formatString) {
   ASSERT_EQ(res.value(), "Fact: Yellow is a color.");
 }
 
-// DTEST(print) {
-// 	String fact("Yellow is a color.");
-// 	auto res = dc::print("Fact: {}", fact);
-// 	ASSERT_TRUE(res.isOk());
-// }
-
-// TODO cgustafsson: test s32 0x80000000, s64 0x8000000000000000,
-// n = -n doesnt work for those?
-// ((s32)INT32_MIN and (s64)INT64_MIN respectively
+DTEST(print) {
+  String fact("Yellow is a color.");
+  auto res = dc::format("Fact: {}", fact);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "Fact: Yellow is a color.");
+}
 
 DTEST(formatIntAsHexWithPrefix) {
   auto res = format("{#x}", 15);
@@ -206,6 +213,7 @@ DTEST(formatWithCenterFillString) {
 DTEST(correctDecimalWithLeadingZeros) {
   auto res = dc::format("{}", 0.007f);
   ASSERT_TRUE(res);
-  // by default, the trailing three 0's should be shown
+  // by default, the trailing three 0's should be shown for sprintf like
+  // behavior do we want that?
   ASSERT_EQ(*res, "0.007000");
 }

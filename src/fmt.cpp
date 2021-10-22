@@ -610,10 +610,19 @@ struct Formatter<f64> {
     // TODO cgustafsson: harden for large numbers
 
     // This code is translated from stb_sprintf, if you ever need to look at
-    // that code again, here is a variable translation table: pr := decimals
-    // (precision) fl := (flags, we don't have those) fv := value l  := len dp
-    // := decimalPos cs := comma seprator logic, = 0 for comma seperator
-    // disabled s  := sn := outBegin num:= numBuf n  := u32
+    // that code again, here is a variable translation table:
+    // clang-format off
+	// pr := decimals (precision)
+	// fl := (flags, we don't have those)
+	// fv := value
+	// l  := len
+	// dp := decimalPos
+	// cs := comma seprator logic, = 0 for comma seperator disabled
+	// s  :=
+	// sn := outBegin
+	// num:= numBuf
+	// n  := u32
+    // clang-format on
 
     constexpr u32 kBufSize = 512;
     char8 numBuf[kBufSize];  // big enough for e308 (with commas) or e-307
@@ -626,92 +635,98 @@ struct Formatter<f64> {
     char8* s = numBuf + 64;
     u32 n = 0, trailingZeros = 0;
 
-    // pre process the string
-    if (decimalPos <= 0) {
-      s32 i;
-      // handle 0.000*000xxxx
-      *s++ = '0';
-      if (decimals) *s++ = '.';
-      n = -decimalPos;
-      if (n > decimals) n = decimals;
-      i = n;
-      while (i) {
-        if ((((uintptr)s) & 3) == 0) break;
-        *s++ = '0';
-        --i;
-      }
-      // TODO cgustafsson: why a second pass on i?
-      while (i >= 4) {
-        *(u32*)s = 0x30303030;
-        s += 4;
-        i -= 4;
-      }
-      while (i) {
-        *s++ = '0';
-        --i;
-      }
-      if ((s32)(len + n) > decimals) len = decimals - n;
-      i = len;
-      while (i) {
-        *s++ = *outBegin++;
-        --i;
-      }
-      trailingZeros = decimals - (n + len);
-      // cs = 1 + (3 << 24);  // how many tens did we write (for commas below)
+    if (decimalPos == STBSP__SPECIAL) {
+      s = (char*)outBegin;
+      // cs = 0;
+      // pr = 0;
     } else {
-      if ((u32)decimalPos >= len) {
-        // handle xxxx000*000.0
-        for (;;) {
-          *s++ = outBegin[n];
-          ++n;
-          if (n >= len) break;
-        }
-
-        if (n < (u32)decimalPos) {
-          n = decimalPos - n;
-          while (n) {
-            if ((((uintptr)s) & 3) == 0) break;
-            *s++ = '0';
-            --n;
-          }
-          while (n >= 4) {
-            *(u32*)s = 0x30303030;
-            s += 4;
-            n -= 4;
-          }
-          while (n) {
-            *s++ = '0';
-            --n;
-          }
-        }
-
-        // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
-        if (decimals) {
-          *s++ = '.';
-          trailingZeros = decimals;
-        }
-      } else {
-        // handle xxxxx.xxxx000*000
-        n = 0;
-        for (;;) {
-          *s++ = outBegin[n];
-          ++n;
-          if (n >= (u32)decimalPos) break;
-        }
-        // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
+      // pre process the string
+      if (decimalPos <= 0) {
+        s32 i;
+        // handle 0.000*000xxxx
+        *s++ = '0';
         if (decimals) *s++ = '.';
-        if ((len - decimalPos) > decimals) len = decimals + decimalPos;
-        while (n < len) {
-          *s++ = outBegin[n];
-          ++n;
+        n = -decimalPos;
+        if (n > decimals) n = decimals;
+        i = n;
+        while (i) {
+          if ((((uintptr)s) & 3) == 0) break;
+          *s++ = '0';
+          --i;
         }
-        trailingZeros = decimals - (len - decimalPos);
-      }
-    }
-    // decimals = 0;
+        // TODO cgustafsson: why a second pass on i?
+        while (i >= 4) {
+          *(u32*)s = 0x30303030;
+          s += 4;
+          i -= 4;
+        }
+        while (i) {
+          *s++ = '0';
+          --i;
+        }
+        if ((s32)(len + n) > decimals) len = decimals - n;
+        i = len;
+        while (i) {
+          *s++ = *outBegin++;
+          --i;
+        }
+        trailingZeros = decimals - (n + len);
+        // cs = 1 + (3 << 24);  // how many tens did we write (for commas below)
+      } else {
+        if ((u32)decimalPos >= len) {
+          // handle xxxx000*000.0
+          for (;;) {
+            *s++ = outBegin[n];
+            ++n;
+            if (n >= len) break;
+          }
 
-    len = (u32)(s - (numBuf + 64));
-    s = numBuf + 64;
+          if (n < (u32)decimalPos) {
+            n = decimalPos - n;
+            while (n) {
+              if ((((uintptr)s) & 3) == 0) break;
+              *s++ = '0';
+              --n;
+            }
+            while (n >= 4) {
+              *(u32*)s = 0x30303030;
+              s += 4;
+              n -= 4;
+            }
+            while (n) {
+              *s++ = '0';
+              --n;
+            }
+          }
+
+          // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
+          if (decimals) {
+            *s++ = '.';
+            trailingZeros = decimals;
+          }
+        } else {
+          // handle xxxxx.xxxx000*000
+          n = 0;
+          for (;;) {
+            *s++ = outBegin[n];
+            ++n;
+            if (n >= (u32)decimalPos) break;
+          }
+          // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
+          if (decimals) *s++ = '.';
+          if ((len - decimalPos) > decimals) len = decimals + decimalPos;
+          while (n < len) {
+            *s++ = outBegin[n];
+            ++n;
+          }
+          trailingZeros = decimals - (len - decimalPos);
+        }
+      }
+      // decimals = 0;
+
+      len = (u32)(s - (numBuf + 64));
+      s = numBuf + 64;
+    }
 
     // get fw=leading/trailing space, pr=leading zeros
     // if (pr < (stbsp__int32)l) pr = l;
@@ -798,18 +813,6 @@ struct Formatter<f64> {
     // 	}
     // 	stbsp__chk_cb_buf(1);
     // }
-
-    // if (isNegative) {
-    // 	*(strIt++) = '-';
-    // }
-
-    if (decimalPos == STBSP__SPECIAL) {
-      // TODO cgustafsson: handle nan & inf
-      // s = (char *)sn;
-      // cs = 0;
-      // pr = 0;
-      // goto scopy;
-    }
 
     return FormatFill::format(fill, StringView{strBuf, strIt}, ctx);
   }
