@@ -29,8 +29,7 @@
 namespace dc {
 
 // TODO cgustafsson: allow to return a larger set of memory than requested
-class IAllocator {
- public:
+struct IAllocator {
   virtual ~IAllocator() = default;
 
   static constexpr usize kMinimumAlignment = sizeof(void*);
@@ -56,8 +55,7 @@ IAllocator& getDefaultAllocator();
 /// @return Old allocator
 // IAllocator* setDefaultAllocator(IAllocator* newDefaultAllocator);
 
-class GeneralAllocator final : public IAllocator {
- public:
+struct GeneralAllocator final : public IAllocator {
   virtual void* alloc(usize count, usize align) override;
 
   virtual void* realloc(void* data, usize count, usize align) override;

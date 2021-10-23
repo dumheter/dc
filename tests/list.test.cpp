@@ -284,3 +284,30 @@ DTEST(addRangeForNonTrivialElementType) {
   ASSERT_EQ(l1[3], 21);
   ASSERT_EQ(l1[4], 22);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// No Allocation
+//
+
+DTEST(staticList) {
+  struct NoAllocator final : public IAllocator {
+    virtual void* alloc(usize, usize) override { return nullptr; }
+    virtual void* realloc(void*, usize, usize) override { return nullptr; }
+    virtual void free(void*) override {}
+  } noAlloc;
+
+  List<int, 4> list(noAlloc);
+
+  list.add(1);
+  list.add(2);
+  list.add(4);
+  list.add(8);
+
+  ASSERT_EQ(4, list.getSize());
+  ASSERT_EQ(8, list.getLast());
+
+  // can't allocate, so this add will fail
+  list.add(16);
+  ASSERT_EQ(4, list.getSize());
+  ASSERT_EQ(8, list.getLast());
+}

@@ -98,23 +98,6 @@ static struct {
     for (cn = 0; cn < 8; cn++) ((char*)&dest)[cn] = ((char*)&src)[cn]; \
   }
 
-// get float info
-// static s32 stbsp__real_to_parts(s64 *bits, s32 *expo, double value)
-// {
-//    double d;
-//    s64 b = 0;
-
-//    // load value and round at the frac_digits
-//    d = value;
-
-//    STBSP__COPYFP(b, d);
-
-//    *bits = b & ((((u64)1) << 52) - 1);
-//    *expo = (s32)(((b >> 52) & 2047) - 1023);
-
-//    return (s32)((u64) b >> 63);
-// }
-
 static double const stbsp__bot[23] = {
     1e+000, 1e+001, 1e+002, 1e+003, 1e+004, 1e+005, 1e+006, 1e+007,
     1e+008, 1e+009, 1e+010, 1e+011, 1e+012, 1e+013, 1e+014, 1e+015,

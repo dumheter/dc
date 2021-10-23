@@ -120,14 +120,16 @@ class List {
   ~List();
 
   /// Add to the end of the list
+  /// Noop on if allocation is needed but failed.
   void add(T elem);
 
   /// Default construct a T at the end of the list, then return a reference to
   /// it.
+  /// Noop on if allocation is needed but failed.
   T& add();
 
   /// Add to the end of the list, a range of elements.
-  /// Only enabled for trivially relocatable types since it uses memcpy.
+  /// Noop on if allocation is needed but failed.
   /// @param begin Pointer to the first element.
   /// @param end Pointer to one element _past_ the last element.
   void addRange(const T* begin, const T* end);
@@ -161,12 +163,14 @@ class List {
 
   /// Reserve block of memory. May (re)allocate. All active elements are moved
   /// on reallocation. Iterators and references are invaliated.
+  /// Noop on if allocation is needed but failed.
   /// @return New capacity
   void reserve(u64 capacity);
 
   /// Set the current size of the list. May allocate if larger than current
   /// capacity.
   /// Will invalidate iterators on reallocation.
+  /// Noop on if allocation is needed but failed.
   /// Note: Will not call destructor of elements that may be lost when shrinking
   /// the list.
   void resize(u64 newSize);
@@ -292,17 +296,23 @@ template <typename T, u64 N>
 void List<T, N>::add(T elem) {
   if (getSize() >= m_capacity) reserve(getSize() * 2 + kDefaultExtraBytes);
 
-  new (m_end) T(dc::move(elem));
-  m_end += 1;
+  if (getSize() < m_capacity) {  // only add if reserve increased our capacity
+    new (m_end) T(dc::move(elem));
+    m_end += 1;
+  }
 }
 
 template <typename T, u64 N>
 T& List<T, N>::add() {
   if (getSize() >= m_capacity) reserve(getSize() * 2 + kDefaultExtraBytes);
 
-  T& elem = new (m_end) T();
-  m_end += 1;
-  return elem;
+  if (getSize() < m_capacity) {
+    T& elem = new (m_end) T();
+    m_end += 1;
+    return elem;
+  } else {
+    return getLast();
+  }
 }
 
 template <typename T, u64 N>
@@ -310,14 +320,17 @@ void List<T, N>::addRange(const T* begin, const T* end) {
   DC_FATAL_ASSERT(end >= begin, "end is less than begin.");
   if constexpr (isTriviallyRelocatable<T>) {
     const u64 oldSize = getSize();
-    resize(getSize() + (end - begin));
-    memcpy(m_begin + oldSize, begin, (end - begin));
+    resize(oldSize + (end - begin));
+    if (oldSize + (end - begin) <= m_capacity)  // did resize work?
+      memcpy(m_begin + oldSize, begin, (end - begin));
   } else {
     const u64 oldSize = getSize();
-    resize(getSize() + (end - begin));
-    T* newIt = m_begin + oldSize;
-    while (begin != end) {
-      new (newIt++) T(*begin++);
+    resize(oldSize + (end - begin));
+    if (oldSize + (end - begin) <= m_capacity) {
+      T* newIt = m_begin + oldSize;
+      while (begin != end) {
+        new (newIt++) T(*begin++);
+      }
     }
   }
 }
@@ -402,6 +415,7 @@ void List<T, N>::reserve(u64 capacity) {
   if (capacity > m_capacity) {
     const u64 size = getSize();
     T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
+    if (!newBegin) return;  // failed to alloc, noop
 
     for (T* elem = m_begin; elem != m_end; ++elem)
       new (newBegin + (elem - m_begin)) T(dc::move(*elem));
@@ -416,7 +430,9 @@ template <typename T, u64 N>
 void List<T, N>::resize(u64 newSize) {
   if (newSize > m_capacity) reserve(newSize);
 
-  m_end = m_begin + newSize;
+  if (newSize <= m_capacity) {
+    m_end = m_begin + newSize;
+  }
 }
 
 template <typename T, u64 N>
