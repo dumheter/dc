@@ -189,6 +189,19 @@ struct Formatter<s64> : Formatter<u64> {
   Result<NoneType, FormatErr> format(s64 value, FormatContext& ctx);
 };
 
+template <>
+struct Formatter<bool> {
+  /// This parse does only accept "{}", so can be used to inherit
+  /// for types that doesnt want to accept anything special.
+  Result<const char8*, FormatErr> parse(ParseContext& ctx);
+  Result<NoneType, FormatErr> format(bool value, FormatContext& ctx);
+};
+
+template <>
+struct Formatter<char8> : Formatter<bool> {
+  Result<NoneType, FormatErr> format(char8 value, FormatContext& ctx);
+};
+
 /// Specialize the formatter for a type that can be cast to another.
 #define DC_FORMAT_AS(Type, Base)                                     \
   template <>                                                        \
@@ -232,6 +245,7 @@ struct FormatArg {
     LastFloatType,
 
     BoolType,
+    CharType,
 
     CStringType,
     StringViewType,
@@ -250,6 +264,7 @@ struct FormatArg {
     f64 f64Value;
 
     bool boolValue;
+    char charValue;
 
     // TODO cgustafsson: add char8 type?
 
@@ -276,6 +291,7 @@ struct FormatArg {
   constexpr FormatArg(f32 value) : f32Value(value), type(Types::F32Type) {}
   constexpr FormatArg(f64 value) : f64Value(value), type(Types::F64Type) {}
   constexpr FormatArg(bool value) : boolValue(value), type(Types::BoolType) {}
+  constexpr FormatArg(char value) : charValue(value), type(Types::CharType) {}
   constexpr FormatArg(const char8* value)
       : cstringValue(value), type(Types::CStringType) {}
   constexpr FormatArg(char8* value)
@@ -402,9 +418,6 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
           return Err(dc::move(res).unwrapErr());
         }
 
-        // protect from the format returning invalid iterator
-        // TODO cgustafsson: dont silently fix errors
-        // if (it >= end) --it;
         if (it >= end)
           return Err(
               FormatErr{FormatErr::Kind::ParseReturnedBadIterator, it - begin});
@@ -459,7 +472,8 @@ Result<String, FormatErr> format(const StringView fmt, Args&&... args) {
 
 namespace detail {
 void printCallstack();
-}
+Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str);
+}  // namespace detail
 
 /// Print.
 /// On error, returns Err.
@@ -477,19 +491,17 @@ void print(StringView str, Args&&... args) {
     // If we fail this print, we don't care, user didnt handle error themself.
     auto errMsg = toString(res.errValue(), str);
     if (!errMsg.endsWith('\n')) errMsg += '\n';
-    rawPrint(stdout, errMsg.toView());
+    detail::rawPrint(stdout, errMsg.toView());
     // TODO cgustafsson: would make more sense to print callstack in reverse
     // order
     detail::printCallstack();
   }
 }
 
-Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str);
-
 template <typename... Args>
 Result<NoneType, FormatErr> printTo(FILE* f, StringView str, Args&&... args) {
   auto res = format(str, dc::forward<Args>(args)...);
-  if (res.isOk()) return rawPrint(f, res.value().toView());
+  if (res.isOk()) return detail::rawPrint(f, res.value().toView());
   return Err(dc::move(res).unwrapErr());
 }
 

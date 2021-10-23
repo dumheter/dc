@@ -946,6 +946,36 @@ Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
   return Ok(NoneType());
 }
 
+Result<const char8*, FormatErr> Formatter<bool>::parse(ParseContext& ctx) {
+  auto it = ctx.pattern.beginChar8();
+  auto end = ctx.pattern.endChar8();
+  for (; it != end; ++it) {
+    if (*it == '}')
+      break;
+    else
+      return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
+                           it - ctx.pattern.beginChar8()});
+  }
+
+  return Ok(it);
+}
+
+Result<NoneType, FormatErr> Formatter<bool>::format(bool value,
+                                                    FormatContext& ctx) {
+  constexpr const char* t = "true";
+  constexpr const char* f = "false";
+  const char* s = value ? t : f;
+  const u32 len = value ? 4 : 5;
+  ctx.out.addRange(s, s + len);
+  return Ok(None);
+}
+
+Result<NoneType, FormatErr> Formatter<char8>::format(char8 value,
+                                                     FormatContext& ctx) {
+  ctx.out.addRange(&value, &value + 1);
+  return Ok(None);
+}
+
 Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
                                             FormatContext& formatCtx,
                                             FormatArg& formatArg) {
@@ -985,6 +1015,22 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     auto res = f.parse(parseCtx);
     if (res.isOk()) {
       auto formatRes = f.format(value, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::BoolType) {
+    Formatter<bool> f;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format(formatArg.boolValue, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  } else if (formatArg.type == FormatArg::Types::CharType) {
+    Formatter<char> f;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      auto formatRes = f.format(formatArg.charValue, formatCtx);
       if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
     }
     return res;
@@ -1052,6 +1098,7 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
 // }
 
 // TODO cgustafsson: wchar for windows
+namespace detail {
 Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str) {
   // if (std::fputws(str.c_str(), f) == -1)
   // 	return Err(FormatErr::CannotWriteToFile);
@@ -1059,6 +1106,7 @@ Result<NoneType, FormatErr> rawPrint(FILE* f, StringView str) {
     return Err(FormatErr{FormatErr::Kind::CannotWriteToFile, 0});
   return Ok(None);
 }
+}  // namespace detail
 
 Result<StringView, s64> toString(s64 ivalue, char8* buf, s64 bufSize,
                                  Presentation presentation) {
@@ -1163,7 +1211,7 @@ namespace detail {
 void printCallstack() {
   auto res = buildCallstack();
   if (res.isOk()) {
-    rawPrint(stdout, res->callstack.toView());
+    detail::rawPrint(stdout, res->callstack.toView());
   }
 }
 }  // namespace detail

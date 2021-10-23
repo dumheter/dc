@@ -217,3 +217,21 @@ DTEST(correctDecimalWithLeadingZeros) {
   // behavior do we want that?
   ASSERT_EQ(*res, "0.007000");
 }
+
+DTEST(formatChar) {
+  auto res = dc::format("{}", 'x');
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x");
+}
+
+DTEST(formatBoolTrue) {
+  auto res = dc::format("{}", true);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "true");
+}
+
+DTEST(formatBoolFalse) {
+  auto res = dc::format("{}", false);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "false");
+}
