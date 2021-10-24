@@ -32,7 +32,7 @@
 
 namespace dc {
 
-utf8::CodePoint Utf8Iterator::operator*() {
+utf8::CodePoint Utf8Iterator::operator*() const {
   utf8::CodePoint cp;
   utf8::decode(m_string, m_offset, cp);
   return cp;
@@ -58,10 +58,10 @@ Utf8Iterator& Utf8Iterator::operator++() {
 Utf8Iterator& Utf8Iterator::operator--() {
   /*
     To lookup the length backwards, we have to probe until we find a
-   non-sequence byte, then we can read the size.
+    non-sequence byte, then we can read the size.
 
     Char. number range  |        UTF-8 octet sequence
-   (hexadecimal)    |              (binary)
+    (hexadecimal)       |        (binary)
     --------------------+---------------------------------------------
     0000 0000-0000 007F | 0xxxxxxx
     0000 0080-0000 07FF | 110xxxxx 10xxxxxx
@@ -306,7 +306,7 @@ Option<u64> String::find(StringView pattern) const {
 }
 
 bool String::endsWith(char8 c) const {
-  return isEmpty() ? false : c == *(endChar8() - 1);
+  return isEmpty() ? false : c == *(end() - 1);
 }
 
 void String::operator+=(const String& other) {

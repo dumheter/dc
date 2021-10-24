@@ -34,7 +34,7 @@ class String;
 namespace utf8 {
 
 using CodePoint = u32;
-using CodeSize = usize;
+using CodeSize = u64;
 
 /// Encode the code point at the end of the string. Noop if invalid unicode
 /// character.

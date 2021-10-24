@@ -87,25 +87,25 @@ DTEST(formatCString) {
 }
 
 DTEST(formatInfForF32) {
-  auto res = dc::format("{}", 1.f / 0.f);
+  auto res = dc::format("{}", std::numeric_limits<f32>::infinity());
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "Inf");
 }
 
 DTEST(formatInfForF64) {
-  auto res = dc::format("{}", 1. / 0.);
+  auto res = dc::format("{}", std::numeric_limits<f64>::infinity());
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "Inf");
 }
 
 DTEST(formatNaNForF32) {
-  auto res = dc::format("{}", 0.f / 0.f);
+  auto res = dc::format("{}", std::numeric_limits<f32>::quiet_NaN());
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "NaN");
 }
 
 DTEST(formatNaNForF64) {
-  auto res = dc::format("{}", 0. / 0.);
+  auto res = dc::format("{}", std::numeric_limits<f64>::quiet_NaN());
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "NaN");
 }

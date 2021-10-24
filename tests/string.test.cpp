@@ -188,7 +188,7 @@ DTEST(stringViewUtf8Iterator) {
   cps[2] = 'x';
 
   int i = 0;
-  for (utf8::CodePoint c : str.toView()) {
+  for (utf8::CodePoint c : str.utf8Iterator()) {
     if (i == 0)
       ASSERT_EQ(cps[0], c);
     else if (i == 1)

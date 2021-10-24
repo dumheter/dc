@@ -43,24 +43,34 @@ class [[nodiscard]] Utf8Iterator {
   Utf8Iterator(const char8* string, u64 size, s64 offset)
       : m_string(string), m_size(size), m_offset(offset) {}
 
-  /// @return The code point at the current offset.
-  [[nodiscard]] utf8::CodePoint operator*();
+  /// @return Code point at current offset.
+  [[nodiscard]] utf8::CodePoint operator*() const;
 
   [[nodiscard]] bool operator==(const Utf8Iterator& other) const;
 
   [[nodiscard]] bool operator!=(const Utf8Iterator& other) const;
 
-  /// prefix
+  /// Go to next code point
   Utf8Iterator& operator++();
 
-  /// prefix
+  /// Go to previous code point
   Utf8Iterator& operator--();
 
-  [[nodiscard]] bool hasValidOffset() const;
+  [[nodiscard]] Utf8Iterator begin() const {
+    return Utf8Iterator(m_string, m_size, 0);
+  }
 
+  [[nodiscard]] Utf8Iterator end() const {
+    return Utf8Iterator(m_string, m_size, m_size);
+  }
+
+  /// Raw char8 pointer to the string at current offset.
   [[nodiscard]] const char8* beginChar8() const { return m_string + m_offset; }
 
+  /// Raw char8 pointer to past the end of the string.
   [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
+
+  [[nodiscard]] bool hasValidOffset() const;
 
  private:
   const char8* m_string = nullptr;
@@ -105,19 +115,16 @@ class [[nodiscard]] StringView {
 
   [[nodiscard]] char8 operator[](u64 pos) const;
 
-  // [[nodiscard]] constexpr const char8* begin() const { return m_string; }
-  // [[nodiscard]] constexpr const char8* end() const { return m_string +
-  // m_size;
-  // }
-  [[nodiscard]] Utf8Iterator begin() const {
+  [[nodiscard]] constexpr const char8* begin() const { return m_string; }
+
+  [[nodiscard]] constexpr const char8* end() const { return m_string + m_size; }
+
+  [[nodiscard]] Utf8Iterator utf8Iterator() const {
     return Utf8Iterator(m_string, m_size, 0);
   }
-  [[nodiscard]] Utf8Iterator end() const {
-    return Utf8Iterator(m_string, m_size, m_size);
-  }
 
-  [[nodiscard]] const char8* beginChar8() const { return m_string; }
-  [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
+  // [[nodiscard]] const char8* beginChar8() const { return m_string; }
+  // [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
 
   [[nodiscard]] Option<u64> find(StringView pattern) const;
 
@@ -203,17 +210,18 @@ class [[nodiscard]] String {
   void operator+=(u8 data);
   void operator+=(const char8* str);
 
-  [[nodiscard]] Utf8Iterator begin() {
+  [[nodiscard]] Utf8Iterator utf8Iterator() {
     return Utf8Iterator(c_str(), getSize(), 0);
   }
 
-  [[nodiscard]] Utf8Iterator end() {
-    return Utf8Iterator(c_str(), getSize(), getSize());
+  [[nodiscard]] const char8* begin() const { return m_list.begin(); }
+  [[nodiscard]] char8* begin() { return m_list.begin(); }
+
+  [[nodiscard]] const char8* end() const {
+    // skip the null terminator
+    return !m_list.isEmpty() ? m_list.end() - 1 : m_list.end();
   }
-
-  [[nodiscard]] const char8* beginChar8() const { return m_list.begin(); }
-
-  [[nodiscard]] const char8* endChar8() const {
+  [[nodiscard]] char8* end() {
     // skip the null terminator
     return !m_list.isEmpty() ? m_list.end() - 1 : m_list.end();
   }

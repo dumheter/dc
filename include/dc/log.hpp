@@ -379,7 +379,7 @@ struct Formatter<log::Level> : public Formatter<StringView> {
       default:
         str = "unknown";
     }
-    ctx.out.addRange(str.beginChar8(), str.endChar8());
+    ctx.out.addRange(str.begin(), str.end());
     return Ok(None);
   }
 };
@@ -393,8 +393,8 @@ struct Formatter<Timestamp> {
   ///   'd': Turn on date print.
   ///   'p': Turn on microsecond precision time print.
   Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.beginChar8();
-    for (; it != ctx.pattern.endChar8(); ++it) {
+    auto it = ctx.pattern.begin();
+    for (; it != ctx.pattern.end(); ++it) {
       if (*it == '}')
         break;
       else if (*it == 'd')
@@ -403,7 +403,7 @@ struct Formatter<Timestamp> {
         highPrecisionTime = true;
       else
         return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             it - ctx.pattern.beginChar8()});
+                             it - ctx.pattern.begin()});
     }
     return Ok(it);
   }

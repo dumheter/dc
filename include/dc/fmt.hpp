@@ -379,9 +379,9 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
 
   // We ignore utf8 and just scan in ascii, since fmt standard format specifiers
   // are all valid ascii characters.
-  const char8* begin = fmt.beginChar8();
+  const char8* begin = fmt.begin();
   const char8* it = begin;
-  const char8* end = fmt.endChar8();
+  const char8* end = fmt.end();
   const char8* a = it;
   const char8* b = it;
   s32 usedArgs = 0;
@@ -414,7 +414,7 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
             out.remove(out.end() - 1);
           it = res.value();
         } else {
-          res.errValue().pos += it + 1 - fmt.beginChar8();
+          res.errValue().pos += it + 1 - fmt.begin();
           return Err(dc::move(res).unwrapErr());
         }
 
