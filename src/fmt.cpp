@@ -915,17 +915,20 @@ Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
 // TODO cgustafsson: is this used?
 Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
                                                    FormatContext& ctx) {
-  // TODO cgustafsson: is this the correct len?
-  constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
-  char8 buf[kBufSize];
+  // // TODO cgustafsson: is this the correct len?
+  // constexpr u32 kBufSize = 20;  // strlen("18446744073709551616") == 20
+  // char8 buf[kBufSize];
 
-  auto viewOrErr = toString(value, buf, kBufSize, presentation);
-  if (viewOrErr.isErr())
-    // TODO cgustafsson: how to get position
-    return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
+  // auto viewOrErr = toString(value, buf, kBufSize, presentation);
+  // if (viewOrErr.isErr())
+  //   // TODO cgustafsson: how to get position
+  //   return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
 
-  ctx.out.addRange(viewOrErr->begin(), viewOrErr->end());
-  return Ok(NoneType());
+  // ctx.out.addRange(viewOrErr->begin(), viewOrErr->end());
+  // return Ok(NoneType());
+  negative = value < 0;
+  const u64 uvalue = value >= 0 ? (u64)value : (u64)-value;
+  return Formatter<u64>::format(uvalue, ctx);
 }
 
 Result<const char8*, FormatErr> Formatter<bool>::parse(ParseContext& ctx) {
@@ -961,27 +964,25 @@ Result<NoneType, FormatErr> Formatter<char8>::format(char8 value,
 Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
                                             FormatContext& formatCtx,
                                             FormatArg& formatArg) {
+  if (formatArg.type < FormatArg::Types::LastSignedIntegerType) {
+    Formatter<s64> f;
+    auto res = f.parse(parseCtx);
+    if (res.isOk()) {
+      const s64 value = formatArg.type == FormatArg::Types::S32Type
+                            ? formatArg.s32Value
+                            : formatArg.s64Value;
+      auto formatRes = f.format(value, formatCtx);
+      if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
+    }
+    return res;
+  }
   if (formatArg.type < FormatArg::Types::LastIntegerType) {
     Formatter<u64> f;
     auto res = f.parse(parseCtx);
-    u64 value;
-    if (formatArg.type == FormatArg::Types::S32Type) {
-      if (formatArg.s32Value < 0) {
-        value = (u64)-formatArg.s32Value;
-        f.negative = true;
-      } else
-        value = (u64)formatArg.s32Value;
-    } else if (formatArg.type == FormatArg::Types::S64Type) {
-      if (formatArg.s64Value < 0) {
-        value = (u64)-formatArg.s64Value;
-        f.negative = true;
-      } else
-        value = (u64)formatArg.s64Value;
-    } else if (formatArg.type == FormatArg::Types::U32Type)
-      value = formatArg.u32Value;
-    else /* if (formatArg.type == FormatArg::Types::U64Type) */
-      value = formatArg.u64Value;
     if (res.isOk()) {
+      const u64 value = formatArg.type == FormatArg::Types::U32Type
+                            ? formatArg.u32Value
+                            : formatArg.u64Value;
       auto formatRes = f.format(value, formatCtx);
       if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
     }

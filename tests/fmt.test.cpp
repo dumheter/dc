@@ -124,6 +124,122 @@ DTEST(formatLargeU64) {
   ASSERT_EQ(res.value(), "hello 18446744073709551615!");
 }
 
+DTEST(formatU8Limits) {
+  u8 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = 255;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [255]");
+}
+
+DTEST(formatS8Limits) {
+  s8 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = -128;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [-128]");
+
+  value = 127;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [127]");
+}
+
+DTEST(formatU16Limits) {
+  u16 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = 65'535;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [65535]");
+}
+
+DTEST(formatS16Limits) {
+  s16 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = -32'768;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [-32768]");
+
+  value = 32'767;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [32767]");
+}
+
+DTEST(formatU32Limits) {
+  u32 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = 4'294'967'295;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [4294967295]");
+}
+
+DTEST(formatS32Limits) {
+  s32 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = -(s32)2'147'483'648;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [-2147483648]");
+
+  value = 2'147'483'647;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [2147483647]");
+}
+
+DTEST(formatU64Limits) {
+  u64 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = 18'446'744'073'709'551'615ull;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [18446744073709551615]");
+}
+
+DTEST(formatS64Limits) {
+  s64 value = 0;
+  auto res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [0]");
+
+  value = -9'223'372'036'854'775'808ll;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [-9223372036854775808]");
+
+  value = 9'223'372'036'854'775'807;
+  res = dc::format("x = [{}]", value);
+  ASSERT_TRUE(res.isOk());
+  ASSERT_EQ(*res, "x = [9223372036854775807]");
+}
+
 DTEST(formatString) {
   String fact("Yellow is a color.");
   auto res = dc::format("Fact: {}", fact);
