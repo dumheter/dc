@@ -278,7 +278,7 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.timestamp,
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          Paint<17>(format("{}", payload.level).c_str(),
+          Paint<17>(format("{}", payload.level)->c_str(),
                     colorFromLevel(payload.level)),
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1

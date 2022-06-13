@@ -430,7 +430,7 @@ struct Formatter<Timestamp> {
 // template <>
 template <u64 kStrLen>
 struct Formatter<log::Paint<kStrLen>> : Formatter<StringView> {
-  Result<NoneType, FormatErr> format(log::Paint<kStrLen>& paint,
+  Result<NoneType, FormatErr> format(const log::Paint<kStrLen>& paint,
                                      FormatContext& ctx) {
     ctx.out.addRange(paint.c_str(), paint.c_str() + paint.size());
     return Ok(None);
