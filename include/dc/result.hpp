@@ -29,6 +29,7 @@
 #include <dc/assert.hpp>
 #include <dc/macros.hpp>
 #include <dc/traits.hpp>
+#include <new>
 
 namespace dc {
 
