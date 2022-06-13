@@ -420,6 +420,7 @@ void List<T, N>::reserve(u64 capacity) {
     for (T* elem = m_begin; elem != m_end; ++elem)
       new (newBegin + (elem - m_begin)) T(dc::move(*elem));
 
+    m_allocator.free(m_begin);
     m_begin = newBegin;
     m_end = m_begin + size;
     m_capacity = capacity;
