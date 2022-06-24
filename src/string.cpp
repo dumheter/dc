@@ -282,11 +282,14 @@ void String::insert(const char8* str, u64 size, u64 offset) {
             "Cannot have an offset larger than the size of String.");
   if (offset + size > thisSize) {
     m_list.resize(size + offset + 1);
-    *(m_list.end() - 1) =
-        0;  // we can't assume str is null terminated when size is given.
+    if (m_list.getSize() >= size)
+      *(m_list.end() - 1) =
+          0;  // we can't assume str is null terminated when size is given.
   }
 
-  memcpy(m_list.begin() + offset, str, size);
+  if (m_list.getSize() >= size) {
+    memcpy(m_list.begin() + offset, str, size);
+  }
 }
 
 void String::insert(const char8* str, u64 offset) {
