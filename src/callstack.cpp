@@ -239,6 +239,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
   // TODO cgustafsson: why load all modules when only using 1?
   List<ModuleInfo> modules;
+  modules.reserve(40);
   for (HMODULE module : moduleHandles) {
     auto res = ModuleInfo::create(process, module);
     if (res.isOk()) modules.add(dc::move(res).unwrap());
