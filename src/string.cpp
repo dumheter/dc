@@ -173,6 +173,17 @@ Option<u64> StringView::find(StringView pattern, u64 offset) const {
   return None;
 }
 
+Option<u64> StringView::find(char8 c) const { return find(c, 0); }
+
+Option<u64> StringView::find(char8 c, u64 offset) const {
+  if (offset >= m_size) return None;
+
+  for (u64 i = offset; i < m_size; ++i) {
+    if (m_string[i] == c) return Some(i);
+  }
+  return None;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 String::String(IAllocator& allocator) : m_list(allocator) {}
@@ -303,6 +314,18 @@ Option<u64> String::find(StringView pattern) const {
 Option<u64> String::find(StringView pattern, u64 offset) const {
   StringView thisString(c_str(), getSize());
   return thisString.find(pattern, offset);
+}
+
+Option<u64> String::find(char8 c) const { return find(c, 0); }
+
+Option<u64> String::find(char8 c, u64 offset) const {
+  const u64 size = getSize();
+  if (offset >= size) return None;
+
+  for (u64 i = offset; i < size; ++i) {
+    if (m_list[i] == c) return Some(i);
+  }
+  return None;
 }
 
 String String::subString(u64 offset, u64 count) const {
