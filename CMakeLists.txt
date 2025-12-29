@@ -10,6 +10,8 @@ option(DC_WERROR "Compiler warning is error." ON)
 option(DC_ENABLE_LIB_DTEST "DTest is a testing library. Turn this off to disable any code related to dtest." OFF)
 option(DC_LOG_DEBUG "Enable extra debugging options for dc::log." OFF)
 option(DC_COPY_COMPILE_COMMANDS "Copy compile_commands file to top level." OFF)
+option(DC_SANITIZE_ADDRESS "Enable address sanitizer (requires Clang or GCC)." OFF)
+option(DC_SANITIZE_MEMORY "Enable memory sanitizer (requires Clang or GCC on Linux)." OFF)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Moodycamel
@@ -102,6 +104,36 @@ if (MSVC)
 endif ()
 
 #//////////////////////////////////////////////////////////////////////////////
+#// Sanitizers
+
+set(SANITIZER_COMPILE_FLAGS "")
+set(SANITIZER_LINK_FLAGS "")
+
+if (DC_SANITIZE_ADDRESS)
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(SANITIZER_COMPILE_FLAGS ${SANITIZER_COMPILE_FLAGS} -fsanitize=address)
+    set(SANITIZER_COMPILE_FLAGS ${SANITIZER_COMPILE_FLAGS} -fno-omit-frame-pointer)
+    set(SANITIZER_LINK_FLAGS ${SANITIZER_LINK_FLAGS} -fsanitize=address)
+  else ()
+    message(WARNING "Address sanitizer only supported with Clang or GCC")
+  endif ()
+endif ()
+
+if (DC_SANITIZE_MEMORY)
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if (NOT WIN32)
+      set(SANITIZER_COMPILE_FLAGS ${SANITIZER_COMPILE_FLAGS} -fsanitize=memory)
+      set(SANITIZER_COMPILE_FLAGS ${SANITIZER_COMPILE_FLAGS} -fno-omit-frame-pointer)
+      set(SANITIZER_LINK_FLAGS ${SANITIZER_LINK_FLAGS} -fsanitize=memory)
+    else ()
+      message(WARNING "Memory sanitizer not supported on Windows")
+    endif ()
+  else ()
+    message(WARNING "Memory sanitizer only supported with Clang or GCC")
+  endif ()
+endif ()
+
+#//////////////////////////////////////////////////////////////////////////////
 #// Libraries / Executables
 
 add_library(${PROJECT_NAME} STATIC ${DC_SOURCES})
@@ -140,6 +172,11 @@ endif ()
 
 if (DC_WERROR)
   target_compile_options(${PROJECT_NAME} PRIVATE ${WERROR_FLAG})
+endif ()
+
+if (DC_SANITIZE_ADDRESS OR DC_SANITIZE_MEMORY)
+  target_compile_options(${PROJECT_NAME} PRIVATE ${SANITIZER_COMPILE_FLAGS})
+  target_link_options(${PROJECT_NAME} PUBLIC ${SANITIZER_LINK_FLAGS})
 endif ()
 
 if (DC_LOG_DEBUG)
