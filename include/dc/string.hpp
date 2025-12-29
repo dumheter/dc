@@ -61,7 +61,7 @@ class [[nodiscard]] Utf8Iterator {
   }
 
   [[nodiscard]] Utf8Iterator end() const {
-    return Utf8Iterator(m_string, m_size, m_size);
+    return Utf8Iterator(m_string, m_size, static_cast<s64>(m_size));
   }
 
   /// Raw char8 pointer to the string at current offset.
@@ -97,7 +97,7 @@ class [[nodiscard]] StringView {
   StringView(const char8* string, u64 size) : m_string(string), m_size(size) {}
 
   StringView(const char8* begin, const char8* end)
-      : m_string(begin), m_size(end - begin) {
+	: m_string(begin), m_size(reinterpret_cast<uintptr>(end) - reinterpret_cast<uintptr>(begin)) {
     DC_ASSERT(end >= begin, "End iterator must be larger than begin iterator.");
   }
 
