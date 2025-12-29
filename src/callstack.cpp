@@ -297,7 +297,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
       if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
         auto res = formatTo(
-            str, "{}",
+            str, "  {}\n",
             fnName.match(
                 [](const String& s) -> String { return s.clone(); },
                 [](const CallstackErr&) -> String { return String("?fn?"); }));
@@ -305,24 +305,12 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
           return Err(CallstackErr(static_cast<u64>(-1),
                                   CallstackErr::ErrType::Fmt, __LINE__));
 
-        if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
-          auto formatRes2 = formatTo(
-              str, "{}",
-              fnName.match([](const String& s) -> String { return s.clone(); },
-                           [](const CallstackErr&) -> String {
-                             return String("?fn?");
-                           }));
-          if (res.isErr())
-            return Err(CallstackErr(static_cast<u64>(-1),
-                                    CallstackErr::ErrType::Fmt, __LINE__));
-        }
-
         // TODO cgustafsson: how to handle RaiseException
         if (fnName.isOk() && fnName.value() == "RaiseException") break;
 
         if (fnName.isOk() && fnName.value() == "main") break;
       } else {
-        auto res = formatTo(str, "(No symbols: AddrPC.Offset == 0)");
+        auto res = formatTo(str, "  (No symbols: AddrPC.Offset == 0)\n");
         if (res.isErr())
           return Err(CallstackErr(static_cast<u64>(-1),
                                   CallstackErr::ErrType::Fmt, __LINE__));

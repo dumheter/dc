@@ -55,22 +55,25 @@ String toString(const FormatErr& err, StringView pattern) {
 
   if (!pattern.isEmpty())
     res = formatTo(out,
-                   "Format error: \"{}\", at position {}, when formatting:\n{}",
+                   "Format error: \"{}\"\n"
+                   "  Location: character {} (zero-indexed)\n"
+                   "  Pattern:   {}\n"
+                   "            ",
                    toString(err.kind), static_cast<u64>(err.pos), pattern);
   else
     res = formatTo(out, "Format error: \"{}\"", toString(err.kind));
 
   if (res.isErr()) {
-    // we faild to format the error, probably out of memory
     return String(toString(err.kind));
   }
 
   constexpr s64 kMaxDrawPos = 256;
   if (err.pos != 0 && !pattern.isEmpty() && err.pos < kMaxDrawPos) {
-    if (!out.endsWith('\n')) out += '\n';
     for (s64 i = 0; i < err.pos; ++i) out += ' ';
-
     out += '^';
+    out += "\n\n";
+  } else {
+    out += "\n\n";
   }
 
   return out;
@@ -1202,7 +1205,9 @@ namespace detail {
 void printCallstack() {
   auto res = buildCallstack();
   if (res.isOk()) {
+    detail::rawPrint(stdout, "Callstack:\n");
     detail::rawPrint(stdout, res->callstack.toView());
+    detail::rawPrint(stdout, "\n");
   }
 }
 }  // namespace detail
