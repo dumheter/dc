@@ -336,7 +336,9 @@ class Option {
 
   [[nodiscard]] constexpr bool isSome() const { return m_isSome; }
   [[nodiscard]] constexpr bool isNone() const { return !m_isSome; }
-  [[nodiscard]] constexpr operator bool() const noexcept { return isSome(); }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept {
+    return isSome();
+  }
 
   template <typename U>
   [[nodiscard]] constexpr bool contains(const U& other) const {
@@ -434,7 +436,9 @@ class [[nodiscard]] IntrusiveOption {
 
   [[nodiscard]] constexpr bool isSome() const { return m_some != noneValue; }
   [[nodiscard]] constexpr bool isNone() const { return m_some == noneValue; }
-  [[nodiscard]] constexpr operator bool() const { return m_some != noneValue; }
+  [[nodiscard]] constexpr explicit operator bool() const {
+    return m_some != noneValue;
+  }
 
   ////////////////////////
   // Access
@@ -879,7 +883,9 @@ class Result {
 
   [[nodiscard]] constexpr bool isOk() const noexcept { return m_isOk; }
   [[nodiscard]] constexpr bool isErr() const noexcept { return !isOk(); }
-  [[nodiscard]] constexpr operator bool() const noexcept { return isOk(); }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept {
+    return isOk();
+  }
 
   template <typename OkFn, typename ErrFn>
   [[nodiscard]] constexpr auto match(
