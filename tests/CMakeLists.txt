@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(TEST_SOURCES
   assert.test.cpp
   callstack.test.cpp
+  file.test.cpp
   fmt.test.cpp
   list.test.cpp
   log.test.cpp

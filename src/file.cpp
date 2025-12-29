@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2019 Christoffer Gustafsson
@@ -80,6 +80,7 @@ File::Result File::Open(const std::string& path_out, const Mode mode) {
 void File::Close() {
   if (file_ && file_ != NULL) {
     fclose(file_);
+    file_ = NULL;
   }
 }
 
@@ -101,7 +102,8 @@ static File::Result ReadFromFile(std::FILE* file, TBuffer& buffer) {
         const size_t bytes =
             fread(buffer.data(), 1, static_cast<usize>(size), file);
         if (bytes == static_cast<size_t>(size)) {
-          buffer[static_cast<usize>(size)] = 0;  // ensure null termination
+          buffer[static_cast<usize>(size)] = 0;     // ensure null termination
+          buffer.resize(static_cast<usize>(size));  // trim to actual file size
         } else {
           result = File::Result::kFailedToRead;
         }
