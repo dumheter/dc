@@ -24,12 +24,12 @@
 
 #pragma once
 
+#include <cstring>
 #include <dc/allocator.hpp>
 #include <dc/assert.hpp>
 #include <dc/pointer_int_pair.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
-#include <cstring>
 
 namespace dc {
 

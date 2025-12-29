@@ -247,8 +247,8 @@ constexpr bool isSwappable = IsSwappable<T>::value;
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-constexpr bool isMovable =
-    isObject<T>&& isMoveConstructible<T>&& isAssignable<T&, T>&& isSwappable<T>;
+constexpr bool isMovable = isObject<T> && isMoveConstructible<T> &&
+                           isAssignable<T&, T> && isSwappable<T>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -620,12 +620,12 @@ struct InvokeImpl<MT B::*> {
 
   template <typename T, typename... Args, typename MT1,
             typename = typename EnableIf<isFunction<MT1>>::Type>
-  static auto call(MT1 B::*pmf, T&& t, Args&&... args)
+  static auto call(MT1 B::* pmf, T&& t, Args&&... args)
       -> decltype((InvokeImpl::get(forward<T>(t)).*
                    pmf)(forward<Args>(args)...));
 
   template <typename T>
-  static auto call(MT B::*pmd, T&& t)
+  static auto call(MT B::* pmd, T&& t)
       -> decltype(InvokeImpl::get(forward<T>(t)).*pmd);
 };
 

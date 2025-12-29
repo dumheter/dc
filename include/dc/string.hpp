@@ -97,7 +97,9 @@ class [[nodiscard]] StringView {
   StringView(const char8* string, u64 size) : m_string(string), m_size(size) {}
 
   StringView(const char8* begin, const char8* end)
-	: m_string(begin), m_size(reinterpret_cast<uintptr>(end) - reinterpret_cast<uintptr>(begin)) {
+      : m_string(begin),
+        m_size(reinterpret_cast<uintptr>(end) -
+               reinterpret_cast<uintptr>(begin)) {
     DC_ASSERT(end >= begin, "End iterator must be larger than begin iterator.");
   }
 

@@ -40,9 +40,9 @@ void* BufferAwareAllocator::realloc(void* data, usize count, usize align) {
 
   m_pair.setInt(kHaveAllocated);
   void* newData = m_pair.getPointer()->alloc(count, align);
-  // TODO / BUG: this user level realloc doesnt work since count is not the 
+  // TODO / BUG: this user level realloc doesnt work since count is not the
   // old valid count, its the new count and cannot be used here.
-  //memcpy(newData, data, count);
+  // memcpy(newData, data, count);
   return newData;
 }
 

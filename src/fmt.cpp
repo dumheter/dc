@@ -476,7 +476,7 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
 Option<Result<FormatFill, FormatErr>> FormatFill::parse(const char8*& it,
                                                         const char8* end) {
   if (*it == '<' || *it == '>' || *it == '^') {
-    if (it + 3 > end)
+    if (it + 2 > end)
       return Some(Result<FormatFill, FormatErr>(
           Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0})));
 
@@ -494,12 +494,25 @@ Option<Result<FormatFill, FormatErr>> FormatFill::parse(const char8*& it,
 
     auto size = utf8::validate(it);
     const auto strSize = end - it;
-    if (!size || (s64)*size > strSize)
-      return Some(Result<FormatFill, FormatErr>(
-          Err(FormatErr{FormatErr::Kind::InvalidSpecification, it - begin})));
 
-    it += utf8::decode(it, 0, out->sign);
+    if (size && (s64)*size <= strSize) {
+      auto nextIt = it + utf8::decode(it, 0, out->sign);
+      if (nextIt < end && *nextIt >= '0' && *nextIt <= '9') {
+        it = nextIt;
+        if (it >= end)
+          return Some(Result<FormatFill, FormatErr>(Err(
+              FormatErr{FormatErr::Kind::InvalidSpecification, it - begin})));
 
+        auto value = parseInteger(it, end);
+        if (value.isErr())
+          return Some(Result<FormatFill, FormatErr>(Err(value.errValue())));
+
+        out->space = *value;
+        return Some(dc::move(out));
+      }
+    }
+
+    out->sign = ' ';
     if (it >= end)
       return Some(Result<FormatFill, FormatErr>(
           Err(FormatErr{FormatErr::Kind::InvalidSpecification, it - begin})));
