@@ -278,7 +278,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
   IMAGEHLP_LINE64 line;
   line.SizeOfStruct = sizeof(line);
-  [[maybe_unused]] DWORD offsetFromSymbol = 0;
+  DWORD offsetFromSymbol = 0;
 
   do {
     if (frame.AddrPC.Offset != 0) {
@@ -296,11 +296,23 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
           });
 
       if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
+        const BOOL hasLine = SymGetLineFromAddr64(process, frame.AddrPC.Offset,
+                                                  &offsetFromSymbol, &line);
+
+        String fileLine;
+        if (hasLine) {
+          fileLine = dc::format("{}:{}", line.FileName, line.LineNumber)
+                         .unwrapOr("?:?");
+        } else {
+          fileLine = "?:?";
+        }
+
         auto res = formatTo(
-            str, "  {}\n",
+            str, "  {} ({})\n",
             fnName.match(
                 [](const String& s) -> String { return s.clone(); },
-                [](const CallstackErr&) -> String { return String("?fn?"); }));
+                [](const CallstackErr&) -> String { return String("?fn?"); }),
+            fileLine);
         if (res.isErr())
           return Err(CallstackErr(static_cast<u64>(-1),
                                   CallstackErr::ErrType::Fmt, __LINE__));
