@@ -106,77 +106,44 @@ u64 StringView::getLength() const {
   return length;
 }
 
-std::unordered_map<utf8::CodePoint, u64> calcCharSkip(StringView string,
-                                                      StringView pattern) {
-  // calculate the step for each character in the search string.
-  //
-  // example
-  // here is a simple example
-  //
-  // example
-  //       ^   e is 0th letter from the back, and it exists
-  //           in the search string, it has a skip value of 0.
-  //
-  // example
-  //      ^    l is the 1th letter from the back, and it exists
-  //           in the search string, it has a skip value of 1.
-  //
-  // example
-  //  ^       x is the 5th letter from the back, and it exists
-  //          in the search string, it has a skip value of 5.
-  //
-  //
-  // The big gain comes from the symbols that are not in the pattern.
-  // For example, if we read 't', we can skip forward the entire
-  // length of the pattern.
+std::unordered_map<utf8::CodePoint, u64> calcCharSkip(StringView pattern) {
   std::unordered_map<utf8::CodePoint, u64> charSkip;
 
-  for (utf8::CodePoint thisCp : string.utf8Iterator()) {
-    Option<u64> posOfLastMatch = None;
-    u64 i = 0;
-    for (utf8::CodePoint otherCp : pattern.utf8Iterator()) {
-      if (thisCp == otherCp) posOfLastMatch = Some(i);
-      ++i;
-    }
-    if (posOfLastMatch.isSome())
-      charSkip[thisCp] = pattern.getLength() - posOfLastMatch.value();
+  u64 i = 0;
+  for (utf8::CodePoint cp : pattern.utf8Iterator()) {
+    charSkip[cp] = i;
+    ++i;
   }
 
   return charSkip;
 }
 
-// Boyer-Moore string search
+// TODO: Boyer-Moore string search
+// Would kinda need a small size optimized hash map for it.
 Option<u64> StringView::find(StringView pattern) const {
   if (pattern.isEmpty() || isEmpty() || pattern.getSize() > getSize())
     return None;
 
-  // skip map
-  const std::unordered_map<utf8::CodePoint, u64> charSkip =
-      calcCharSkip(*this, pattern);
+  const u64 patternSize = pattern.getSize();
+  const u64 textSize = getSize();
 
-  // for the length of the text
-  for (u64 i = pattern.getSize() - 1; i < getSize();) {
-    // skip the length of our pattern
-    // const u64 patternLength = pattern.getLength();
+  u64 textBytePos = 0;
 
-    // example - 7
-    // getIterAt(7 - 1)
+  while (textBytePos <= textSize - patternSize) {
+    bool match = true;
 
-    // const Utf8Iterator iter = getIterAt(patternLength - 1);
+    for (u64 i = 0; i < patternSize; ++i) {
+      if (pattern[i] != m_string[textBytePos + i]) {
+        match = false;
+        break;
+      }
+    }
 
-    // while (iter)
+    if (match) {
+      return Some(textBytePos);
+    }
 
-    // compare against current cp
-    // if ()
-
-    // utf8::CodePoint thisCp;
-    // utf8::CodePoint otherCp;
-    // TODO cgustafsson: move forward in the string, in terms of code points
-    // if (m_string[lastCharPos] != pattern[lastCharPos])
-    // {
-    // 	// move forward by precalcualted step
-    // 	i += charSkip[]
-    // }
+    textBytePos++;
   }
 
   return None;

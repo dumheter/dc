@@ -373,3 +373,128 @@ DTEST(constructStringByTakingList) {
 
   ASSERT_EQ(str, kLoremIpsum);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Find
+//
+
+DTEST(findBasicPattern) {
+  const String text("Hello World");
+  Option<u64> found = text.find("World");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findPatternAtBeginning) {
+  const String text("Hello World");
+  Option<u64> found = text.find("Hello");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(0));
+}
+
+DTEST(findPatternAtEnd) {
+  const String text("Hello World");
+  Option<u64> found = text.find("World");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findPatternNotFound) {
+  const String text("Hello World");
+  Option<u64> found = text.find("Python");
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findEmptyPattern) {
+  const String text("Hello World");
+  Option<u64> found = text.find("");
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findEmptyText) {
+  const String text("");
+  Option<u64> found = text.find("Hello");
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findPatternLongerThanText) {
+  const String text("Hi");
+  Option<u64> found = text.find("Hello World");
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findMultipleOccurrencesReturnsFirst) {
+  const String text("abcabcabc");
+  Option<u64> found = text.find("abc");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(0));
+}
+
+DTEST(findSingleCharacter) {
+  const String text("Hello World");
+  Option<u64> found = text.find("W");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findWithUtf8Characters) {
+  String str;
+  utf8::encode(0x1'F525, str);
+  str += "abc";
+  utf8::encode(0x1'F525, str);
+
+  String pattern;
+  utf8::encode(0x1'F525, pattern);
+  pattern += "abc";
+
+  Option<u64> found = str.find(pattern.toView());
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(0));
+}
+
+DTEST(findUtf8PatternInMiddle) {
+  String str;
+  str += "Hello ";
+  utf8::encode(0x1'F525, str);
+  str += " World";
+
+  String pattern;
+  utf8::encode(0x1'F525, pattern);
+
+  Option<u64> found = str.find(pattern.toView());
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findPatternNotInUtf8String) {
+  String str;
+  utf8::encode(0x1'F525, str);
+  str += "abc";
+
+  String pattern;
+  utf8::encode(0x1'F68, pattern);
+
+  Option<u64> found = str.find(pattern.toView());
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findEntireString) {
+  const String text("Hello World");
+  Option<u64> found = text.find("Hello World");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(0));
+}
+
+DTEST(findInLongerString) {
+  const String text("The quick brown fox jumps over the lazy dog");
+  Option<u64> found = text.find("fox");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(16));
+}
+
+DTEST(findOverlappingPatterns) {
+  const String text("aaaaa");
+  Option<u64> found = text.find("aa");
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(0));
+}
