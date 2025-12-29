@@ -288,7 +288,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       Result<String, CallstackErr> fnName = symbol.match(
           [](const Symbol& symbol) { return symbol.undecoratedName(); },
           [frame](const CallstackErr&) -> Result<String, CallstackErr> {
-            return dc::move(dc::format("{#x}", frame.AddrPC.Offset))
+            return dc::move(dc::formatStrict("{#x}", frame.AddrPC.Offset))
                 .mapErr([](const FormatErr& err) {
                   return CallstackErr(static_cast<u64>(err.kind),
                                       CallstackErr::ErrType::Fmt, __LINE__);
@@ -301,7 +301,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
         String fileLine;
         if (hasLine) {
-          fileLine = dc::format("{}:{}", line.FileName, line.LineNumber)
+          fileLine = dc::formatStrict("{}:{}", line.FileName, line.LineNumber)
                          .unwrapOr("?:?");
         } else {
           fileLine = "?:?";

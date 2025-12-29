@@ -458,12 +458,28 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
 // format
 //
 
+/// Format function. When a format issue is encountered, returns error.
 template <typename... Args>
-Result<String, FormatErr> format(const StringView fmt, Args&&... args) {
+Result<String, FormatErr> formatStrict(const StringView fmt, Args&&... args) {
   String out;
   auto res = formatTo(out, fmt, args...);
   if (res.isOk()) return Ok(dc::move(out));
   return Err(dc::move(res).unwrapErr());
+}
+
+/// Format function. When format issue is encountered, provide a default message.
+template <typename... Args>
+String format(const StringView fmt, Args&&... args) {
+  String out;
+  auto res = formatTo(out, fmt, args...);
+  if (res.isErr())
+  {
+      out = String("<failed to format data: ");
+      out += fmt;
+      out += ">";
+  }
+
+  return out;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -500,7 +516,7 @@ void print(StringView str, Args&&... args) {
 
 template <typename... Args>
 Result<NoneType, FormatErr> printTo(FILE* f, StringView str, Args&&... args) {
-  auto res = format(str, dc::forward<Args>(args)...);
+  auto res = formatStrict(str, dc::forward<Args>(args)...);
   if (res.isOk()) return detail::rawPrint(f, res.value().toView());
   return Err(dc::move(res).unwrapErr());
 }

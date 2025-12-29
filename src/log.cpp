@@ -227,7 +227,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.level,
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          format("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
+          formatStrict("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,
@@ -294,7 +294,7 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
                     colorFromLevel(payload.level)),
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          format("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
+          formatStrict("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,
