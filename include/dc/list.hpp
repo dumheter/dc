@@ -48,6 +48,16 @@ class BufferAwareAllocator final : public IAllocator {
   BufferAwareAllocator(const BufferAwareAllocator& other)
       : m_pair(other.m_pair) {}
 
+  BufferAwareAllocator(BufferAwareAllocator&& other) noexcept
+      : m_pair(dc::move(other.m_pair)) {}
+
+  BufferAwareAllocator& operator=(BufferAwareAllocator&& other) noexcept {
+    if (&other != this) {
+      m_pair = dc::move(other.m_pair);
+    }
+    return *this;
+  }
+
   virtual void* alloc(usize count, usize align = kMinimumAlignment) override;
 
   virtual void* realloc(void* data, usize count,
@@ -57,7 +67,6 @@ class BufferAwareAllocator final : public IAllocator {
 
   bool hasAllocated() const { return m_pair.getInt() == kHaveAllocated; }
 
- private:
   PointerIntPair<IAllocator*, u32> m_pair;
 
   static constexpr u32 kHaveAllocated = 1;
@@ -149,11 +158,13 @@ class List {
   template <typename Fn,
             // TODO cgustafsson:  is it nicer to have trait req here, instead of
             // impl?
-            bool enable = isInvocable<Fn, const T&>&&
-                isSame<InvokeResultT<Fn, const T&>, bool> >
+            bool enable = isInvocable<Fn, const T&> &&
+                          isSame<InvokeResultT<Fn, const T&>, bool> >
   void removeIf(Fn fn);
 
-  [[nodiscard]] u64 getSize() const noexcept { return m_end - m_begin; }
+  [[nodiscard]] u64 getSize() const noexcept {
+    return static_cast<u64>(m_end - m_begin);
+  }
 
   [[nodiscard]] u64 getCapacity() const noexcept { return m_capacity; }
 
@@ -260,7 +271,7 @@ List<T, N>& List<T, N>::operator=(List&& other) noexcept {
   if (&other != this) {
     this->~List();
 
-    m_allocator = other.m_allocator;
+    m_allocator.m_pair = dc::move(other.m_allocator.m_pair);
     m_capacity = other.m_capacity;
 
     if (other.m_allocator.hasAllocated()) {
@@ -320,13 +331,15 @@ void List<T, N>::addRange(const T* begin, const T* end) {
   DC_FATAL_ASSERT(end >= begin, "end is less than begin.");
   if constexpr (isTriviallyRelocatable<T>) {
     const u64 oldSize = getSize();
-    resize(oldSize + (end - begin));
-    if (oldSize + (end - begin) <= m_capacity)  // did resize work?
-      memcpy(m_begin + oldSize, begin, (end - begin));
+    const u64 rangeSize = static_cast<u64>(end - begin);
+    resize(oldSize + rangeSize);
+    if (oldSize + rangeSize <= m_capacity)  // did resize work?
+      memcpy(m_begin + oldSize, begin, rangeSize);
   } else {
     const u64 oldSize = getSize();
-    resize(oldSize + (end - begin));
-    if (oldSize + (end - begin) <= m_capacity) {
+    const u64 rangeSize = static_cast<u64>(end - begin);
+    resize(oldSize + rangeSize);
+    if (oldSize + rangeSize <= m_capacity) {
       T* newIt = m_begin + oldSize;
       while (begin != end) {
         new (newIt++) T(*begin++);
@@ -414,7 +427,8 @@ template <typename T, u64 N>
 void List<T, N>::reserve(u64 capacity) {
   if (capacity > m_capacity) {
     const u64 size = getSize();
-    T* newBegin = static_cast<T*>(m_allocator.realloc(m_begin, sizeof(T) * capacity));
+    T* newBegin =
+        static_cast<T*>(m_allocator.realloc(m_begin, sizeof(T) * capacity));
     if (!newBegin) return;  // failed to alloc, noop
 
     for (T* elem = m_begin; elem != m_end; ++elem)

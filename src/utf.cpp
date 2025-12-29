@@ -73,19 +73,28 @@ void encode(CodePoint cp, String& string) {
     ptr[size] = static_cast<char>((~kOctetCount1Mask) & cp);
   } else if (hasOctetCount2) {
     string.resize(size + 2);
-    ptr[size] = static_cast<char>(kOctetCount2Value + ((~kOctetCount2Mask) & (cp >> 6)));
-	ptr[size + 1] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
+    ptr[size] = static_cast<char>(kOctetCount2Value +
+                                  ((~kOctetCount2Mask) & (cp >> 6)));
+    ptr[size + 1] =
+        static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
   } else if (hasOctetCount3) {
     string.resize(size + 3);
-    ptr[size] = static_cast<char>(kOctetCount3Value + ((~kOctetCount3Mask) & (cp >> 12)));
-	ptr[size + 1] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6)));
-	ptr[size + 2] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
+    ptr[size] = static_cast<char>(kOctetCount3Value +
+                                  ((~kOctetCount3Mask) & (cp >> 12)));
+    ptr[size + 1] = static_cast<char>(kOctetSequenceValue +
+                                      ((~kOctetSequenceMask) & (cp >> 6)));
+    ptr[size + 2] =
+        static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
   } else if (hasOctetCount4) {
     string.resize(size + 4);
-    ptr[size] = static_cast<char>(kOctetCount4Value + ((~kOctetCount4Mask) & (cp >> 18)));
-	ptr[size + 1] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 12)));
-	ptr[size + 2] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & (cp >> 6)));
-	ptr[size + 3] = static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
+    ptr[size] = static_cast<char>(kOctetCount4Value +
+                                  ((~kOctetCount4Mask) & (cp >> 18)));
+    ptr[size + 1] = static_cast<char>(kOctetSequenceValue +
+                                      ((~kOctetSequenceMask) & (cp >> 12)));
+    ptr[size + 2] = static_cast<char>(kOctetSequenceValue +
+                                      ((~kOctetSequenceMask) & (cp >> 6)));
+    ptr[size + 3] =
+        static_cast<char>(kOctetSequenceValue + ((~kOctetSequenceMask) & cp));
   }
 }
 
@@ -93,32 +102,54 @@ CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut) {
   CodeSize size;
 
   const bool octetCount1 =
-	static_cast<CodePoint>((static_cast<CodePoint>(data[offset]) & kOctetCount1Mask)) == kOctetCount1Value;
+      static_cast<CodePoint>(
+          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+           kOctetCount1Mask)) == kOctetCount1Value;
   const bool octetCount2 =
-	static_cast<CodePoint>((static_cast<CodePoint>(data[offset]) & kOctetCount2Mask)) == kOctetCount2Value;
+      static_cast<CodePoint>(
+          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+           kOctetCount2Mask)) == kOctetCount2Value;
   const bool octetCount3 =
-	static_cast<CodePoint>((static_cast<CodePoint>(data[offset]) & kOctetCount3Mask)) == kOctetCount3Value;
+      static_cast<CodePoint>(
+          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+           kOctetCount3Mask)) == kOctetCount3Value;
   // const bool octetCount4 = (data[offset] & kOctetCount4Mask) ==
   // kOctetCount4Value;
 
   if (octetCount1) {
     size = 1;
-    codePointOut = static_cast<CodePoint>(data[offset]) & ((~kOctetCount1Mask) & 0xFF);
+    codePointOut = static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+                   ((~kOctetCount1Mask) & 0xFF);
   } else if (octetCount2) {
     size = 2;
-    codePointOut = ((static_cast<CodePoint>(data[offset]) & ((~kOctetCount2Mask) & 0xFF)) << 6) +
-	  (static_cast<CodePoint>(data[offset + 1]) & ((~kOctetSequenceMask) & 0xFF));
+    codePointOut = ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+                     ((~kOctetCount2Mask) & 0xFF))
+                    << 6) +
+                   (static_cast<CodePoint>(static_cast<u8>(data[offset + 1])) &
+                    ((~kOctetSequenceMask) & 0xFF));
   } else if (octetCount3) {
     size = 3;
-    codePointOut = ((static_cast<CodePoint>(data[offset]) & ((~kOctetCount3Mask) & 0xFF)) << 12) +
-	  ((static_cast<CodePoint>(data[offset + 1]) & ((~kOctetSequenceMask) & 0xFF)) << 6) +
-	  (static_cast<CodePoint>(data[offset + 2]) & ((~kOctetSequenceMask) & 0xFF));
+    codePointOut = ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+                     ((~kOctetCount3Mask) & 0xFF))
+                    << 12) +
+                   ((static_cast<CodePoint>(static_cast<u8>(data[offset + 1])) &
+                     ((~kOctetSequenceMask) & 0xFF))
+                    << 6) +
+                   (static_cast<CodePoint>(static_cast<u8>(data[offset + 2])) &
+                    ((~kOctetSequenceMask) & 0xFF));
   } else /* if (octetCount4) */ {
     size = 4;
-    codePointOut = ((static_cast<CodePoint>(data[offset]) & ((~kOctetCount4Mask) & 0xFF)) << 18) +
-	  ((static_cast<CodePoint>(data[offset + 1]) & ((~kOctetSequenceMask) & 0xFF)) << 12) +
-	  ((static_cast<CodePoint>(data[offset + 2]) & ((~kOctetSequenceMask) & 0xFF)) << 6) +
-	  (static_cast<CodePoint>(data[offset + 3]) & ((~kOctetSequenceMask) & 0xFF));
+    codePointOut = ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+                     ((~kOctetCount4Mask) & 0xFF))
+                    << 18) +
+                   ((static_cast<CodePoint>(static_cast<u8>(data[offset + 1])) &
+                     ((~kOctetSequenceMask) & 0xFF))
+                    << 12) +
+                   ((static_cast<CodePoint>(static_cast<u8>(data[offset + 2])) &
+                     ((~kOctetSequenceMask) & 0xFF))
+                    << 6) +
+                   (static_cast<CodePoint>(static_cast<u8>(data[offset + 3])) &
+                    ((~kOctetSequenceMask) & 0xFF));
   }
 
   return size;
@@ -131,10 +162,14 @@ CodeSize decode(const String& string, usize offset, CodePoint& codePointOut) {
 Option<CodeSize> validate(const char8* data) {
   CodeSize size;
 
-  const bool octetCount1 = (static_cast<CodePoint>(data[0]) & kOctetCount1Mask) == kOctetCount1Value;
-  const bool octetCount2 = (static_cast<CodePoint>(data[0]) & kOctetCount2Mask) == kOctetCount2Value;
-  const bool octetCount3 = (static_cast<CodePoint>(data[0]) & kOctetCount3Mask) == kOctetCount3Value;
-  const bool octetCount4 = (static_cast<CodePoint>(data[0]) & kOctetCount4Mask) == kOctetCount4Value;
+  const bool octetCount1 = (static_cast<CodePoint>(static_cast<u8>(data[0])) &
+                            kOctetCount1Mask) == kOctetCount1Value;
+  const bool octetCount2 = (static_cast<CodePoint>(static_cast<u8>(data[0])) &
+                            kOctetCount2Mask) == kOctetCount2Value;
+  const bool octetCount3 = (static_cast<CodePoint>(static_cast<u8>(data[0])) &
+                            kOctetCount3Mask) == kOctetCount3Value;
+  const bool octetCount4 = (static_cast<CodePoint>(static_cast<u8>(data[0])) &
+                            kOctetCount4Mask) == kOctetCount4Value;
 
   if (octetCount1) {
     size = 1;

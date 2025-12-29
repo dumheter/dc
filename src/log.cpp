@@ -152,7 +152,7 @@ void Logger::run() {
 #if defined(DC_LOG_DEBUG)
   const u64 now = dc::getTimeUs();
 #endif
-  usize payloadsDrained = 0;
+  [[maybe_unused]] usize payloadsDrained = 0;
   while (m_data->queue.wait_dequeue_timed(payload, 0)) {
     ++payloadsDrained;
     if (isShutdownPayload(payload))
@@ -163,7 +163,7 @@ void Logger::run() {
 #if defined(DC_LOG_DEBUG)
   const u64 drained = dc::getTimeUs();
   print(
-      "\033[93m#{dp}# logger exit code detected, dying. drainTime: {.6}s, "
+      "\033[93m#{}# logger exit code detected, dying. drainTime: {.6}s, "
       "drainedPayloads: {}\033[0m\n",
       makeTimestamp(), (drained - now) / 1'000'000.0, payloadsDrained);
 #endif

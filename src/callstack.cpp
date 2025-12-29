@@ -278,7 +278,7 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
 
   IMAGEHLP_LINE64 line;
   line.SizeOfStruct = sizeof(line);
-  DWORD offsetFromSymbol = 0;
+  [[maybe_unused]] DWORD offsetFromSymbol = 0;
 
   do {
     if (frame.AddrPC.Offset != 0) {
@@ -302,32 +302,37 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
                 [](const String& s) -> String { return s.clone(); },
                 [](const CallstackErr&) -> String { return String("?fn?"); }));
         if (res.isErr())
-          return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
+          return Err(CallstackErr(static_cast<u64>(-1),
+                                  CallstackErr::ErrType::Fmt, __LINE__));
 
-        if (SymGetLineFromAddr64(process, frame.AddrPC.Offset,
-                                 &offsetFromSymbol, &line))
-          res = formatTo(str, " [{}:{}]\n", line.FileName, line.LineNumber);
-        else
-          res = formatTo(str, " [?:?]\n");
+        if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
+          auto formatRes2 = formatTo(
+              str, "{}",
+              fnName.match([](const String& s) -> String { return s.clone(); },
+                           [](const CallstackErr&) -> String {
+                             return String("?fn?");
+                           }));
+          if (res.isErr())
+            return Err(CallstackErr(static_cast<u64>(-1),
+                                    CallstackErr::ErrType::Fmt, __LINE__));
+        }
+
+        // TODO cgustafsson: how to handle RaiseException
+        if (fnName.isOk() && fnName.value() == "RaiseException") break;
+
+        if (fnName.isOk() && fnName.value() == "main") break;
+      } else {
+        auto res = formatTo(str, "(No symbols: AddrPC.Offset == 0)");
         if (res.isErr())
-          return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
+          return Err(CallstackErr(static_cast<u64>(-1),
+                                  CallstackErr::ErrType::Fmt, __LINE__));
       }
 
-      // TODO cgustafsson: how to handle RaiseException
-      if (fnName.isOk() && fnName.value() == "RaiseException") break;
-
-      if (fnName.isOk() && fnName.value() == "main") break;
-    } else {
-      auto res = formatTo(str, "(No symbols: AddrPC.Offset == 0)");
-      if (res.isErr())
-        return Err(CallstackErr(-1, CallstackErr::ErrType::Fmt, __LINE__));
+      if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
+                       SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+        break;
     }
-
-    if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
-                     SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-      break;
   } while (frame.AddrReturn.Offset != 0);
-
   for (const ModuleInfo& module : modules)
     SymUnloadModule64(process, (DWORD64)module.baseAddr);
 

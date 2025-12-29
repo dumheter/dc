@@ -404,7 +404,7 @@ Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
         //  a          b parseCtx
         out.addRange(a, b);
         FormatArg& formatArg = formatArgs.args[usedArgs++];
-        StringView pattern(it + 1, end - (it + 1));
+        StringView pattern(it + 1, static_cast<u64>(end - (it + 1)));
         ParseContext parseCtx{pattern};
         FormatContext formatCtx{out, pattern};
         auto res = doFormatArg(parseCtx, formatCtx, formatArg);

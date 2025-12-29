@@ -78,7 +78,15 @@
 #define DC_UNUSED(v) (void)sizeof(v)
 #endif
 
-///////////////////////////////////////////////////////////////////////////////
+#if defined(DC_COMPILER_MSVC)
+#define DC_TRY __try
+#define DC_EXCEPT __except
+#else
+#define DC_TRY if (true)
+#define DC_EXCEPT(x) if (false)
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
 // ctor & dtor
 //
 

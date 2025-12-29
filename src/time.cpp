@@ -168,7 +168,7 @@ Stopwatch::Stopwatch() {
   if (!QueryPerformanceFrequency(&freq)) {
     freq.QuadPart = 1;  //< 1 on failure to guard against divde by zero.
   }
-  m_freqCache = freq.QuadPart;
+  m_freqCache = static_cast<u64>(freq.QuadPart);
 #endif
   start();
 }
@@ -177,7 +177,7 @@ void Stopwatch::start() {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  m_start = time.QuadPart;
+  m_start = static_cast<u64>(time.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -194,7 +194,7 @@ void Stopwatch::stop() {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  m_stop = time.QuadPart;
+  m_stop = static_cast<u64>(time.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -253,7 +253,7 @@ u64 Stopwatch::s() const {
 
 f64 Stopwatch::fs() const {
 #if defined(DC_PLATFORM_WINDOWS)
-  return (m_stop - m_start) / (1.0 * m_freqCache);
+  return static_cast<f64>(m_stop - m_start) / static_cast<f64>(m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
   return f64(m_stop - m_start) / 1'000'000'000.;
 #else
@@ -267,8 +267,8 @@ u64 Stopwatch::nowNs() const {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  now = time.QuadPart;
-  return (now - m_start) * 1'000'000'000 / m_freqCache;
+  now = static_cast<u64>(time.QuadPart);
+  return (now - m_start) * 1'000'000'000 / static_cast<u64>(m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -288,7 +288,7 @@ u64 Stopwatch::nowUs() const {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  now = time.QuadPart;
+  now = static_cast<u64>(time.QuadPart);
   return (now - m_start) * 1'000'000 / m_freqCache;
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
@@ -309,8 +309,8 @@ u64 Stopwatch::nowMs() const {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  now = time.QuadPart;
-  return (now - m_start) * 1'000 / m_freqCache;
+  now = static_cast<u64>(time.QuadPart);
+  return (now - m_start) * 1'000 / static_cast<u64>(m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -330,8 +330,8 @@ u64 Stopwatch::nowS() const {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  now = time.QuadPart;
-  return (now - m_start) / m_freqCache;
+  now = static_cast<u64>(time.QuadPart);
+  return (now - m_start) / static_cast<u64>(m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
@@ -351,8 +351,8 @@ f64 Stopwatch::nowFs() const {
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
-  now = time.QuadPart;
-  return (now - m_start) / static_cast<f64>(m_freqCache);
+  now = static_cast<u64>(time.QuadPart);
+  return static_cast<f64>(now - m_start) / static_cast<f64>(m_freqCache);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)

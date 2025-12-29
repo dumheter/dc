@@ -86,7 +86,8 @@ DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
   utf8::encode(0x01B5, str);  // Latin Capital Letter Z with Stroke
 
   Utf8Iterator iter(str.c_str(), str.getSize(), 0);
-  Utf8Iterator iterEnd(str.c_str(), str.getSize(), str.getSize());
+  Utf8Iterator iterEnd(str.c_str(), str.getSize(),
+                       static_cast<s64>(str.getSize()));
 
   ASSERT_TRUE(iter != iterEnd);
   ASSERT_EQ(*iter, 0x1'F525);
@@ -119,7 +120,8 @@ DTEST(utf8IteratorCanDecrementToBeforeBeginWithLargeUtf8Characters) {
   utf8::encode(' ', str);
   utf8::encode(0x01B5, str);  // Latin Capital Letter Z with Stroke
 
-  Utf8Iterator iter(str.c_str(), str.getSize(), str.getSize());
+  Utf8Iterator iter(str.c_str(), str.getSize(),
+                    static_cast<s64>(str.getSize()));
   Utf8Iterator iterBeforeBegin(str.c_str(), str.getSize(), -1);
 
   --iter;  // we are at end, place ourself at the last utf8 character's start
@@ -265,11 +267,12 @@ DTEST(isSameAsCStringLooong) {
 DTEST(canIterate) {
   String str = "The quick brown fox jumps over the fence.";
   usize i = 0;
-  for (utf8::CodePoint c : str) {
-    (void)c;
+  auto iter = str.utf8Iterator();
+  for (auto it = iter.begin(); it != iter.end(); ++it) {
+    (void)*it;
     ++i;
   }
-  ASSERT_EQ(i, str.getSize());
+  ASSERT_EQ(i, str.getLength());
 }
 
 DTEST(lengthOf1CodePointString) {

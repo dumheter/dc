@@ -200,7 +200,7 @@ DTEST(formatS32Limits) {
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "x = [0]");
 
-  value = -(s32)2'147'483'648;
+  value = static_cast<s32>(0x80000000u);
   res = dc::format("x = [{}]", value);
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "x = [-2147483648]");
@@ -229,7 +229,7 @@ DTEST(formatS64Limits) {
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "x = [0]");
 
-  value = -9'223'372'036'854'775'808ll;
+  value = static_cast<s64>(0x8000000000000000ull);
   res = dc::format("x = [{}]", value);
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "x = [-9223372036854775808]");

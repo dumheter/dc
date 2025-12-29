@@ -27,6 +27,7 @@
 #include <cwchar>
 #include <dc/callstack.hpp>
 #include <dc/log.hpp>
+#include <dc/macros.hpp>
 #include <dc/platform.hpp>
 #include <dc/string.hpp>
 #include <dc/traits.hpp>
@@ -134,17 +135,20 @@ void dcFatalAssert(bool condition, const char* msg, const char* file,
 
 void debugBreak() {
 #if defined(DC_PLATFORM_WINDOWS)
-  __try {
-    DebugBreak();
-  } __except (GetExceptionCode() == EXCEPTION_BREAKPOINT
-                  ? EXCEPTION_EXECUTE_HANDLER
-                  : EXCEPTION_CONTINUE_SEARCH) {
-    // do nothing, just catch the exception
-  }
-#elif defined(DC_PLATFORM_LINUX)
-  asm("int3");  //< software interrupt to set code breakpoint
+#if defined(DC_COMPILER_MSVC)
+  DC_TRY { DebugBreak(); }
+  DC_EXCEPT(GetExceptionCode() == EXCEPTION_BREAKPOINT
+                ? EXCEPTION_EXECUTE_HANDLER
+                : EXCEPTION_CONTINUE_SEARCH) {}
 #else
-  *static_cast<volatile int*>(nullptr) = 1;  //< crash
+  if (IsDebuggerPresent()) {
+    DebugBreak();
+  }
+#endif
+#elif defined(DC_PLATFORM_LINUX)
+  asm("int3");
+#else
+  *static_cast<volatile int*>(nullptr) = 1;
 #endif
 }
 

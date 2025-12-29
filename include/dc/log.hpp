@@ -340,7 +340,7 @@ class Paint {
                                      (usize)std::numeric_limits<int>::max)),
         "Too small buffer.");
     DC_ASSERT(res >= 0, "Encoding error from snprintf.");
-    m_currentStrLen = res >= 0 ? res : 0;
+    m_currentStrLen = res >= 0 ? static_cast<usize>(res) : 0;
   }
   const char* c_str() const { return m_str; }
   usize size() const { return m_currentStrLen; }

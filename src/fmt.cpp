@@ -56,7 +56,7 @@ String toString(const FormatErr& err, StringView pattern) {
   if (!pattern.isEmpty())
     res = formatTo(out,
                    "Format error: \"{}\", at position {}, when formatting:\n{}",
-                   toString(err.kind), err.pos, pattern);
+                   toString(err.kind), static_cast<u64>(err.pos), pattern);
   else
     res = formatTo(out, "Format error: \"{}\"", toString(err.kind));
 
@@ -318,7 +318,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
 
   if (expo == 2047)  // is nan or inf?
   {
-    *start = (bits & ((((u64)1) << 52) - 1)) ? "NaN" : "Inf";
+    *start = (static_cast<u64>(bits) & ((((u64)1) << 52) - 1)) ? "NaN" : "Inf";
     *decimal_pos = STBSP__SPECIAL;
     *len = 3;
     return ng;
@@ -364,8 +364,10 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
   }
 
   // now do the rounding in integer land
-  frac_digits = (frac_digits & 0x80000000) ? ((frac_digits & 0x7ffffff) + 1)
-                                           : (tens + frac_digits);
+  frac_digits = (frac_digits & 0x80000000)
+                    ? ((frac_digits & 0x7ffffff) + 1)
+                    : static_cast<u32>(static_cast<s32>(tens) +
+                                       static_cast<s32>(frac_digits));
   if ((frac_digits < 24)) {
     u32 dg = 1;
     if ((u64)bits >= stbsp__powten[9]) dg = 10;
@@ -376,12 +378,12 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
     if (frac_digits < dg) {
       u64 r;
       // add 0.5 at the right position and round
-      e = dg - frac_digits;
+      e = static_cast<s32>(dg - frac_digits);
       if ((u32)e >= 24) goto noround;
       r = stbsp__powten[e];
-      bits = bits + (r / 2);
+      bits = static_cast<s64>(bits) + static_cast<s64>(r / 2);
       if ((u64)bits >= stbsp__powten[dg]) ++tens;
-      bits /= r;
+      bits /= static_cast<s64>(r);
     }
   noround:;
   }
@@ -436,7 +438,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
 
   *decimal_pos = tens;
   *start = out;
-  *len = e;
+  *len = static_cast<u32>(e);
   return ng;
 }
 
@@ -456,10 +458,12 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
   const char8* numEnd = it;
   u32 out = 0;
   while (numStart != numEnd) {
-    if (numEnd - numStart - 1 >= 20) {  // powten only goes [0, 20)
+    const s64 idx = numEnd - numStart - 1;
+    if (idx >= 20) {  // powten only goes [0, 20)
       return Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0});
     }
-    out += (*numStart - '0') * (u32)stbsp__powten[numEnd - numStart - 1];
+    out += static_cast<u32>(*numStart - '0') *
+           stbsp__powten[static_cast<usize>(idx)];
     ++numStart;
   }
 
@@ -522,29 +526,29 @@ Result<NoneType, FormatErr> FormatFill::format(const Option<FormatFill>& fill,
 
       auto i = fill->space - len;
       while (i-- > 0) {
-        ctx.out.add(fill->sign);
+        ctx.out.add(static_cast<char8>(fill->sign));
       }
     } else if (fill->align == FormatFill::Align::Right) {
       auto i = fill->space - len;
       while (i-- > 0) {
-        ctx.out.add(fill->sign);
+        ctx.out.add(static_cast<char8>(fill->sign));
       }
 
       ctx.out.addRange(begin, end);
     } else /* if (fill->align == FormatFill::Align::Center) */ {
       auto i = (fill->space - len) / 2;
       while (i-- > 0) {
-        ctx.out.add(fill->sign);
+        ctx.out.add(static_cast<char8>(fill->sign));
       }
       if ((fill->space - len) % 2 == 1) {
-        ctx.out.add(fill->sign);
+        ctx.out.add(static_cast<char8>(fill->sign));
       }
 
       ctx.out.addRange(begin, end);
 
       i = (fill->space - len) / 2;
       while (i-- > 0) {
-        ctx.out.add(fill->sign);
+        ctx.out.add(static_cast<char8>(fill->sign));
       }
     }
   } else {
@@ -629,9 +633,9 @@ struct Formatter<f64> {
         // handle 0.000*000xxxx
         *s++ = '0';
         if (decimals) *s++ = '.';
-        n = -decimalPos;
+        n = static_cast<u32>(-decimalPos);
         if (n > decimals) n = decimals;
-        i = n;
+        i = static_cast<s32>(n);
         while (i) {
           if ((((uintptr)s) & 3) == 0) break;
           *s++ = '0';
@@ -647,8 +651,9 @@ struct Formatter<f64> {
           *s++ = '0';
           --i;
         }
-        if ((s32)(len + n) > decimals) len = decimals - n;
-        i = len;
+        if (static_cast<s32>(len) + i > static_cast<s32>(decimals))
+          len = static_cast<u32>(static_cast<s32>(decimals) - i);
+        i = static_cast<s32>(len);
         while (i) {
           *s++ = *outBegin++;
           --i;
@@ -665,7 +670,7 @@ struct Formatter<f64> {
           }
 
           if (n < (u32)decimalPos) {
-            n = decimalPos - n;
+            n = static_cast<u32>(decimalPos) - n;
             while (n) {
               if ((((uintptr)s) & 3) == 0) break;
               *s++ = '0';
@@ -697,12 +702,15 @@ struct Formatter<f64> {
           }
           // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
           if (decimals) *s++ = '.';
-          if ((len - decimalPos) > decimals) len = decimals + decimalPos;
+          if (static_cast<s32>(len) - decimalPos > static_cast<s32>(decimals))
+            len = static_cast<u32>(static_cast<s32>(decimals) + decimalPos);
           while (n < len) {
             *s++ = outBegin[n];
             ++n;
           }
-          trailingZeros = decimals - (len - decimalPos);
+          trailingZeros =
+              static_cast<u32>(static_cast<s32>(decimals) -
+                               (static_cast<s32>(len) - decimalPos));
         }
       }
       // decimals = 0;
@@ -744,9 +752,9 @@ struct Formatter<f64> {
     // copy the string
     n = len;
     while (n) {
-      s32 i = n;  // clamp on callback buf size
+      s32 i = static_cast<s32>(n);  // clamp on callback buf size
       // stbsp__cb_buf_clamp(i, n);
-      n -= i;
+      n -= static_cast<u32>(i);
       while (i >= 4) {
         *(u32 volatile*)strIt = *(u32 volatile*)s;
         strIt += 4;
@@ -763,9 +771,9 @@ struct Formatter<f64> {
 
     // copy trailing zeros
     while (trailingZeros) {
-      s32 i = trailingZeros;
+      s32 i = static_cast<s32>(trailingZeros);
       // stbsp__cb_buf_clamp(i, trailingZeros);
-      trailingZeros -= i;
+      trailingZeros -= static_cast<u32>(i);
       while (i) {
         if ((((uintptr)strIt) & 3) == 0) break;
         *strIt++ = '0';
@@ -1101,7 +1109,7 @@ Result<StringView, s64> toString(s64 ivalue, char8* buf, s64 bufSize,
     if (StrOrErr->c_str() == buf) return Err(bufSize + 1);
     char8* begin = (char8*)((StrOrErr->c_str()) - 1);
     *(buf) = '-';
-    return Ok(StringView{begin, (u64)buf + bufSize});
+    return Ok(StringView{begin, static_cast<u64>(bufSize) + 1});
   } else {
     uvalue = (u64)ivalue;
     return toString(uvalue, buf, bufSize, presentation);

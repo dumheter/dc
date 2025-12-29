@@ -34,7 +34,7 @@ namespace dc {
 
 utf8::CodePoint Utf8Iterator::operator*() const {
   utf8::CodePoint cp;
-  utf8::decode(m_string, m_offset, cp);
+  utf8::decode(m_string, static_cast<usize>(m_offset), cp);
   return cp;
 }
 
@@ -49,8 +49,9 @@ bool Utf8Iterator::operator!=(const Utf8Iterator& other) const {
 
 Utf8Iterator& Utf8Iterator::operator++() {
   utf8::CodePoint cp;
-  const utf8::CodeSize codeSize = utf8::decode(m_string, m_offset, cp);
-  m_offset += codeSize;
+  const utf8::CodeSize codeSize =
+      utf8::decode(m_string, static_cast<usize>(m_offset), cp);
+  m_offset += static_cast<s64>(codeSize);
 
   return *this;
 }
@@ -130,10 +131,10 @@ std::unordered_map<utf8::CodePoint, u64> calcCharSkip(StringView string,
   // length of the pattern.
   std::unordered_map<utf8::CodePoint, u64> charSkip;
 
-  for (utf8::CodePoint thisCp : string) {
+  for (utf8::CodePoint thisCp : string.utf8Iterator()) {
     Option<u64> posOfLastMatch = None;
     u64 i = 0;
-    for (utf8::CodePoint otherCp : pattern) {
+    for (utf8::CodePoint otherCp : pattern.utf8Iterator()) {
       if (thisCp == otherCp) posOfLastMatch = Some(i);
       ++i;
     }
@@ -197,7 +198,7 @@ String::String(const char8* str, u64 size, IAllocator& allocator)
 
 String::String(StringView view) : String(view.c_str(), view.getSize()) {}
 
-String::String(String&& other) noexcept : m_list(dc::move(other.m_list)){};
+String::String(String&& other) noexcept : m_list(dc::move(other.m_list)) {};
 
 // TODO cgustafsson: does the forward here skip a move?
 String::String(List<char8>&& list) noexcept
