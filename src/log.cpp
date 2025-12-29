@@ -194,7 +194,8 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
       print(
-#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || \
+    DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
@@ -215,10 +216,11 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
 #if DC_LOG_PREFIX_FUNCTION == 1
           "{<10}"
 #endif
-#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || \
+    DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "] {}\n",
 #else
-		  "{}\n",
+          "{}\n",
 #endif
 #if DC_LOG_PREFIX_DATETIME > 0
           payload.timestamp,
@@ -227,7 +229,8 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           payload.level,
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          formatStrict("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
+          formatStrict("{}:{}", payload.fileName, payload.lineno)
+              .unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,
@@ -260,7 +263,8 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
       print(
-#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || \
+    DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
@@ -281,10 +285,11 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
 #if DC_LOG_PREFIX_FUNCTION == 1
           "{}"
 #endif
-#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || \
+    DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "] {}\n",
 #else
-		  "{}\n",
+          "{}\n",
 #endif
 #if DC_LOG_PREFIX_DATETIME > 0
           payload.timestamp,
@@ -294,7 +299,8 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
                     colorFromLevel(payload.level)),
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
-          formatStrict("{}:{}", payload.fileName, payload.lineno).unwrapOr("err"),
+          formatStrict("{}:{}", payload.fileName, payload.lineno)
+              .unwrapOr("err"),
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
           payload.functionName,

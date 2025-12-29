@@ -78,8 +78,9 @@ DTEST(canEscapeTheFormatCharacter3) {
 }
 
 DTEST(formatCString) {
-  auto res = dc::formatStrict("What is the largest muscle in the human body? {}",
-                        "The gluteus maximus.");
+  auto res =
+      dc::formatStrict("What is the largest muscle in the human body? {}",
+                       "The gluteus maximus.");
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(
       res.value(),

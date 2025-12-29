@@ -32,10 +32,12 @@ namespace dc {
 /// Get a timestamp from a high resolution clock.
 /// Note: Use getTimeUsNoReordering when benchmarking things, to ensure no
 /// reordering.
+[[nodiscard]] u64 getTimeNs();
 [[nodiscard]] u64 getTimeUs();
 
 /// Get a timestamp from a high resolution clock. In addition, it has memory
 /// barrieers to protect from reordering.
+[[nodiscard]] u64 getTimeNsNoReorder();
 [[nodiscard]] u64 getTimeUsNoReorder();
 
 /// Yield execution back to the operating system.

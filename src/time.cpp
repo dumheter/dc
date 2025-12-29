@@ -48,8 +48,8 @@
 
 namespace dc {
 
-[[nodiscard]] u64 getTimeUs() {
-  u64 timeUs;
+[[nodiscard]] u64 getTimeNs() {
+  u64 timeNs;
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time, freq;
   if (!QueryPerformanceCounter(&time)) time.QuadPart = 0;
@@ -59,22 +59,26 @@ namespace dc {
     freq.QuadPart = 1;
   }
 
-  timeUs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
+  timeNs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   if (clock_gettime(CLOCK_MONOTONIC_RAW, &time) == 0)
-    timeUs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec / 1'000);
+    timeNs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec);
   else
-    timeUs = 0;
+    timeNs = 0;
 #else
   DC_ASSERT(false, "not implemented");
-  timeUs = 0;
+  timeNs = 0;
 #endif
-  return timeUs;
+  return timeNs;
 }
 
-[[nodiscard]] u64 getTimeUsNoReorder() {
-  u64 timeUs;
+[[nodiscard]] u64 getTimeUs() {
+  return getTimeNs() / 1'000;
+}
+
+[[nodiscard]] u64 getTimeNsNoReorder() {
+  u64 timeNs;
 #if defined(DC_PLATFORM_WINDOWS)
   LARGE_INTEGER time, freq;
   std::atomic_signal_fence(std::memory_order_seq_cst);
@@ -85,21 +89,25 @@ namespace dc {
   }
   std::atomic_signal_fence(std::memory_order_seq_cst);
 
-  timeUs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
+  timeNs = static_cast<u64>(time.QuadPart * 1'000'000 / freq.QuadPart);
 #elif defined(DC_PLATFORM_LINUX)
   timespec time;
   std::atomic_signal_fence(std::memory_order_seq_cst);
   const auto res = clock_gettime(CLOCK_MONOTONIC_RAW, &time);
   std::atomic_signal_fence(std::memory_order_seq_cst);
   if (res == 0)
-    timeUs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec / 1'000);
+    timeNs = static_cast<u64>(time.tv_sec * 1'000'000 + time.tv_nsec);
   else
-    timeUs = 0;
+    timeNs = 0;
 #else
   DC_ASSERT(false, "not implemented");
-  timeUs = 0;
+  timeNs = 0;
 #endif
-  return timeUs;
+  return timeNs;
+}
+
+[[nodiscard]] u64 getTimeUsNoReorder() {
+  return getTimeNsNoReorder() / 1'000;
 }
 
 void sleepMs(u32 timeMs) {

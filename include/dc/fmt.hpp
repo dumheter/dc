@@ -467,16 +467,16 @@ Result<String, FormatErr> formatStrict(const StringView fmt, Args&&... args) {
   return Err(dc::move(res).unwrapErr());
 }
 
-/// Format function. When format issue is encountered, provide a default message.
+/// Format function. When format issue is encountered, provide a default
+/// message.
 template <typename... Args>
 String format(const StringView fmt, Args&&... args) {
   String out;
   auto res = formatTo(out, fmt, args...);
-  if (res.isErr())
-  {
-      out = String("<failed to format data: ");
-      out += fmt;
-      out += ">";
+  if (res.isErr()) {
+    out = String("<failed to format data: ");
+    out += fmt;
+    out += ">";
   }
 
   return out;

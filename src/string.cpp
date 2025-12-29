@@ -106,20 +106,6 @@ u64 StringView::getLength() const {
   return length;
 }
 
-std::unordered_map<utf8::CodePoint, u64> calcCharSkip(StringView pattern) {
-  std::unordered_map<utf8::CodePoint, u64> charSkip;
-
-  u64 i = 0;
-  for (utf8::CodePoint cp : pattern.utf8Iterator()) {
-    charSkip[cp] = i;
-    ++i;
-  }
-
-  return charSkip;
-}
-
-// TODO: Boyer-Moore string search
-// Would kinda need a small size optimized hash map for it.
 Option<u64> StringView::find(StringView pattern) const {
   if (pattern.isEmpty() || isEmpty() || pattern.getSize() > getSize())
     return None;
@@ -127,23 +113,35 @@ Option<u64> StringView::find(StringView pattern) const {
   const u64 patternSize = pattern.getSize();
   const u64 textSize = getSize();
 
-  u64 textBytePos = 0;
+  constexpr u64 kNoOfChars = 256;
+  s64 badChar[kNoOfChars];
 
-  while (textBytePos <= textSize - patternSize) {
-    bool match = true;
+  for (u64 i = 0; i < kNoOfChars; ++i) {
+    badChar[i] = -1;
+  }
 
-    for (u64 i = 0; i < patternSize; ++i) {
-      if (pattern[i] != m_string[textBytePos + i]) {
-        match = false;
-        break;
-      }
+  for (u64 i = 0; i < patternSize; ++i) {
+    badChar[static_cast<u8>(pattern[i])] = static_cast<s64>(i);
+  }
+
+  u64 shift = 0;
+
+  while (shift <= textSize - patternSize) {
+    s64 j = static_cast<s64>(patternSize) - 1;
+
+    while (j >= 0 && pattern[static_cast<u64>(j)] ==
+                         m_string[shift + static_cast<u64>(j)]) {
+      j--;
     }
 
-    if (match) {
-      return Some(textBytePos);
+    if (j < 0) {
+      return Some(shift);
     }
 
-    textBytePos++;
+    const s64 badCharIndex =
+        badChar[static_cast<u8>(m_string[shift + static_cast<u64>(j)])];
+    const s64 shiftAmount = dc::max(static_cast<s64>(1), j - badCharIndex);
+    shift += static_cast<u64>(shiftAmount);
   }
 
   return None;
