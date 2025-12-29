@@ -22,360 +22,393 @@
  * SOFTWARE.
  */
 
+#include <cstring>
 #include <dc/dtest.hpp>
 #include <dc/file.hpp>
+#include <dc/fmt.hpp>
+#include <dc/string.hpp>
 #include <dc/time.hpp>
 
 using namespace dc;
 
-static std::string generateTestFileName() {
+static dc::String generateTestFileName() {
   u64 ns = getTimeNs();
-  return "testfile_" + std::to_string(ns) + ".txt";
+  return dc::format("testfile_{}.txt", ns);
 }
 
 DTEST(fileWriteAndReadString) {
-  const std::string testContent = "Hello, World!";
-  const std::string testFileName = generateTestFileName();
+  const dc::String testContent = dc::String("Hello, World!");
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(testContent);
+  auto writeResult = file.write(testContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
   File readFile;
-  auto openReadResult = readFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openReadResult, File::Result::kSuccess);
+  auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openReadResult.isOk());
 
-  auto [readResult, readContent] = readFile.Read();
-  ASSERT_EQ(readResult, File::Result::kSuccess);
-  ASSERT_EQ(readContent, testContent);
+  auto readResult = readFile.read();
+  ASSERT_TRUE(readResult.isOk());
+  ASSERT_EQ(readResult.value(), testContent);
 
-  readFile.Close();
+  readFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(fileWriteAndReadBuffer) {
-  std::vector<u8> testBuffer = {'H', 'e', 'l', 'l', 'o', '\0',
-                                'W', 'o', 'r', 'l', 'd', '\0'};
-  const std::string testFileName = generateTestFileName();
+  List<u8> testBuffer;
+  testBuffer.add('H');
+  testBuffer.add('e');
+  testBuffer.add('l');
+  testBuffer.add('l');
+  testBuffer.add('o');
+  testBuffer.add('\0');
+  testBuffer.add('W');
+  testBuffer.add('o');
+  testBuffer.add('r');
+  testBuffer.add('l');
+  testBuffer.add('d');
+  testBuffer.add('\0');
+
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(testBuffer);
+  auto writeResult = file.write(testBuffer);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
   File loadFile;
-  auto openLoadResult = loadFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openLoadResult, File::Result::kSuccess);
+  auto openLoadResult = loadFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openLoadResult.isOk());
 
-  auto [loadResult, loadBuffer] = loadFile.Load();
-  ASSERT_EQ(loadResult, File::Result::kSuccess);
-  ASSERT_EQ(loadBuffer.size(), testBuffer.size());
-  ASSERT_EQ(memcmp(loadBuffer.data(), testBuffer.data(), testBuffer.size()), 0);
+  auto loadResult = loadFile.load();
+  ASSERT_TRUE(loadResult.isOk());
+  ASSERT_EQ(loadResult.value().getSize(), testBuffer.getSize());
+  ASSERT_EQ(memcmp(loadResult.value().begin(), testBuffer.begin(),
+                   testBuffer.getSize()),
+            0);
 
-  loadFile.Close();
+  loadFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(fileAppendMode) {
-  const std::string testFileName = generateTestFileName();
-  const std::string firstContent = "First line\n";
-  const std::string secondContent = "Second line\n";
+  const dc::String testFileName = generateTestFileName();
+  const dc::String firstContent = dc::String("First line\n");
+  const dc::String secondContent = dc::String("Second line\n");
 
   File writeFile;
-  auto openWriteResult = writeFile.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openWriteResult, File::Result::kSuccess);
+  auto openWriteResult = writeFile.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openWriteResult.isOk());
 
-  auto firstWriteResult = writeFile.Write(firstContent);
+  auto firstWriteResult = writeFile.write(firstContent);
   ASSERT_EQ(firstWriteResult, File::Result::kSuccess);
 
-  writeFile.Close();
+  writeFile.close();
 
   File appendFile;
-  auto openAppendResult = appendFile.Open(testFileName, File::Mode::kAppend);
-  ASSERT_EQ(openAppendResult, File::Result::kSuccess);
+  auto openAppendResult = appendFile.open(testFileName, File::Mode::kAppend);
+  ASSERT_TRUE(openAppendResult.isOk());
 
-  auto secondWriteResult = appendFile.Write(secondContent);
+  auto secondWriteResult = appendFile.write(secondContent);
   ASSERT_EQ(secondWriteResult, File::Result::kSuccess);
 
-  appendFile.Close();
+  appendFile.close();
 
   File readFile;
-  auto openReadResult = readFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openReadResult, File::Result::kSuccess);
+  auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openReadResult.isOk());
 
-  auto [readResult, readContent] = readFile.Read();
-  ASSERT_EQ(readResult, File::Result::kSuccess);
-  ASSERT_EQ(readContent, firstContent + secondContent);
+  auto readResult = readFile.read();
+  ASSERT_TRUE(readResult.isOk());
 
-  readFile.Close();
+  dc::String combined = firstContent.clone();
+  combined += secondContent;
+  ASSERT_EQ(readResult.value(), combined);
 
-  auto removeResult = File::Remove(testFileName);
+  readFile.close();
+
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(fileGetSize) {
-  const std::string testContent =
-      "This is a test string for checking file size.";
-  const std::string testFileName = generateTestFileName();
+  const dc::String testContent =
+      dc::String("This is a test string for checking file size.");
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(testContent);
+  auto writeResult = file.write(testContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  auto [sizeResult, size] = file.GetSize();
-  ASSERT_EQ(sizeResult, File::Result::kSuccess);
-  ASSERT_EQ(static_cast<usize>(size), testContent.size());
+  auto sizeResult = file.getSize();
+  ASSERT_TRUE(sizeResult.isOk());
+  ASSERT_EQ(sizeResult.value(), static_cast<s64>(testContent.getSize()));
 
-  file.Close();
+  file.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(fileRename) {
-  const std::string oldFileName = generateTestFileName();
-  const std::string newFileName = generateTestFileName();
-  const std::string testContent = "Content to rename";
+  const dc::String oldFileName = generateTestFileName();
+  const dc::String newFileName = generateTestFileName();
+  const dc::String testContent = dc::String("Content to rename");
 
   File file;
-  auto openResult = file.Open(oldFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(oldFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(testContent);
+  auto writeResult = file.write(testContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
-  auto renameResult = File::Rename(oldFileName, newFileName);
+  auto renameResult = File::rename(oldFileName, newFileName);
   ASSERT_EQ(renameResult, File::Result::kSuccess);
 
-  ASSERT_TRUE(File::FileExists(newFileName));
-  ASSERT_FALSE(File::FileExists(oldFileName));
+  ASSERT_TRUE(File::fileExists(newFileName));
+  ASSERT_FALSE(File::fileExists(oldFileName));
 
   File renamedFile;
-  auto openRenamedResult = renamedFile.Open(newFileName, File::Mode::kRead);
-  ASSERT_EQ(openRenamedResult, File::Result::kSuccess);
+  auto openRenamedResult = renamedFile.open(newFileName, File::Mode::kRead);
+  ASSERT_TRUE(openRenamedResult.isOk());
 
-  auto [readResult, readContent] = renamedFile.Read();
-  ASSERT_EQ(readResult, File::Result::kSuccess);
-  ASSERT_EQ(readContent, testContent);
+  auto readResult = renamedFile.read();
+  ASSERT_TRUE(readResult.isOk());
+  ASSERT_EQ(readResult.value(), testContent);
 
-  renamedFile.Close();
+  renamedFile.close();
 
-  auto removeResult = File::Remove(newFileName);
+  auto removeResult = File::remove(newFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(fileExists) {
-  const std::string testFileName = generateTestFileName();
-  const std::string testContent = "Test content";
+  const dc::String testFileName = generateTestFileName();
+  const dc::String testContent = dc::String("Test content");
 
-  ASSERT_FALSE(File::FileExists(testFileName));
+  ASSERT_FALSE(File::fileExists(testFileName));
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(testContent);
+  auto writeResult = file.write(testContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
-  ASSERT_TRUE(File::FileExists(testFileName));
+  ASSERT_TRUE(File::fileExists(testFileName));
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 
-  ASSERT_FALSE(File::FileExists(testFileName));
+  ASSERT_FALSE(File::fileExists(testFileName));
 }
 
 DTEST(fileOpenNonExistent) {
-  const std::string testFileName = generateTestFileName();
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openResult, File::Result::kCannotOpenPath);
+  auto openResult = file.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openResult.isErr());
+  ASSERT_EQ(openResult.errValue(), File::Result::kCannotOpenPath);
 }
 
 DTEST(fileRemoveNonExistent) {
-  const std::string testFileName = generateTestFileName();
+  const dc::String testFileName = generateTestFileName();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kCannotOpenPath);
 }
 
 DTEST(renameNonExistentFile) {
-  const std::string oldFileName = generateTestFileName();
-  const std::string newFileName = generateTestFileName();
+  const dc::String oldFileName = generateTestFileName();
+  const dc::String newFileName = generateTestFileName();
 
-  auto renameResult = File::Rename(oldFileName, newFileName);
+  auto renameResult = File::rename(oldFileName, newFileName);
   ASSERT_EQ(renameResult, File::Result::kFailedRename);
 }
 
 DTEST(writeAndReadEmptyFile) {
-  const std::string testFileName = generateTestFileName();
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write("");
+  auto writeResult = file.write(dc::String(""));
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
   File readFile;
-  auto openReadResult = readFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openReadResult, File::Result::kSuccess);
+  auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openReadResult.isOk());
 
-  auto [readResult, readContent] = readFile.Read();
-  ASSERT_EQ(readResult, File::Result::kSuccess);
-  ASSERT_TRUE(readContent.empty());
+  auto readResult = readFile.read();
+  ASSERT_TRUE(readResult.isOk());
+  ASSERT_TRUE(readResult.value().isEmpty());
 
-  auto [sizeResult, size] = readFile.GetSize();
-  ASSERT_EQ(sizeResult, File::Result::kSuccess);
-  ASSERT_EQ(size, 0L);
+  auto sizeResult = readFile.getSize();
+  ASSERT_TRUE(sizeResult.isOk());
+  ASSERT_EQ(sizeResult.value(), 0L);
 
-  readFile.Close();
+  readFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(readWithReference) {
-  const std::string testContent = "Test content";
-  const std::string testFileName = generateTestFileName();
+  const dc::String testContent = dc::String("Test content");
+  const dc::String testFileName = generateTestFileName();
 
   File writeFile;
-  auto openWriteResult = writeFile.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openWriteResult, File::Result::kSuccess);
+  auto openWriteResult = writeFile.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openWriteResult.isOk());
 
-  auto writeResult = writeFile.Write(testContent);
+  auto writeResult = writeFile.write(testContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  writeFile.Close();
+  writeFile.close();
 
   File readFile;
-  auto openReadResult = readFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openReadResult, File::Result::kSuccess);
+  auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openReadResult.isOk());
 
-  std::string readContent;
-  auto readResult = readFile.Read(readContent);
+  dc::String readContent;
+  auto readResult = readFile.read(readContent);
   ASSERT_EQ(readResult, File::Result::kSuccess);
   ASSERT_EQ(readContent, testContent);
 
-  readFile.Close();
+  readFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(loadWithReference) {
-  std::vector<u8> testBuffer = {0x00, 0x01, 0x02, 0x03, 0x04};
-  const std::string testFileName = generateTestFileName();
+  List<u8> testBuffer;
+  testBuffer.add(0x00);
+  testBuffer.add(0x01);
+  testBuffer.add(0x02);
+  testBuffer.add(0x03);
+  testBuffer.add(0x04);
+
+  const dc::String testFileName = generateTestFileName();
 
   File writeFile;
-  auto openWriteResult = writeFile.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openWriteResult, File::Result::kSuccess);
+  auto openWriteResult = writeFile.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openWriteResult.isOk());
 
-  auto writeResult = writeFile.Write(testBuffer);
+  auto writeResult = writeFile.write(testBuffer);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  writeFile.Close();
+  writeFile.close();
 
   File loadFile;
-  auto openLoadResult = loadFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openLoadResult, File::Result::kSuccess);
+  auto openLoadResult = loadFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openLoadResult.isOk());
 
-  std::vector<u8> loadBuffer;
-  auto loadResult = loadFile.Load(loadBuffer);
+  List<u8> loadBuffer;
+  auto loadResult = loadFile.load(loadBuffer);
   ASSERT_EQ(loadResult, File::Result::kSuccess);
-  ASSERT_EQ(loadBuffer.size(), testBuffer.size());
-  ASSERT_EQ(memcmp(loadBuffer.data(), testBuffer.data(), testBuffer.size()), 0);
+  ASSERT_EQ(loadBuffer.getSize(), testBuffer.getSize());
+  ASSERT_EQ(
+      memcmp(loadBuffer.begin(), testBuffer.begin(), testBuffer.getSize()), 0);
 
-  loadFile.Close();
+  loadFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(filePathTracking) {
-  const std::string testFileName = generateTestFileName();
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  ASSERT_EQ(file.path(), testFileName);
-  ASSERT_TRUE(file.IsOpen());
+  ASSERT_EQ(file.getPath(), testFileName);
+  ASSERT_TRUE(file.isOpen());
 
-  file.Close();
+  file.close();
 
-  ASSERT_EQ(file.path(), testFileName);
-  ASSERT_FALSE(file.IsOpen());
+  ASSERT_EQ(file.getPath(), testFileName);
+  ASSERT_FALSE(file.isOpen());
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }
 
 DTEST(resultToString) {
-  ASSERT_EQ(File::ResultToString(File::Result::kSuccess), "success");
-  ASSERT_EQ(File::ResultToString(File::Result::kCannotOpenPath),
-            "cannot open path");
-  ASSERT_EQ(File::ResultToString(File::Result::kFailedToSeek),
-            "failed to seek");
-  ASSERT_EQ(File::ResultToString(File::Result::kFailedToRead),
-            "failed to read");
-  ASSERT_EQ(File::ResultToString(File::Result::kFailedToGetPos),
-            "failed to get pos");
-  ASSERT_EQ(File::ResultToString(File::Result::kUnknownError), "unknown error");
-  ASSERT_EQ(File::ResultToString(File::Result::kFileNotOpen), "file not open");
-  ASSERT_EQ(File::ResultToString(File::Result::kWriteFailed), "write failed");
-  ASSERT_EQ(File::ResultToString(File::Result::kFailedRename), "failed rename");
+  ASSERT_EQ(File::resultToString(File::Result::kSuccess),
+            dc::String("success"));
+  ASSERT_EQ(File::resultToString(File::Result::kCannotOpenPath),
+            dc::String("cannot open path"));
+  ASSERT_EQ(File::resultToString(File::Result::kFailedToSeek),
+            dc::String("failed to seek"));
+  ASSERT_EQ(File::resultToString(File::Result::kFailedToRead),
+            dc::String("failed to read"));
+  ASSERT_EQ(File::resultToString(File::Result::kFailedToGetPos),
+            dc::String("failed to get pos"));
+  ASSERT_EQ(File::resultToString(File::Result::kUnknownError),
+            dc::String("unknown error"));
+  ASSERT_EQ(File::resultToString(File::Result::kFileNotOpen),
+            dc::String("file not open"));
+  ASSERT_EQ(File::resultToString(File::Result::kWriteFailed),
+            dc::String("write failed"));
+  ASSERT_EQ(File::resultToString(File::Result::kFailedRename),
+            dc::String("failed rename"));
 }
 
 DTEST(writeLargeContent) {
-  std::string largeContent;
+  dc::String largeContent;
   for (int i = 0; i < 10000; ++i) {
-    largeContent += "Line " + std::to_string(i) + "\n";
+    largeContent += dc::format("Line {}\n", i);
   }
-  const std::string testFileName = generateTestFileName();
+  const dc::String testFileName = generateTestFileName();
 
   File file;
-  auto openResult = file.Open(testFileName, File::Mode::kWrite);
-  ASSERT_EQ(openResult, File::Result::kSuccess);
+  auto openResult = file.open(testFileName, File::Mode::kWrite);
+  ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.Write(largeContent);
+  auto writeResult = file.write(largeContent);
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
-  file.Close();
+  file.close();
 
   File readFile;
-  auto openReadResult = readFile.Open(testFileName, File::Mode::kRead);
-  ASSERT_EQ(openReadResult, File::Result::kSuccess);
+  auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
+  ASSERT_TRUE(openReadResult.isOk());
 
-  auto [readResult, readContent] = readFile.Read();
-  ASSERT_EQ(readResult, File::Result::kSuccess);
-  ASSERT_EQ(readContent, largeContent);
+  auto readResult = readFile.read();
+  ASSERT_TRUE(readResult.isOk());
+  ASSERT_EQ(readResult.value(), largeContent);
 
-  readFile.Close();
+  readFile.close();
 
-  auto removeResult = File::Remove(testFileName);
+  auto removeResult = File::remove(testFileName);
   ASSERT_EQ(removeResult, File::Result::kSuccess);
 }

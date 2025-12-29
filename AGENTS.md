@@ -136,6 +136,7 @@ The codebase supports MSVC, Clang, and GCC. Use the provided macros:
 - **UTF-8**: Use `Utf8Iterator` for codepoint iteration, not byte iteration
 - **Logging**: Use `LOG_INFO`, `LOG_DEBUG`, `LOG_ERROR`, etc. from `dc/log.hpp`
 - **Formatting**: Use `dc::format()` for string formatting
+- **auto**: Use auto only when the type is written on the right side, as in `const auto testContent = dc::String("Hello, World!");`. Never repeat the type on both left and right side.
 
 ### Platform Specifics
 - Windows: Use `#ifdef WIN32` for platform-specific code

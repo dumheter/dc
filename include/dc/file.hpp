@@ -24,13 +24,10 @@
 
 #pragma once
 
-#define __STDC_WANT_LIB_EXT1__ 1
-#include <cstdio>
-#include <string>
-#include <tuple>
-#include <vector>
-
-#include "types.hpp"
+#include <dc/list.hpp>
+#include <dc/result.hpp>
+#include <dc/string.hpp>
+#include <dc/types.hpp>
 
 namespace dc {
 
@@ -61,56 +58,45 @@ class File {
     kFailedRename
   };
 
-  Result Open(const std::string& path, const Mode mode);
+  [[nodiscard]] dc::Result<dc::String, File::Result> open(
+      const dc::String& path, const Mode mode);
 
-  /**
-   * Will be called by destructor.
-   */
-  void Close();
+  /// Will be called by destructor.
+  void close();
 
-  /**
-   * Read file to string.
-   */
-  std::tuple<Result, std::string> Read();
-  Result Read(std::string& string_out);
+  /// Read file to string.
+  [[nodiscard]] dc::Result<dc::String, File::Result> read();
+  [[nodiscard]] File::Result read(dc::String& stringOut);
 
-  /**
-   * Load file to buffer.
-   */
-  std::tuple<Result, std::vector<u8>> Load();
-  Result Load(std::vector<u8>& buffer_out);
+  /// Load file to buffer.
+  [[nodiscard]] dc::Result<List<u8>, File::Result> load();
+  [[nodiscard]] File::Result load(List<u8>& bufferOut);
 
-  Result Write(const std::string& string);
-  Result Write(const std::vector<u8>& buffer);
+  [[nodiscard]] File::Result write(const dc::String& string);
+  [[nodiscard]] File::Result write(const List<u8>& buffer);
 
-  static Result Remove(const std::string& path);
+  [[nodiscard]] static File::Result remove(const dc::String& path);
 
-  static Result Rename(const std::string& old_path,
-                       const std::string& new_path);
+  [[nodiscard]] static File::Result rename(const dc::String& oldPath,
+                                           const dc::String& newPath);
 
-  static std::string ResultToString(const Result result);
+  [[nodiscard]] static dc::String resultToString(const Result result);
 
-  /**
-   * Size of file.
-   */
-  std::tuple<Result, long> GetSize();
+  /// Size of file.
+  [[nodiscard]] dc::Result<s64, File::Result> getSize();
 
-  static bool FileExists(const std::string& path);
+  [[nodiscard]] static bool fileExists(const dc::String& path);
 
-  /**
-   * Get path of the latest opened file, as set by Open().
-   */
-  const std::string& path() const { return path_; }
+  /// Get path of the latest opened file, as set by open().
+  [[nodiscard]] const dc::String& getPath() const { return m_path; }
 
-  /**
-   * Check if we think the file is open, though it can only reliably be
-   * tested by making a operation, such as read.
-   */
-  bool IsOpen() const { return file_ != NULL; }
+  /// Check if file is open. Note: this can only be reliably tested by
+  /// performing an operation such as read.
+  [[nodiscard]] bool isOpen() const { return m_file != nullptr; }
 
  private:
-  std::string path_;
-  std::FILE* file_;
+  dc::String m_path;
+  void* m_file = nullptr;  // FILE*
 };
 
 }  // namespace dc

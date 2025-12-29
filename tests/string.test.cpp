@@ -534,13 +534,13 @@ DTEST(findOverlappingPatterns) {
 
 DTEST(findLongSubstringInBook) {
   dc::File book;
-  auto r1 = book.Open("tests/book.txt", dc::File::Mode::kRead);
-  ASSERT_EQ(r1, dc::File::Result::kSuccess);
+  auto r1 = book.open("tests/book.txt", dc::File::Mode::kRead);
+  ASSERT_TRUE(r1.isOk());
 
-  auto r2 = book.Read();
-  ASSERT_EQ(std::get<0>(r2), dc::File::Result::kSuccess);
+  auto r2 = book.read();
+  ASSERT_TRUE(r2.isOk());
 
-  const String text(std::get<1>(r2).c_str());
+  const dc::String& text = r2.value();
 
   const Option<u64> found = text.find(
       "gobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei "
@@ -575,13 +575,13 @@ DTEST(findLongSubstringInBook) {
 
 DTEST(findShortSubstringInBook) {
   dc::File book;
-  auto r1 = book.Open("tests/book.txt", dc::File::Mode::kRead);
-  ASSERT_EQ(r1, dc::File::Result::kSuccess);
+  auto r1 = book.open("tests/book.txt", dc::File::Mode::kRead);
+  ASSERT_TRUE(r1.isOk());
 
-  auto r2 = book.Read();
-  ASSERT_EQ(std::get<0>(r2), dc::File::Result::kSuccess);
+  auto r2 = book.read();
+  ASSERT_TRUE(r2.isOk());
 
-  const String text(std::get<1>(r2).c_str());
+  const dc::String& text = r2.value();
 
   const Option<u64> found = text.find("toyuant");
 
