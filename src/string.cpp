@@ -106,6 +106,12 @@ u64 StringView::getLength() const {
   return length;
 }
 
+StringView StringView::subString(u64 offset, u64 count) const {
+  DC_ASSERT(offset <= m_size, "Offset cannot be larger than string size.");
+  const u64 actualCount = dc::min(count, m_size >= offset ? m_size - offset : 0);
+  return StringView(m_string + offset, actualCount);
+}
+
 Option<u64> StringView::find(StringView pattern) const {
   if (pattern.isEmpty() || isEmpty() || pattern.getSize() > getSize())
     return None;
@@ -272,6 +278,12 @@ u64 String::resize(u64 size) {
 Option<u64> String::find(StringView pattern) const {
   StringView thisString(c_str(), getSize());
   return thisString.find(pattern);
+}
+
+String String::subString(u64 offset, u64 count) const {
+  const StringView thisView(c_str(), getSize());
+  const StringView subView = thisView.subString(offset, count);
+  return String(subView);
 }
 
 bool String::endsWith(char8 c) const {

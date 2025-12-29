@@ -73,9 +73,7 @@ namespace dc {
   return timeNs;
 }
 
-[[nodiscard]] u64 getTimeUs() {
-  return getTimeNs() / 1'000;
-}
+[[nodiscard]] u64 getTimeUs() { return getTimeNs() / 1'000; }
 
 [[nodiscard]] u64 getTimeNsNoReorder() {
   u64 timeNs;
@@ -106,9 +104,7 @@ namespace dc {
   return timeNs;
 }
 
-[[nodiscard]] u64 getTimeUsNoReorder() {
-  return getTimeNsNoReorder() / 1'000;
-}
+[[nodiscard]] u64 getTimeUsNoReorder() { return getTimeNsNoReorder() / 1'000; }
 
 void sleepMs(u32 timeMs) {
 #if defined(DC_PLATFORM_WINDOWS)

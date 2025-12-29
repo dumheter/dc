@@ -1,6 +1,6 @@
 #include <dc/dtest.hpp>
-#include <dc/string.hpp>
 #include <dc/file.hpp>
+#include <dc/string.hpp>
 
 using namespace dc;
 
@@ -204,7 +204,23 @@ DTEST(stringViewUtf8Iterator) {
   ASSERT_EQ(i, 3);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+DTEST(stringViewSubString) {
+  StringView view("Hello World");
+
+  StringView sub1 = view.subString(0, 5);
+  ASSERT_EQ(sub1.getSize(), 5);
+  ASSERT_EQ(memcmp(sub1.c_str(), "Hello", 5), 0);
+
+  StringView sub2 = view.subString(6, 5);
+  ASSERT_EQ(sub2.getSize(), 5);
+  ASSERT_EQ(memcmp(sub2.c_str(), "World", 5), 0);
+
+  StringView sub3 = view.subString(0, 100);
+  ASSERT_EQ(sub3.getSize(), view.getSize());
+  ASSERT_EQ(memcmp(sub3.c_str(), "Hello World", view.getSize()), 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // String
 //
 
@@ -249,6 +265,22 @@ DTEST(sizeWhenBigString) {
   String str = "abc, abc, abc, abc, abc, abc, ";
 
   ASSERT_EQ(str.getSize(), len);
+}
+
+DTEST(subString) {
+  String str("Hello World");
+
+  String sub1 = str.subString(0, 5);
+  ASSERT_EQ(sub1.getSize(), 5);
+  ASSERT_EQ(sub1, "Hello");
+
+  String sub2 = str.subString(6, 5);
+  ASSERT_EQ(sub2.getSize(), 5);
+  ASSERT_EQ(sub2, "World");
+
+  String sub3 = str.subString(0, 100);
+  ASSERT_EQ(sub3.getSize(), str.getSize());
+  ASSERT_EQ(sub3, "Hello World");
 }
 
 DTEST(isSameAsCString) {
@@ -507,10 +539,35 @@ DTEST(findLongSubstringInBook) {
 
   auto r2 = book.Read();
   ASSERT_EQ(std::get<0>(r2), dc::File::Result::kSuccess);
-  
+
   const String text(std::get<1>(r2).c_str());
 
-  const Option<u64> found = text.find("gobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo uytngobbaga");
+  const Option<u64> found = text.find(
+      "gobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr ahrositenarsei "
+      "iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern stoiawfyou nawfoyt "
+      "unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr "
+      "ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern "
+      "stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr "
+      "ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern "
+      "stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr "
+      "ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern "
+      "stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr "
+      "ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern "
+      "stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbagabba gobbagabbagobbagabba gobbagabba ioearstoiaenr "
+      "ahrositenarsei iarsneaioers ieaerisotienarsietn nwyuftnwyfuntaern "
+      "stoiawfyou nawfoyt unawfoyu tnawfyuotnaowyfntyaowfn toyuant "
+      "oyauwntunfwuyatnwofyntaowuyftnaowyuftaowuyfn touyaw oyutwfo "
+      "uytngobbaga");
 
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(177733));
@@ -523,7 +580,7 @@ DTEST(findShortSubstringInBook) {
 
   auto r2 = book.Read();
   ASSERT_EQ(std::get<0>(r2), dc::File::Result::kSuccess);
-  
+
   const String text(std::get<1>(r2).c_str());
 
   const Option<u64> found = text.find("toyuant");

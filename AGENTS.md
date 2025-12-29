@@ -81,6 +81,7 @@ The project uses clang-format with Google style (see `.clang-format`).
 - Use `[[nodiscard]]` on functions and classes that return important values
 - Use `[[maybe_unused]]` on intentionally unused parameters
 - Use `noexcept` on move constructors/assignment operators
+- Use `const` when not mutating the variable. Always be const correct.
 
 ### Error Handling
 - **Result types**: Use `Result<T, E>` for functions that may fail

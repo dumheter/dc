@@ -128,6 +128,8 @@ class [[nodiscard]] StringView {
   // [[nodiscard]] const char8* beginChar8() const { return m_string; }
   // [[nodiscard]] const char8* endChar8() const { return m_string + m_size; }
 
+  [[nodiscard]] StringView subString(u64 offset, u64 count) const;
+
   [[nodiscard]] Option<u64> find(StringView pattern) const;
 
  private:
@@ -246,6 +248,8 @@ class [[nodiscard]] String {
   /// @retval Some with position if found
   /// @retval None if not found
   Option<u64> find(StringView pattern) const;
+
+  [[nodiscard]] String subString(u64 offset, u64 count) const;
 
   bool endsWith(char8 c) const;
 
