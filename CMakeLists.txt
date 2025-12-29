@@ -109,6 +109,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 if (DC_ENABLE_LIB_DTEST OR DC_BUILD_TESTS)
   add_library(dtest STATIC ${DTEST_SOURCES})
+  target_link_libraries(dtest ${PROJECT_NAME})
   target_compile_features(dtest PRIVATE cxx_std_23)
 endif ()
 
