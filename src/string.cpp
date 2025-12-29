@@ -108,7 +108,8 @@ u64 StringView::getLength() const {
 
 StringView StringView::subString(u64 offset, u64 count) const {
   DC_ASSERT(offset <= m_size, "Offset cannot be larger than string size.");
-  const u64 actualCount = dc::min(count, m_size >= offset ? m_size - offset : 0);
+  const u64 actualCount =
+      dc::min(count, m_size >= offset ? m_size - offset : 0);
   return StringView(m_string + offset, actualCount);
 }
 
@@ -148,6 +149,25 @@ Option<u64> StringView::find(StringView pattern) const {
         badChar[static_cast<u8>(m_string[shift + static_cast<u64>(j)])];
     const s64 shiftAmount = dc::max(static_cast<s64>(1), j - badCharIndex);
     shift += static_cast<u64>(shiftAmount);
+  }
+
+  return None;
+}
+
+Option<u64> StringView::find(StringView pattern, u64 offset) const {
+  if (pattern.isEmpty() || isEmpty() || pattern.getSize() > getSize())
+    return None;
+
+  if (offset >= getSize()) return None;
+
+  const u64 remainingSize = getSize() - offset;
+  if (pattern.getSize() > remainingSize) return None;
+
+  const StringView subView(m_string + offset, remainingSize);
+  const Option<u64> found = subView.find(pattern);
+
+  if (found.isSome()) {
+    return Some(found.value() + offset);
   }
 
   return None;
@@ -278,6 +298,11 @@ u64 String::resize(u64 size) {
 Option<u64> String::find(StringView pattern) const {
   StringView thisString(c_str(), getSize());
   return thisString.find(pattern);
+}
+
+Option<u64> String::find(StringView pattern, u64 offset) const {
+  StringView thisString(c_str(), getSize());
+  return thisString.find(pattern, offset);
 }
 
 String String::subString(u64 offset, u64 count) const {

@@ -588,3 +588,62 @@ DTEST(findShortSubstringInBook) {
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(177908));
 }
+
+DTEST(findWithOffset) {
+  const String text("Hello World Hello World");
+  Option<u64> found = text.find("World", 10);
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(18));
+}
+
+DTEST(findWithOffsetNotFound) {
+  const String text("Hello World");
+  Option<u64> found = text.find("Hello", 5);
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findWithOffsetBeyondEnd) {
+  const String text("Hello World");
+  Option<u64> found = text.find("World", 20);
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findWithOffsetZero) {
+  const String text("Hello World");
+  Option<u64> found = text.find("World", 0);
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findWithOffsetMultipleOccurrences) {
+  const String text("abcabcabc");
+  Option<u64> found = text.find("abc", 3);
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(3));
+}
+
+DTEST(findWithOffsetAtPatternStart) {
+  const String text("Hello World");
+  Option<u64> found = text.find("World", 6);
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(6));
+}
+
+DTEST(findViewWithOffset) {
+  const StringView view("Hello World Hello World");
+  Option<u64> found = view.find("World", 10);
+  ASSERT_TRUE(found.isSome());
+  ASSERT_EQ(found.value(), static_cast<u64>(18));
+}
+
+DTEST(findViewWithOffsetNotFound) {
+  const StringView view("Hello World");
+  Option<u64> found = view.find("Hello", 5);
+  ASSERT_TRUE(found.isNone());
+}
+
+DTEST(findViewWithOffsetBeyondEnd) {
+  const StringView view("Hello World");
+  Option<u64> found = view.find("World", 20);
+  ASSERT_TRUE(found.isNone());
+}

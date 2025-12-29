@@ -131,6 +131,7 @@ class [[nodiscard]] StringView {
   [[nodiscard]] StringView subString(u64 offset, u64 count) const;
 
   [[nodiscard]] Option<u64> find(StringView pattern) const;
+  [[nodiscard]] Option<u64> find(StringView pattern, u64 offset) const;
 
  private:
   const char8* m_string = nullptr;
@@ -248,6 +249,7 @@ class [[nodiscard]] String {
   /// @retval Some with position if found
   /// @retval None if not found
   Option<u64> find(StringView pattern) const;
+  Option<u64> find(StringView pattern, u64 offset) const;
 
   [[nodiscard]] String subString(u64 offset, u64 count) const;
 
