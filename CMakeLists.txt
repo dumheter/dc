@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 project(dc CXX)
-set(CMAKE_CXX_STANDARD 17)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// Options
@@ -106,9 +105,11 @@ endif ()
 #// Libraries / Executables
 
 add_library(${PROJECT_NAME} STATIC ${DC_SOURCES})
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 if (DC_ENABLE_LIB_DTEST OR DC_BUILD_TESTS)
   add_library(dtest STATIC ${DTEST_SOURCES})
+  target_compile_features(dtest PRIVATE cxx_std_23)
 endif ()
 
 #//////////////////////////////////////////////////////////////////////////////

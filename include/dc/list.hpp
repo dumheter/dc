@@ -29,6 +29,7 @@
 #include <dc/pointer_int_pair.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
+#include <cstring>
 
 namespace dc {
 
