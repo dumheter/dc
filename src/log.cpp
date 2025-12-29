@@ -194,7 +194,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
       print(
-#if defined(DC_LOG_PREFIX_DATETIME) || defined(DC_LOG_PREFIX_LEVEL) || defined(DC_LOG_PREFIX_FILESTAMP) || defined(DC_LOG_PREFIX_FUNCTION)
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
@@ -215,7 +215,7 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
 #if DC_LOG_PREFIX_FUNCTION == 1
           "{<10}"
 #endif
-#if defined(DC_LOG_PREFIX_DATETIME) || defined(DC_LOG_PREFIX_LEVEL) || defined(DC_LOG_PREFIX_FILESTAMP) || defined(DC_LOG_PREFIX_FUNCTION)
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "] {}\n",
 #else
 		  "{}\n",
@@ -260,7 +260,7 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
   if (payload.level >= level) {
     if (payload.level != Level::Raw) {
       print(
-#if defined(DC_LOG_PREFIX_DATETIME) || defined(DC_LOG_PREFIX_LEVEL) || defined(DC_LOG_PREFIX_FILESTAMP) || defined(DC_LOG_PREFIX_FUNCTION)
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
@@ -281,7 +281,7 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
 #if DC_LOG_PREFIX_FUNCTION == 1
           "{}"
 #endif
-#if defined(DC_LOG_PREFIX_DATETIME) || defined(DC_LOG_PREFIX_LEVEL) || defined(DC_LOG_PREFIX_FILESTAMP) || defined(DC_LOG_PREFIX_FUNCTION)
+#if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
           "] {}\n",
 #else
 		  "{}\n",
