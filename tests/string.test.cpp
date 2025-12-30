@@ -169,6 +169,34 @@ DTEST(stringViewRunTime) {
   ASSERT_TRUE(strcmp(view.c_str(), "runtime length") == 0);
 }
 
+DTEST(stringViewConstructedFromString) {
+  String str("Hello World");
+  StringView view(str);
+
+  ASSERT_EQ(str.getSize(), view.getSize());
+  ASSERT_TRUE(strcmp(view.c_str(), "Hello World") == 0);
+  ASSERT_TRUE(strcmp(str.c_str(), view.c_str()) == 0);
+}
+
+DTEST(stringCopyConstructedFromStringView) {
+  StringView view("Test String");
+  String str(view);
+
+  ASSERT_EQ(str.getSize(), view.getSize());
+  ASSERT_TRUE(strcmp(str.c_str(), "Test String") == 0);
+  ASSERT_TRUE(strcmp(str.c_str(), view.c_str()) == 0);
+}
+
+DTEST(stringViewAndStringRoundTrip) {
+  String original("Round Trip Test");
+  StringView view(original);
+  String copied(view);
+
+  ASSERT_EQ(original.getSize(), view.getSize());
+  ASSERT_EQ(view.getSize(), copied.getSize());
+  ASSERT_TRUE(strcmp(original.c_str(), copied.c_str()) == 0);
+}
+
 DTEST(stringViewUtf8Iterator) {
   String str;
 
@@ -295,6 +323,26 @@ DTEST(isSameAsCStringLooong) {
   String str = "abc, abc, abc, abc, abc, abc, ";
 
   ASSERT_TRUE(strcmp(cstr, str.c_str()) == 0);
+}
+
+DTEST(stringAssignedFromStringView) {
+  StringView view("Test String");
+  String str;
+  str = view;
+
+  ASSERT_EQ(str.getSize(), view.getSize());
+  ASSERT_TRUE(strcmp(str.c_str(), "Test String") == 0);
+  ASSERT_TRUE(strcmp(str.c_str(), view.c_str()) == 0);
+}
+
+DTEST(stringAssignedFromStringViewOverwrites) {
+  String original("Original");
+  StringView view("New String");
+  original = view;
+
+  ASSERT_EQ(original.getSize(), view.getSize());
+  ASSERT_TRUE(strcmp(original.c_str(), "New String") == 0);
+  ASSERT_TRUE(strcmp(original.c_str(), view.c_str()) == 0);
 }
 
 DTEST(canIterate) {

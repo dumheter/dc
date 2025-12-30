@@ -33,6 +33,8 @@
 
 namespace dc {
 
+class String;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Iterator
 //
@@ -103,10 +105,12 @@ class [[nodiscard]] StringView {
     DC_ASSERT(end >= begin, "End iterator must be larger than begin iterator.");
   }
 
+  StringView(const String& string);
+
   [[nodiscard]] constexpr const char8* c_str() const { return m_string; }
 
   [[nodiscard]] constexpr const u8* getData() const {
-    return (const u8*)m_string;
+    return reinterpret_cast<const u8*>(m_string);
   }
 
   [[nodiscard]] constexpr u64 getSize() const { return m_size; }
@@ -160,6 +164,8 @@ class [[nodiscard]] String {
   /// Try to avoid this function, has to measure the length of the c string.
   // TODO cgustafsson: refer user to something else
   void operator=(const char8* str);
+
+  void operator=(StringView view);
 
   // use clone() instead
   String(const String& other) = delete;

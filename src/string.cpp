@@ -89,6 +89,9 @@ bool Utf8Iterator::hasValidOffset() const {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+StringView::StringView(const String& string)
+    : StringView(string.c_str(), string.getSize()) {}
+
 char8 StringView::operator[](u64 pos) const {
   DC_ASSERT(pos <= m_size, "Trying to read outside the StringView memory.");
   return m_string[pos];
@@ -220,6 +223,14 @@ void String::operator=(const char8* str) {
 
   m_list.resize(size + 1);
   memcpy(m_list.begin(), str, size + 1);
+}
+
+void String::operator=(StringView view) {
+  const u64 size = view.getSize();
+
+  m_list.resize(size + 1);
+  memcpy(m_list.begin(), view.c_str(), size);
+  m_list[size] = 0;
 }
 
 String String::clone() const {
