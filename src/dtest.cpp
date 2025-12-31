@@ -57,6 +57,10 @@ namespace internal {
 using Paint = dc::log::Paint<100>;
 using Color = dc::log::Color;
 
+static bool g_silentMode = false;
+
+bool isSilentMode() { return g_silentMode; }
+
 void Register::addTest(TestFunction fn, const char* testName,
                        const char* fileName, u64 filePathHash) {
   TestCategory& category = m_testCategories[filePathHash];
@@ -92,8 +96,16 @@ static inline void FixConsole() {
 #endif
 }
 
-int runTests() {
+int runTests(int argc, char** argv) {
   FixConsole();
+
+  for (int i = 1; i < argc; ++i) {
+    if (dc::StringView(argv[i]) == "-s" ||
+        dc::StringView(argv[i]) == "--silent") {
+      g_silentMode = true;
+    }
+  }
+
   Register& r = getRegister();
 
   const bool vipActive = r.hasVipCategories();
@@ -122,9 +134,11 @@ int runTests() {
     const u64 catBefore = dc::getTimeUs();
     int i = 0;
     for (TestCase& test : category.tests) {
-      LOG_INFO("\t{} {} ...... ", i,
-               Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                   .c_str());
+      if (!g_silentMode) {
+        LOG_INFO("\t{} {} ...... ", i,
+                 Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                     .c_str());
+      }
       const u64 testBefore = dc::getTimeUs();
       test.fn(test.state);
       const u64 testAfter = dc::getTimeUs();
@@ -136,20 +150,24 @@ int runTests() {
                  Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
-      LOG_INFO("\t{} {} {} in {.6}s, {} asserts.", i,
-               Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                   .c_str(),
-               !test.state.fail ? Paint("PASSED", Color::Green).c_str()
-                                : Paint("FAILED", Color::Red).c_str(),
-               (testAfter - testBefore) / 1'000'000.f, test.state.pass);
+      if (!g_silentMode || test.state.fail > 0) {
+        LOG_INFO("\t{} {} {} in {.6}s, {} asserts.", i,
+                 Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                     .c_str(),
+                 !test.state.fail ? Paint("PASSED", Color::Green).c_str()
+                                  : Paint("FAILED", Color::Red).c_str(),
+                 (testAfter - testBefore) / 1'000'000.f, test.state.pass);
+      }
       ++i;
     }
     const u64 catAfter = dc::getTimeUs();
 
-    LOG_INFO("{} {} in {.6}s", Paint(category.name, Color::Magenta).c_str(),
-             !category.fail ? Paint("PASSED", Color::Green).c_str()
-                            : Paint("FAILED", Color::Red).c_str(),
-             (catAfter - catBefore) / 1'000'000.f);
+    if (!g_silentMode || category.fail > 0) {
+      LOG_INFO("{} {} in {.6}s", Paint(category.name, Color::Magenta).c_str(),
+               !category.fail ? Paint("PASSED", Color::Green).c_str()
+                              : Paint("FAILED", Color::Red).c_str(),
+               (catAfter - catBefore) / 1'000'000.f);
+    }
   }
 
   stopwatch.stop();

@@ -58,14 +58,14 @@
 //
 
 /// Run all registered tests.
-#define DTEST_RUN()                               \
-  [] {                                            \
-    dc::log::windowsFixConsole();                 \
-    dc::log::init();                              \
-    const auto res = dtest::internal::runTests(); \
-    dc::log::deinit();                            \
-    return res;                                   \
-  }()
+#define DTEST_RUN()                                         \
+  [](int argc, char** argv) {                               \
+    dc::log::windowsFixConsole();                           \
+    dc::log::init();                                        \
+    const auto res = dtest::internal::runTests(argc, argv); \
+    dc::log::deinit();                                      \
+    return res;                                             \
+  }(argc, argv)
 
 /// Register a new test.
 #define DTEST(testName) DTEST_REGISTER(testName, DC_FILENAME, __FILE__)
@@ -231,6 +231,8 @@ struct TestBodyState {
   int fail = 0;
 };
 
+bool isSilentMode();
+
 using TestFunction = std::function<void(TestBodyState&)>;
 
 struct TestCase {
@@ -281,7 +283,7 @@ class Register {
 /// Returnes a static instantitation of Register.
 Register& getRegister();
 
-int runTests();
+int runTests(int argc, char** argv);
 
 template <typename Fn>
 void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
