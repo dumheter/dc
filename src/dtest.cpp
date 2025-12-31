@@ -22,7 +22,6 @@
  * SOFTWARE.
  */
 
-#include <cstdio>
 #include <dc/assert.hpp>
 #include <dc/dtest.hpp>
 #include <dc/time.hpp>
@@ -96,6 +95,16 @@ static inline void FixConsole() {
 #endif
 }
 
+static void listTests() {
+  Register& r = getRegister();
+  for (const auto& [hash, category] : r.getTestCategories()) {
+    LOG_RAW("{}.\n", category.name);
+    for (const auto& test : category.tests) {
+      LOG_RAW("  {}\n", test.state.name);
+    }
+  }
+}
+
 int runTests(int argc, char** argv) {
   FixConsole();
 
@@ -103,6 +112,10 @@ int runTests(int argc, char** argv) {
     if (dc::StringView(argv[i]) == "-s" ||
         dc::StringView(argv[i]) == "--silent") {
       g_silentMode = true;
+    } else if (dc::StringView(argv[i]) == "-l" ||
+               dc::StringView(argv[i]) == "--list-tests") {
+      listTests();
+      return 0;
     }
   }
 
