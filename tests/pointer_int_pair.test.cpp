@@ -6,7 +6,7 @@ using namespace dc;
 
 DTEST(typicalSetAndGet) {
   PointerIntPair<int*, int> pair;
-  int* ptr = (int*)getDefaultAllocator().alloc(sizeof(int));
+  int* ptr = static_cast<int*>(getDefaultAllocator().alloc(sizeof(int)));
   *ptr = 1337;
   int value = 3;
 

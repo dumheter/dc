@@ -37,25 +37,29 @@ class PointerIntPair {
 
   PointerIntPair(PointerT ptr) { setPointer(ptr); }
 
-  PointerT getPointer() const { return (PointerT)(m_value & kPointerMask); }
+  PointerT getPointer() const {
+    return reinterpret_cast<PointerT>(m_value & kPointerMask);
+  }
 
-  IntT getInt() const { return (IntT)(m_value & kIntMask); }
+  IntT getInt() const { return static_cast<IntT>(m_value & kIntMask); }
 
   void setPointer(PointerT ptr) {
-    m_value =
-        setBits(m_value, sizeof(PointerT) * 8 - kFreeBits, 0, (uintptr_t)ptr);
+    m_value = setBits(m_value, sizeof(PointerT) * 8 - kFreeBits, 0,
+                      reinterpret_cast<uintptr_t>(ptr));
   }
 
   void setInt(IntT value) {
-    DC_ASSERT(value < (IntT)kFreeBitsValue,
+    DC_ASSERT(value < static_cast<IntT>(kFreeBitsValue),
               "Trying to assign a too large int.");
-    m_value = setBits(m_value, kFreeBits, 0, (uintptr_t)value);
+    m_value = setBits(m_value, kFreeBits, 0, static_cast<uintptr_t>(value));
   }
 
  private:
-  static constexpr int kFreeBits = (int)dc::log2(alignof(PointerT));
+  static constexpr int kFreeBits =
+      static_cast<int>(dc::log2(alignof(PointerT)));
   static constexpr int kFreeBitsValue = alignof(PointerT);
-  static constexpr uintptr_t kIntMask = (uintptr_t)(kFreeBitsValue - 1);
+  static constexpr uintptr_t kIntMask =
+      static_cast<uintptr_t>(kFreeBitsValue - 1);
   static constexpr uintptr_t kPointerMask = ~kIntMask;
 
  private:

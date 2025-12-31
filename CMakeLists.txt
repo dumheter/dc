@@ -17,7 +17,7 @@ option(DC_SANITIZE_MEMORY "Enable memory sanitizer (requires Clang or GCC on Lin
 #// Moodycamel
 
 add_subdirectory(thirdparty/moodycamel)
-include_directories(${PROJECT_NAME} thirdparty/moodycamel/include)
+include_directories(thirdparty/moodycamel/include)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// List source files

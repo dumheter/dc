@@ -335,10 +335,10 @@ class Paint {
     DC_ASSERT(strlen(str) < kStrLen, "Trying to paint a too large string.");
     const int res = snprintf(m_str, kStrLen, "\033[%dm%s\033[0m",
                              static_cast<ColorType>(color), str);
-    DC_ASSERT(
-        res < static_cast<int>(clamp(kStrLen, (usize)0,
-                                     (usize)std::numeric_limits<int>::max)),
-        "Too small buffer.");
+    DC_ASSERT(res < static_cast<int>(clamp(
+                        kStrLen, static_cast<usize>(0),
+                        static_cast<usize>(std::numeric_limits<int>::max()))),
+              "Too small buffer.");
     DC_ASSERT(res >= 0, "Encoding error from snprintf.");
     m_currentStrLen = res >= 0 ? static_cast<usize>(res) : 0;
   }
@@ -375,6 +375,12 @@ struct Formatter<log::Level> : public Formatter<StringView> {
         break;
       case dc::log::Level::Error:
         str = "error";
+        break;
+      case dc::log::Level::Raw:
+        str = "raw";
+        break;
+      case dc::log::Level::None:
+        str = "none";
         break;
       default:
         str = "unknown";

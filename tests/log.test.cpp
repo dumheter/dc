@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <dc/dtest.hpp>
 #include <dc/log.hpp>
 #include <dc/time.hpp>
@@ -142,7 +143,7 @@ DTEST(multithreadedStressTest) {
   };
 
   struct CountSink {
-    CountSink(Data& data, usize size) : data(data) {
+    CountSink(Data& sinkData, usize size) : data(sinkData) {
       data.verbose.resize(size);
       data.info.resize(size);
       data.warning.resize(size);

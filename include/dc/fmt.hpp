@@ -286,8 +286,10 @@ struct FormatArg {
   constexpr FormatArg(u64 value) : u64Value(value), type(Types::U64Type) {}
 
   // TODO cgustafsson: why is not unsigned long same as u64?
-  constexpr FormatArg(unsigned long value)
-      : u64Value(value), type(Types::U64Type) {}
+  template <typename T = unsigned long>
+  constexpr FormatArg(
+      typename dc::EnableIf<!dc::isSame<u64, unsigned long>, T>::Type value)
+      : u64Value(static_cast<u64>(value)), type(Types::U64Type) {}
   constexpr FormatArg(f32 value) : f32Value(value), type(Types::F32Type) {}
   constexpr FormatArg(f64 value) : f64Value(value), type(Types::F64Type) {}
   constexpr FormatArg(bool value) : boolValue(value), type(Types::BoolType) {}
@@ -332,18 +334,18 @@ struct FormatArg {
 
 template <typename... Args>
 struct FormatArgs {
-  FormatArgs(const Args&... args) { set(0, args...); }
+  FormatArgs(const Args&... arguments) { set(0, arguments...); }
 
   void set(u32 index) { args[index] = FormatArg(); }
 
   template <typename T>
-  void set(u32 index, const T& arg) {
-    args[index] = FormatArg(arg);
+  void set(u32 index, const T& argument) {
+    args[index] = FormatArg(argument);
   }
 
   template <typename T, typename... U>
-  void set(u32 index, const T& arg, const U&... otherArgs) {
-    args[index] = FormatArg(arg);
+  void set(u32 index, const T& argument, const U&... otherArgs) {
+    args[index] = FormatArg(argument);
     set(index + 1, otherArgs...);
   }
 

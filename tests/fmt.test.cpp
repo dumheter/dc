@@ -1,3 +1,4 @@
+#include <climits>
 #include <dc/dtest.hpp>
 #include <dc/fmt.hpp>
 

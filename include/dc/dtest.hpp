@@ -119,7 +119,7 @@ template <typename T>
 struct LifetimeTracker {
   LifetimeTracker() : LifetimeTracker(T()) {}
 
-  LifetimeTracker(T&& object) : object(dc::forward<T>(object)) {
+  LifetimeTracker(T&& obj) : object(dc::forward<T>(obj)) {
     LifetimeStats& stats = LifetimeStats::getInstance();
     ++stats.constructs;
   }

@@ -99,7 +99,7 @@ DTEST(validateOnValidUtf8) {
   str += 0xA5;
   Option<utf8::CodeSize> size = utf8::validate(str.c_str());
   ASSERT_TRUE(size.isSome());
-  ASSERT_TRUE(size.contains((utf8::CodeSize)4));
+  ASSERT_TRUE(size.contains(static_cast<utf8::CodeSize>(4)));
 }
 
 DTEST(validateOnInvalidUtf8) {

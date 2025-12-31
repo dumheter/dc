@@ -109,7 +109,7 @@ class [[nodiscard]] StringView {
 
   [[nodiscard]] constexpr const char8* c_str() const { return m_string; }
 
-  [[nodiscard]] constexpr const u8* getData() const {
+  [[nodiscard]] const u8* getData() const {
     return reinterpret_cast<const u8*>(m_string);
   }
 

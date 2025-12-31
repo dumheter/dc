@@ -102,17 +102,14 @@ CodeSize decode(const char8* data, usize offset, CodePoint& codePointOut) {
   CodeSize size;
 
   const bool octetCount1 =
-      static_cast<CodePoint>(
-          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
-           kOctetCount1Mask)) == kOctetCount1Value;
+      ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+        kOctetCount1Mask)) == kOctetCount1Value;
   const bool octetCount2 =
-      static_cast<CodePoint>(
-          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
-           kOctetCount2Mask)) == kOctetCount2Value;
+      ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+        kOctetCount2Mask)) == kOctetCount2Value;
   const bool octetCount3 =
-      static_cast<CodePoint>(
-          (static_cast<CodePoint>(static_cast<u8>(data[offset])) &
-           kOctetCount3Mask)) == kOctetCount3Value;
+      ((static_cast<CodePoint>(static_cast<u8>(data[offset])) &
+        kOctetCount3Mask)) == kOctetCount3Value;
   // const bool octetCount4 = (data[offset] & kOctetCount4Mask) ==
   // kOctetCount4Value;
 

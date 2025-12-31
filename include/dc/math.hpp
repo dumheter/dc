@@ -109,8 +109,8 @@ template <typename T>
 template <typename T>
 [[nodiscard]] inline constexpr T setBits(T value, s64 bits, s64 offset,
                                          T bitsValue) {
-  return (value & ~(T((((T)1 << bits) - 1)) << offset)) |
-         (T(bitsValue & (((T)1 << bits) - 1)) << offset);
+  return (value & ~(T(((static_cast<T>(1) << bits) - 1)) << offset)) |
+         (T(bitsValue & ((static_cast<T>(1) << bits) - 1)) << offset);
 }
 
 template <typename T>

@@ -251,7 +251,7 @@ dc::Result<s64, File::Result> File::getSize() {
     int res = fseek(static_cast<FILE*>(m_file), 0, SEEK_END);
     constexpr int SEEK_SUCCESS = 0;
     if (res == SEEK_SUCCESS) {
-      size = static_cast<s64>(ftell(static_cast<FILE*>(m_file)));
+      size = ftell((static_cast<FILE*>(m_file)));
       constexpr long FTELL_FAIL = -1L;
       if (size == FTELL_FAIL) {
         result = Result::kFailedToGetPos;

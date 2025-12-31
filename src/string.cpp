@@ -353,7 +353,7 @@ void String::operator+=(const String& other) {
   append(other.getData(), other.getSize());
 }
 
-void String::operator+=(u8 data) { append((char8*)&data, 1); }
+void String::operator+=(u8 data) { append(reinterpret_cast<char8*>(&data), 1); }
 
 void String::operator+=(const char8* str) { append(str, strlen(str)); }
 

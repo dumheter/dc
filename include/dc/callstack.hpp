@@ -73,8 +73,8 @@ struct CallstackErr {
     Fmt,
   };
 
-  CallstackErr(u64 err, ErrType errType, int line)
-      : errCode(err), errType(errType), line(line) {}
+  CallstackErr(u64 errorCode, ErrType errorType, int lineNumber)
+      : errCode(errorCode), errType(errorType), line(lineNumber) {}
 
   String toString() const;
 

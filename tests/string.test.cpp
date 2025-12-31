@@ -698,90 +698,90 @@ DTEST(findViewWithOffsetBeyondEnd) {
 
 DTEST(findChar8InString) {
   const String text("Hello World");
-  Option<u64> found = text.find(static_cast<char8>('W'));
+  Option<u64> found = text.find('W');
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findChar8InStringNotFound) {
   const String text("Hello World");
-  Option<u64> found = text.find(static_cast<char8>('z'));
+  Option<u64> found = text.find('z');
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringWithOffset) {
   const String text("Hello World");
-  Option<u64> found = text.find(static_cast<char8>('o'), 5);
+  Option<u64> found = text.find('o', 5);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(7));
 }
 
 DTEST(findChar8InStringWithOffsetNotFound) {
   const String text("Hello World");
-  Option<u64> found = text.find(static_cast<char8>('H'), 1);
+  Option<u64> found = text.find('H', 1);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringWithOffsetBeyondEnd) {
   const String text("Hello World");
-  Option<u64> found = text.find(static_cast<char8>('H'), 20);
+  Option<u64> found = text.find('H', 20);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringView) {
   const StringView view("Hello World");
-  Option<u64> found = view.find(static_cast<char8>('W'));
+  Option<u64> found = view.find('W');
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findChar8InStringViewNotFound) {
   const StringView view("Hello World");
-  Option<u64> found = view.find(static_cast<char8>('z'));
+  Option<u64> found = view.find('z');
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringViewWithOffset) {
   const StringView view("Hello World");
-  Option<u64> found = view.find(static_cast<char8>('o'), 5);
+  Option<u64> found = view.find('o', 5);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(7));
 }
 
 DTEST(findChar8InStringViewWithOffsetNotFound) {
   const StringView view("Hello World");
-  Option<u64> found = view.find(static_cast<char8>('H'), 1);
+  Option<u64> found = view.find('H', 1);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringViewWithOffsetBeyondEnd) {
   const StringView view("Hello World");
-  Option<u64> found = view.find(static_cast<char8>('H'), 20);
+  Option<u64> found = view.find('H', 20);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8MultipleOccurrencesReturnsFirst) {
   const String text("aaa");
-  Option<u64> found = text.find(static_cast<char8>('a'));
+  Option<u64> found = text.find('a');
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
 }
 
 DTEST(findChar8WithOffsetMultipleOccurrences) {
   const String text("aaa");
-  Option<u64> found = text.find(static_cast<char8>('a'), 1);
+  Option<u64> found = text.find('a', 1);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(1));
 }
 
 DTEST(findChar8InEmptyString) {
   const String text("");
-  Option<u64> found = text.find(static_cast<char8>('a'));
+  Option<u64> found = text.find('a');
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InEmptyStringView) {
   const StringView view("");
-  Option<u64> found = view.find(static_cast<char8>('a'));
+  Option<u64> found = view.find('a');
   ASSERT_TRUE(found.isNone());
 }

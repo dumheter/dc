@@ -95,10 +95,12 @@ static struct {
                       "75767778798081828384858687888990919293949596979899"};
 
 // copies d to bits w/ strict aliasing (this compiles to nothing on /Ox)
-#define STBSP__COPYFP(dest, src)                                       \
-  {                                                                    \
-    int cn;                                                            \
-    for (cn = 0; cn < 8; cn++) ((char*)&dest)[cn] = ((char*)&src)[cn]; \
+#define STBSP__COPYFP(dest, src)                   \
+  {                                                \
+    int cn;                                        \
+    for (cn = 0; cn < 8; cn++)                     \
+      reinterpret_cast<char*>(&dest)[cn] =         \
+          reinterpret_cast<const char*>(&src)[cn]; \
   }
 
 static double const stbsp__bot[23] = {
@@ -201,25 +203,25 @@ static u64 const stbsp__powten[20] = {1,
     s64 bt;                                                      \
     oh = xh * yh;                                                \
     STBSP__COPYFP(bt, xh);                                       \
-    bt &= ((~(u64)0) << 27);                                     \
+    bt &= ((~static_cast<u64>(0)) << 27);                        \
     STBSP__COPYFP(ahi, bt);                                      \
     alo = xh - ahi;                                              \
     STBSP__COPYFP(bt, yh);                                       \
-    bt &= ((~(u64)0) << 27);                                     \
+    bt &= ((~static_cast<u64>(0)) << 27);                        \
     STBSP__COPYFP(bhi, bt);                                      \
     blo = yh - bhi;                                              \
     ol = ((ahi * bhi - oh) + ahi * blo + alo * bhi) + alo * blo; \
   }
 
-#define stbsp__ddtoS64(ob, xh, xl)     \
-  {                                    \
-    double ahi = 0, alo, vh, t;        \
-    ob = (s64)xh;                      \
-    vh = (double)ob;                   \
-    ahi = (xh - vh);                   \
-    t = (ahi - xh);                    \
-    alo = (xh - (ahi - t)) - (vh + t); \
-    ob += (s64)(ahi + alo + xl);       \
+#define stbsp__ddtoS64(ob, xh, xl)          \
+  {                                         \
+    double ahi = 0, alo, vh, t;             \
+    ob = static_cast<s64>(xh);              \
+    vh = static_cast<double>(ob);           \
+    ahi = (xh - vh);                        \
+    t = (ahi - xh);                         \
+    alo = (xh - (ahi - t)) - (vh + t);      \
+    ob += static_cast<s64>(ahi + alo + xl); \
   }
 
 #define stbsp__ddrenorm(oh, ol) \
@@ -315,13 +317,15 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
 
   d = value;
   STBSP__COPYFP(bits, d);
-  expo = (s32)((bits >> 52) & 2047);
-  ng = (s32)((u64)bits >> 63);
+  expo = static_cast<s32>((bits >> 52) & 2047);
+  ng = static_cast<s32>((static_cast<u64>(bits)) >> 63);
   if (ng) d = -d;
 
   if (expo == 2047)  // is nan or inf?
   {
-    *start = (static_cast<u64>(bits) & ((((u64)1) << 52) - 1)) ? "NaN" : "Inf";
+    *start = (static_cast<u64>(bits) & ((static_cast<u64>(1) << 52) - 1))
+                 ? "NaN"
+                 : "Inf";
     *decimal_pos = STBSP__SPECIAL;
     *len = 3;
     return ng;
@@ -329,7 +333,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
 
   if (expo == 0)  // is zero or denormal
   {
-    if (((u64)bits << 1) == 0)  // do zero
+    if ((static_cast<u64>(bits) << 1) == 0)  // do zero
     {
       *decimal_pos = 1;
       *start = out;
@@ -339,7 +343,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
     }
     // find the right expo for denormals
     {
-      s64 v = ((u64)1) << 51;
+      s64 v = static_cast<s64>(static_cast<u64>(1) << 51);
       while ((bits & v) == 0) {
         --expo;
         v >>= 1;
@@ -363,7 +367,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
     stbsp__ddtoS64(bits, ph, pl);
 
     // check if we undershot
-    if (((u64)bits) >= stbsp__tento19th) ++tens;
+    if (static_cast<u64>(bits) >= stbsp__tento19th) ++tens;
   }
 
   // now do the rounding in integer land
@@ -373,8 +377,8 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
                                        static_cast<s32>(frac_digits));
   if ((frac_digits < 24)) {
     u32 dg = 1;
-    if ((u64)bits >= stbsp__powten[9]) dg = 10;
-    while ((u64)bits >= stbsp__powten[dg]) {
+    if (static_cast<u64>(bits) >= stbsp__powten[9]) dg = 10;
+    while (static_cast<u64>(bits) >= stbsp__powten[dg]) {
       ++dg;
       if (dg == 20) goto noround;
     }
@@ -382,10 +386,10 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
       u64 r;
       // add 0.5 at the right position and round
       e = static_cast<s32>(dg - frac_digits);
-      if ((u32)e >= 24) goto noround;
+      if (static_cast<u32>(e) >= 24) goto noround;
       r = stbsp__powten[e];
       bits = static_cast<s64>(bits) + static_cast<s64>(r / 2);
-      if ((u64)bits >= stbsp__powten[dg]) ++tens;
+      if (static_cast<u64>(bits) >= stbsp__powten[dg]) ++tens;
       bits /= static_cast<s64>(r);
     }
   noround:;
@@ -399,7 +403,7 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
       if (bits % 1000) goto donez;
       bits /= 1000;
     }
-    n = (u32)bits;
+    n = static_cast<u32>(bits);
     while ((n % 1000) == 0) n /= 1000;
     bits = n;
   donez:;
@@ -414,15 +418,16 @@ static s32 stbsp__real_to_str(char const** start, u32* len, char* out,
     // do the conversion in chunks of U32s (avoid most 64-bit divides, worth it,
     // constant denomiators be damned)
     if (bits >= 100000000) {
-      n = (u32)(bits % 100000000);
+      n = static_cast<u32>(bits % 100000000);
       bits /= 100000000;
     } else {
-      n = (u32)bits;
+      n = static_cast<u32>(bits);
       bits = 0;
     }
     while (n) {
       out -= 2;
-      *(u16*)out = *(u16*)&stbsp__digitpair.pair[(n % 100) * 2];
+      *reinterpret_cast<u16*>(out) =
+          *reinterpret_cast<const u16*>(&stbsp__digitpair.pair[(n % 100) * 2]);
       n /= 100;
       e += 2;
     }
@@ -465,8 +470,8 @@ Result<u32, FormatErr> parseInteger(const char8*& it, const char8* end) {
     if (idx >= 20) {  // powten only goes [0, 20)
       return Err(FormatErr{FormatErr::Kind::InvalidSpecification, 0});
     }
-    out += static_cast<u32>(*numStart - '0') *
-           stbsp__powten[static_cast<usize>(idx)];
+    out += static_cast<u32>(static_cast<u64>(*numStart - '0') *
+                            stbsp__powten[static_cast<usize>(idx)]);
     ++numStart;
   }
 
@@ -495,7 +500,7 @@ Option<Result<FormatFill, FormatErr>> FormatFill::parse(const char8*& it,
     auto size = utf8::validate(it);
     const auto strSize = end - it;
 
-    if (size && (s64)*size <= strSize) {
+    if (size && static_cast<s64>(*size) <= strSize) {
       auto nextIt = it + utf8::decode(it, 0, out->sign);
       if (nextIt < end && *nextIt >= '0' && *nextIt <= '9') {
         it = nextIt;
@@ -639,7 +644,7 @@ struct Formatter<f64> {
     u32 n = 0, trailingZeros = 0;
 
     if (decimalPos == STBSP__SPECIAL) {
-      s = (char*)outBegin;
+      s = const_cast<char*>(outBegin);
       // cs = 0;
       // pr = 0;
     } else {
@@ -653,13 +658,13 @@ struct Formatter<f64> {
         if (n > decimals) n = decimals;
         i = static_cast<s32>(n);
         while (i) {
-          if ((((uintptr)s) & 3) == 0) break;
+          if (((reinterpret_cast<uintptr>(s)) & 3) == 0) break;
           *s++ = '0';
           --i;
         }
         // TODO cgustafsson: why a second pass on i?
         while (i >= 4) {
-          *(u32*)s = 0x30303030;
+          std::memcpy(s, "\x30\x30\x30\x30", 4);
           s += 4;
           i -= 4;
         }
@@ -677,7 +682,7 @@ struct Formatter<f64> {
         trailingZeros = decimals - (n + len);
         // cs = 1 + (3 << 24);  // how many tens did we write (for commas below)
       } else {
-        if ((u32)decimalPos >= len) {
+        if (static_cast<u32>(decimalPos) >= len) {
           // handle xxxx000*000.0
           for (;;) {
             *s++ = outBegin[n];
@@ -685,15 +690,15 @@ struct Formatter<f64> {
             if (n >= len) break;
           }
 
-          if (n < (u32)decimalPos) {
+          if (n < static_cast<u32>(decimalPos)) {
             n = static_cast<u32>(decimalPos) - n;
             while (n) {
-              if ((((uintptr)s) & 3) == 0) break;
+              if (((reinterpret_cast<uintptr>(s)) & 3) == 0) break;
               *s++ = '0';
               --n;
             }
             while (n >= 4) {
-              *(u32*)s = 0x30303030;
+              std::memcpy(s, "\x30\x30\x30\x30", 4);
               s += 4;
               n -= 4;
             }
@@ -714,7 +719,7 @@ struct Formatter<f64> {
           for (;;) {
             *s++ = outBegin[n];
             ++n;
-            if (n >= (u32)decimalPos) break;
+            if (n >= static_cast<u32>(decimalPos)) break;
           }
           // cs = (int)(s - (num + 64)) + (3 << 24);  // cs is how many tens
           if (decimals) *s++ = '.';
@@ -731,7 +736,7 @@ struct Formatter<f64> {
       }
       // decimals = 0;
 
-      len = (u32)(s - (numBuf + 64));
+      len = static_cast<u32>(s - (numBuf + 64));
       s = numBuf + 64;
     }
 
@@ -772,7 +777,7 @@ struct Formatter<f64> {
       // stbsp__cb_buf_clamp(i, n);
       n -= static_cast<u32>(i);
       while (i >= 4) {
-        *(u32 volatile*)strIt = *(u32 volatile*)s;
+        std::memcpy(strIt, s, 4);
         strIt += 4;
         s += 4;
         i -= 4;
@@ -791,12 +796,12 @@ struct Formatter<f64> {
       // stbsp__cb_buf_clamp(i, trailingZeros);
       trailingZeros -= static_cast<u32>(i);
       while (i) {
-        if ((((uintptr)strIt) & 3) == 0) break;
+        if (((reinterpret_cast<uintptr>(strIt)) & 3) == 0) break;
         *strIt++ = '0';
         --i;
       }
       while (i >= 4) {
-        *(u32*)strIt = 0x30303030;
+        std::memcpy(strIt, "\x30\x30\x30\x30", 4);
         strIt += 4;
         i -= 4;
       }
@@ -903,7 +908,7 @@ Result<NoneType, FormatErr> Formatter<u64>::format(u64 value,
     // TODO cgustafsson: fill in error pos ?
     return Err(FormatErr{FormatErr::Kind::OutOfMemory, 0});
 
-  bufStart = (char8*)viewOrErr->begin();
+  bufStart = const_cast<char8*>(viewOrErr->begin());
   const char8* bufEnd = viewOrErr->end();
 
   if (prefix) {
@@ -929,6 +934,8 @@ Result<char8, FormatErr::Kind> Formatter<u64>::getPresentationChar() const {
   switch (presentation) {
     case Presentation::Binary:
       return Ok('b');
+    case Presentation::Decimal:
+      return Ok(char8(0));
     case Presentation::Hex:
       return Ok('x');
     default:
@@ -951,7 +958,8 @@ Result<NoneType, FormatErr> Formatter<s64>::format(s64 value,
   // ctx.out.addRange(viewOrErr->begin(), viewOrErr->end());
   // return Ok(NoneType());
   negative = value < 0;
-  const u64 uvalue = value >= 0 ? (u64)value : (u64)-value;
+  const u64 uvalue =
+      value >= 0 ? static_cast<u64>(value) : static_cast<u64>(-value);
   return Formatter<u64>::format(uvalue, ctx);
 }
 
@@ -1015,7 +1023,7 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     Formatter<f64> f;
     f64 value;
     if (formatArg.type == FormatArg::Types::F32Type) {
-      value = formatArg.f32Value;
+      value = static_cast<f64>(formatArg.f32Value);
       f.decimals = FLT_DIG;
     } else /* if (formatArg.type == FormatArg::Types::F64Type) */
       value = formatArg.f64Value;
@@ -1063,7 +1071,8 @@ Result<const char8*, FormatErr> doFormatArg(ParseContext& parseCtx,
     f.presentation = Presentation::Hex;
     auto res = f.parse(parseCtx);
     if (res.isOk()) {
-      auto formatRes = f.format((u64)formatArg.pointerValue, formatCtx);
+      auto formatRes =
+          f.format(reinterpret_cast<u64>(formatArg.pointerValue), formatCtx);
       if (formatRes.isErr()) return Err(dc::move(formatRes).unwrapErr());
     }
     return res;
@@ -1119,15 +1128,15 @@ Result<StringView, s64> toString(s64 ivalue, char8* buf, s64 bufSize,
                                  Presentation presentation) {
   u64 uvalue;
   if (ivalue < 0) {
-    uvalue = (u64)-ivalue;
+    uvalue = static_cast<u64>(-ivalue);
     auto StrOrErr = toString(uvalue, buf, bufSize, presentation);
     if (StrOrErr.isErr()) return StrOrErr;
     if (StrOrErr->c_str() == buf) return Err(bufSize + 1);
-    char8* begin = (char8*)((StrOrErr->c_str()) - 1);
+    char8* begin = const_cast<char8*>(StrOrErr->c_str() - 1);
     *(buf) = '-';
     return Ok(StringView{begin, static_cast<u64>(bufSize) + 1});
   } else {
-    uvalue = (u64)ivalue;
+    uvalue = static_cast<u64>(ivalue);
     return toString(uvalue, buf, bufSize, presentation);
   }
 }
@@ -1145,10 +1154,10 @@ Result<StringView, s64> toString(u64 value, char8* buf, s64 bufSize,
       // constant denominators)
       char* o = s - 8;
       if (value >= 100000000) {
-        n = (u32)(value % 100000000);
+        n = static_cast<u32>(value % 100000000);
         value /= 100000000;
       } else {
-        n = (u32)value;
+        n = static_cast<u32>(value);
         value = 0;
       }
       // if ((fl & STBSP__TRIPLET_COMMA) == 0) {
@@ -1165,7 +1174,7 @@ Result<StringView, s64> toString(u64 value, char8* buf, s64 bufSize,
         //   *--s = stbsp__comma;
         //   --o;
         // } else {
-        *--s = (char8)(n % 10) + '0';
+        *--s = static_cast<char8>(n % 10) + '0';
         n /= 10;
         //}
       }
@@ -1211,7 +1220,7 @@ Result<StringView, s64> toString(u64 value, char8* buf, s64 bufSize,
     DC_FATAL_ASSERT(false, "todo");
   }
 
-  return Ok(StringView{s, (u64)(buf + bufSize - s)});
+  return Ok(StringView{s, static_cast<u64>(buf + bufSize - s)});
 }
 
 namespace detail {

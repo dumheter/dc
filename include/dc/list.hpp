@@ -416,8 +416,7 @@ void List<T, N>::removeIf(Fn fn) {
 
 template <typename T, u64 N>
 List<T, N> List<T, N>::clone() const {
-  List<T> out(getCapacity(),
-              static_cast<const detail::BufferAwareAllocator&>(m_allocator));
+  List<T> out(getCapacity(), m_allocator);
 
   for (const T& iter : *this) out.add(iter);
 
