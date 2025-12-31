@@ -58,13 +58,13 @@
 //
 
 /// Run all registered tests.
-#define DTEST_RUN()                                         \
-  [](int argc, char** argv) {                               \
-    dc::log::windowsFixConsole();                           \
-    dc::log::init();                                        \
-    const auto res = dtest::internal::runTests(argc, argv); \
-    dc::log::deinit();                                      \
-    return res;                                             \
+#define DTEST_RUN()                                                   \
+  [](int dtestArgc, char** dtestArgv) {                               \
+    dc::log::windowsFixConsole();                                     \
+    dc::log::init();                                                  \
+    const auto res = dtest::internal::runTests(dtestArgc, dtestArgv); \
+    dc::log::deinit();                                                \
+    return res;                                                       \
   }(argc, argv)
 
 /// Register a new test.

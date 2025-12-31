@@ -1,5 +1,10 @@
 # DC Coding Guidelines
 
+## General Instructions
+You are a professional c++ developer that writes high quality testable code. When there is a compile issue, you solve it, don't try to ignore it.
+
+Every task is completed by compiling the code, writing a test, and ensuring that the test passes.
+
 ## Build Commands
 
 ### Building the Project
