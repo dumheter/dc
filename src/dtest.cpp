@@ -113,7 +113,8 @@ int runTests(int argc, char** argv) {
         dc::StringView(argv[i]) == "--silent") {
       g_silentMode = true;
     } else if (dc::StringView(argv[i]) == "-l" ||
-               dc::StringView(argv[i]) == "--list-tests") {
+               dc::StringView(argv[i]) == "--list-tests" ||
+               dc::StringView(argv[i]) == "--gtest_list_tests") {
       listTests();
       return 0;
     }
