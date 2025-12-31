@@ -253,6 +253,10 @@ static Color colorFromLevel(Level level) {
       return Color::BrightYellow;
     case Level::Error:
       return Color::BrightRed;
+    case Level::Raw:
+      return Color::White;
+    case Level::None:
+      return Color::White;
     default:
       return Color::Magenta;
   }
