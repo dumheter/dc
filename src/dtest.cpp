@@ -195,7 +195,7 @@ int runTests(int argc, char** argv) {
   const bool filterActive = !g_filterPattern.isEmpty();
 
   LOG_INFO("~~~ D T E S T ~~~");
-  LOG_INFO("{}Running {} test categories.", vipActive ? "! VIP Active ! " : "",
+  LOG_INFO("{}Found {} test files.", vipActive ? "! VIP Active ! " : "",
            vipActive ? static_cast<int>(r.vipCount())
                      : static_cast<int>(r.getTestCategories().size()));
 
@@ -286,7 +286,9 @@ int runTests(int argc, char** argv) {
                category.fail, category.fail + category.pass);
     }
   }
-  if (failedCategories == 0)
+  if (testCount == 0)
+    LOG_INFO("{}!", Paint("NO TESTS RAN", Color::BrightYellow).c_str());
+  else if (failedCategories == 0)
     LOG_INFO("ALL {}!", Paint("PASSED", Color::Green).c_str());
   if (warnings)
     LOG_INFO("With {} {}", warnings,
