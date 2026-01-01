@@ -38,3 +38,13 @@ DTEST(assertFalseWillLogCallstack) {
   // ASSERT_TRUE(buf.find("dc::details::dcDoAssert") != dc::String::npos ||
   //             buf.find(" [?:?]") != dc::String::npos);
 }
+
+DTEST(abc) {
+  dc:: String wow("woah");
+  wow = dc::format("{}", "abc");
+  LOG_INFO("before");
+  LOG_RAW("{}\n", wow);
+  LOG_INFO("after");
+
+  ASSERT_TRUE(true);
+}
