@@ -785,3 +785,113 @@ DTEST(findChar8InEmptyStringView) {
   Option<u64> found = view.find('a');
   ASSERT_TRUE(found.isNone());
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Realloc Tests
+//
+
+DTEST(reallocSmallToHeapViaReserve) {
+  String str("hello");
+  ASSERT_TRUE(strcmp(str.c_str(), "hello") == 0);
+  ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
+
+  str.getInternalList().reserve(1000);
+  ASSERT_TRUE(strcmp(str.c_str(), "hello") == 0);
+  ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
+}
+
+DTEST(reallocViaResize) {
+  String str("small");
+  const usize originalCapacity = str.getCapacity();
+  ASSERT_TRUE(strcmp(str.c_str(), "small") == 0);
+
+  str.resize(500);
+  ASSERT_EQ(str.getSize(), 500);
+  ASSERT_TRUE(str.getCapacity() > originalCapacity);
+  ASSERT_EQ(strncmp(str.c_str(), "small", 5), 0);
+}
+
+DTEST(reallocViaResizeWithContentPreservation) {
+  String str("preserve");
+  const StringView expected("preserve");
+  ASSERT_TRUE(strcmp(str.c_str(), "preserve") == 0);
+
+  str.resize(100);
+  ASSERT_EQ(str.getSize(), 100);
+  ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
+
+  StringView sub(str.c_str(), expected.getSize());
+  ASSERT_EQ(memcmp(sub.c_str(), expected.c_str(), expected.getSize()), 0);
+}
+
+DTEST(reallocViaAppend) {
+  String str("start");
+  ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
+
+  str +=
+      " and this is a very long string that will cause reallocation to happen";
+  ASSERT_TRUE(strcmp(str.c_str(),
+                     "start and this is a very long string that will cause "
+                     "reallocation to happen") == 0);
+  ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
+}
+
+DTEST(reallocViaInsert) {
+  String str("beginning end");
+  const usize originalCapacity = str.getCapacity();
+  ASSERT_TRUE(strcmp(str.c_str(), "beginning end") == 0);
+
+  str.insert("middle middle middle middle middle middle middle ", 9);
+  ASSERT_TRUE(
+      strcmp(str.c_str(),
+             "beginningmiddle middle middle middle middle middle middle ") ==
+      0);
+  ASSERT_TRUE(str.getCapacity() > originalCapacity);
+}
+
+DTEST(reallocMultipleTimes) {
+  String str("base");
+  ASSERT_TRUE(strcmp(str.c_str(), "base") == 0);
+
+  for (usize i = 0; i < 10; ++i) {
+    const usize prevCapacity = str.getCapacity();
+    str.resize(prevCapacity + 100);
+    ASSERT_EQ(str.getSize(), prevCapacity + 100);
+    ASSERT_TRUE(str.getCapacity() >= str.getSize());
+  }
+
+  StringView sub(str.c_str(), 4);
+  ASSERT_EQ(memcmp(sub.c_str(), "base", 4), 0);
+}
+
+DTEST(reallocWithUtf8Characters) {
+  String str;
+  utf8::encode(0x1'F525, str);
+  utf8::encode(' ', str);
+  utf8::encode(0x1F68, str);
+
+  const usize originalCapacity = str.getCapacity();
+  ASSERT_EQ(str.getSize(), 8);
+  ASSERT_EQ(str.getLength(), 3);
+
+  str.resize(1000);
+  ASSERT_TRUE(str.getCapacity() > originalCapacity);
+  ASSERT_EQ(str.getSize(), 1000);
+
+  utf8::CodePoint cp;
+  utf8::decode(str, 0, cp);
+  ASSERT_EQ(cp, 0x1'F525);
+
+  utf8::decode(str, 5, cp);
+  ASSERT_EQ(cp, 0x1F68);
+}
+
+DTEST(reallocAfterAssignment) {
+  String str("short");
+  str = "";
+  ASSERT_TRUE(str.isEmpty());
+
+  str.resize(200);
+  ASSERT_EQ(str.getSize(), 200);
+  ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
+}
