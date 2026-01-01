@@ -247,7 +247,7 @@ int runTests(int argc, char** argv) {
       ++testCount;
       ++categoryTestsRan;
       if (!g_silentMode || test.state.fail > 0) {
-        LOG_INFO("\t{} {} {} in {.6}s, {} asserts.", i,
+        LOG_INFO("\t{} {} {} in {:.6f}s, {} asserts.", i,
                  Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
                      .c_str(),
                  !test.state.fail ? Paint("PASSED", Color::Green).c_str()
@@ -260,7 +260,7 @@ int runTests(int argc, char** argv) {
 
     if (categoryTestsRan > 0) {
       if (!g_silentMode || category.fail > 0) {
-        LOG_INFO("{} {} in {.6}s ({} tests ran)",
+        LOG_INFO("{} {} in {:.6f}s ({} tests ran)",
                  Paint(category.name, Color::Magenta).c_str(),
                  !category.fail ? Paint("PASSED", Color::Green).c_str()
                                 : Paint("FAILED", Color::Red).c_str(),
@@ -274,8 +274,8 @@ int runTests(int argc, char** argv) {
 
   LOG_INFO(
       "----------------------------------------------------------------------");
-  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {.9}s)", testCount,
-           assertCount, stopwatch.fs());
+  LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.9f}s)",
+           testCount, assertCount, stopwatch.fs());
 
   int failedCategories = 0;
   for (const auto& [_, category] : r.getTestCategories()) {

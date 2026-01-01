@@ -357,12 +357,12 @@ class Paint {
 // Fmt specialization
 //
 
-namespace dc {
-
 template <>
-struct Formatter<log::Level> : public Formatter<StringView> {
-  Result<NoneType, FormatErr> format(log::Level level, FormatContext& ctx) {
-    StringView str;
+struct std::formatter<dc::log::Level> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+
+  auto format(dc::log::Level level, std::format_context& ctx) const {
+    std::string_view str;
     switch (level) {
       case dc::log::Level::Verbose:
         str = "verbose";
@@ -385,62 +385,41 @@ struct Formatter<log::Level> : public Formatter<StringView> {
       default:
         str = "unknown";
     }
-    ctx.out.addRange(str.begin(), str.end());
-    return Ok(None);
+    return std::format_to(ctx.out(), "{}", str);
   }
 };
 
 template <>
-struct Formatter<Timestamp> {
+struct std::formatter<dc::Timestamp> {
   bool printDate = false;
   bool highPrecisionTime = false;
 
-  /// Formatting options:
-  ///   'd': Turn on date print.
-  ///   'p': Turn on microsecond precision time print.
-  Result<const char8*, FormatErr> parse(ParseContext& ctx) {
-    auto it = ctx.pattern.begin();
-    for (; it != ctx.pattern.end(); ++it) {
-      if (*it == '}')
-        break;
-      else if (*it == 'd')
+  constexpr auto parse(std::format_parse_context& ctx) {
+    auto it = ctx.begin();
+    while (it != ctx.end() && *it != '}') {
+      if (*it == 'd')
         printDate = true;
       else if (*it == 'p')
         highPrecisionTime = true;
-      else
-        return Err(FormatErr{FormatErr::Kind::InvalidSpecification,
-                             it - ctx.pattern.begin()});
+      ++it;
     }
-    return Ok(it);
+    return it;
   }
 
-  Result<NoneType, FormatErr> format(const dc::Timestamp& t,
-                                     FormatContext& ctx) {
-    return formatTo(ctx.out, "{<02}:{<02}:{<02.3}", t.hour, t.minute, t.second);
-
-    // if (printDate && highPrecisionTime)
-    // return formatTo(ctx.out, "{}-{>02}-{>02} {>02}:{>02}:{>09.6}",
-    //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
-    // else if (printDate && !highPrecisionTime)
-    //   return formatTo(ctx.out, "{}-{>02}-{>02} {>02}:{>02}:{>06.3}",
-    //                    t.year, t.month, t.day, t.hour, t.minute, t.second);
-    // else if (!printDate && highPrecisionTime)
-    //   return formatTo(ctx.out, "{>02}:{>02}:{>09.6}", t.hour, t.minute,
-    //                    t.second);
-    // else /* if (!printDate && !highPrecisionTime) */
-    //   return formatTo(ctx.out, "{>02}:{>02}:{>06.3}", t.hour, t.minute,
-    //                    t.second);
+  auto format(const dc::Timestamp& t, std::format_context& ctx) const {
+    // Legacy default: "{<02}:{<02}:{<02.3}"
+    return std::format_to(ctx.out(), "{:0<2}:{:0<2}:{:0<6.3f}", t.hour,
+                          t.minute, t.second);
   }
 };
 
-// template <>
 template <u64 kStrLen>
-struct Formatter<log::Paint<kStrLen>> : Formatter<StringView> {
-  Result<NoneType, FormatErr> format(const log::Paint<kStrLen>& paint,
-                                     FormatContext& ctx) {
-    ctx.out.addRange(paint.c_str(), paint.c_str() + paint.size());
-    return Ok(None);
+struct std::formatter<dc::log::Paint<kStrLen>> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+
+  auto format(const dc::log::Paint<kStrLen>& paint,
+              std::format_context& ctx) const {
+    return std::format_to(ctx.out(), "{}",
+                          std::string_view(paint.c_str(), paint.size()));
   }
 };
-
-}  // namespace dc

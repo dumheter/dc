@@ -1,6 +1,5 @@
 cmake_minimum_required (VERSION 3.10)
 project(dc_test CXX)
-set(CMAKE_CXX_STANDARD 17)
 
 #//////////////////////////////////////////////////////////////////////////////
 #// List source files
@@ -78,6 +77,7 @@ target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_FUNCTION=0)
 
 add_executable (${PROJECT_NAME} ${TEST_SOURCES})
 target_link_libraries(${PROJECT_NAME} dc dtest)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 if (DC_PEDANTIC)
   target_compile_options(${PROJECT_NAME} PRIVATE ${PEDANTIC_COMPILE_FLAGS})

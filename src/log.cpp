@@ -118,8 +118,8 @@ bool Logger::stop(u64 timeoutUs) {
 
 #if defined(DC_LOG_DEBUG)
   const auto diff = dc::getTimeUsNoReorder() - before;
-  print("\033[93m#{dp}# logger shutdown time: {.6}s.\033[0m\n", makeTimestamp(),
-        diff / 1'000'000.f);
+  print("\033[93m#{:dp}# logger shutdown time: {:.6}s.\033[0m\n",
+        makeTimestamp(), diff / 1'000'000.f);
 #endif
 
   return didDieOk;
@@ -163,7 +163,7 @@ void Logger::run() {
 #if defined(DC_LOG_DEBUG)
   const u64 drained = dc::getTimeUs();
   print(
-      "\033[93m#{}# logger exit code detected, dying. drainTime: {.6}s, "
+      "\033[93m#{}# logger exit code detected, dying. drainTime: {:.6}s, "
       "drainedPayloads: {}\033[0m\n",
       makeTimestamp(), (drained - now) / 1'000'000.0, payloadsDrained);
 #endif
@@ -199,22 +199,22 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{dp} "
+          "{:dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{d} "
+          "{:d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{p} "
+          "{:p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
           "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "{<7} "
+          "{:<7} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           "{}"
 #endif
 #if DC_LOG_PREFIX_FUNCTION == 1
-          "{<10}"
+          "{:<10}"
 #endif
 #if DC_LOG_PREFIX_DATETIME > 0 || DC_LOG_PREFIX_LEVEL > 0 || \
     DC_LOG_PREFIX_FILESTAMP > 0 || DC_LOG_PREFIX_FUNCTION > 0
@@ -272,16 +272,16 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{dp} "
+          "{:dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{d} "
+          "{:d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{p} "
+          "{:p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
           "{} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
-          "{16} "
+          "{:16} "
 #endif
 #if DC_LOG_PREFIX_FILESTAMP == 1
           "{}"
