@@ -52,6 +52,9 @@
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <execinfo.h>
+#include <libdwfl.h>
+#include <limits.h>
+#include <unistd.h>
 #endif
 
 namespace dc {
@@ -369,7 +372,69 @@ String CallstackErr::toString() const {
 
 #elif defined(DC_PLATFORM_LINUX)
 
+static bool getLineInfo(Dwfl* dwfl, void* addr, String& outFileLine) {
+  Dwarf_Addr pc = reinterpret_cast<Dwarf_Addr>(addr);
+  Dwfl_Line* line = dwfl_getsrc(dwfl, pc);
+
+  if (!line) {
+    return false;
+  }
+
+  int lineno = 0;
+  const char* filename =
+      dwfl_lineinfo(line, nullptr, nullptr, &lineno, nullptr, nullptr);
+
+  if (filename && lineno > 0) {
+    outFileLine.resize(1024);
+    snprintf(outFileLine.getData(), 1023, "%s:%d", filename, lineno);
+    outFileLine.resize(strlen(outFileLine.getData()));
+    return true;
+  }
+
+  return false;
+}
+
+static Dwfl* initializeDwfl() {
+  static Dwfl* s_dwfl = nullptr;
+
+  if (s_dwfl) {
+    return s_dwfl;
+  }
+
+  static const Dwfl_Callbacks proc_callbacks = {
+      .find_elf = dwfl_linux_proc_find_elf,
+      .find_debuginfo = dwfl_standard_find_debuginfo,
+      .section_address = dwfl_offline_section_address,
+      .debuginfo_path = nullptr,
+  };
+
+  s_dwfl = dwfl_begin(&proc_callbacks);
+  if (!s_dwfl) {
+    return nullptr;
+  }
+
+  int pid = getpid();
+  if (dwfl_linux_proc_report(s_dwfl, pid) != 0) {
+    dwfl_end(s_dwfl);
+    s_dwfl = nullptr;
+    return nullptr;
+  }
+
+  if (dwfl_report_end(s_dwfl, nullptr, nullptr) != 0) {
+    dwfl_end(s_dwfl);
+    s_dwfl = nullptr;
+    return nullptr;
+  }
+
+  return s_dwfl;
+}
+
 Result<Callstack, CallstackErr> buildCallstack() {
+  Dwfl* dwfl = initializeDwfl();
+  if (!dwfl) {
+    return Err(CallstackErr(0, CallstackErr::ErrType::Sys, __LINE__));
+  }
+
   String str;
   str.getInternalList().reserve(2048);
 
@@ -390,13 +455,19 @@ Result<Callstack, CallstackErr> buildCallstack() {
       char* fnName = abi::__cxa_demangle(symInfo.dli_sname, fnBuffer,
                                          &fnBufferLen, &status);
 
+      String fileLine = "?:?";
+
+      getLineInfo(dwfl, fnRetAddr[i], fileLine);
+
       if (status == 0 || status == -2) {
-        auto fmtRes =
-            formatTo(str, "{} in [{}]\n", fnName ? fnName : symInfo.dli_sname,
-                     symInfo.dli_fname ? symInfo.dli_fname : "?");
-        if (fmtRes.isErr())
-          return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
-                                  CallstackErr::ErrType::Fmt, __LINE__));
+        const char* name = fnName ? fnName : symInfo.dli_sname;
+        if (name && strcmp(name, "dc::buildCallstack") != 0) {
+          auto fmtRes = formatTo(str, "  {} ({})\n", name, fileLine);
+          if (fmtRes.isErr())
+            return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
+                                    CallstackErr::ErrType::Fmt, __LINE__));
+          if (name && strcmp(name, "main") == 0) break;
+        }
       } else {
         auto fmtRes =
             formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));

@@ -159,6 +159,13 @@ else ()
 
   # TODO: bad idea? Forcing extra linker stuff in the exe for better callstack?
   target_link_options(${PROJECT_NAME} PUBLIC -rdynamic)
+  
+  # libdw for debug line information
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBDW REQUIRED libdw)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${LIBDW_INCLUDE_DIRS} /usr/include/elfutils)
+  target_link_libraries(${PROJECT_NAME} ${LIBDW_LIBRARIES})
+  target_compile_options(${PROJECT_NAME} PRIVATE ${LIBDW_CFLAGS_OTHER})
 endif ()
 
 if (DC_BUILD_TESTS)
