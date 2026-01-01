@@ -372,26 +372,25 @@ String CallstackErr::toString() const {
 
 #elif defined(DC_PLATFORM_LINUX)
 
-static bool getLineInfo(Dwfl* dwfl, void* addr, String& outFileLine) {
+static String getLineInfo(Dwfl* dwfl, void* addr) {
+  String out = "?:?";
   Dwarf_Addr pc = reinterpret_cast<Dwarf_Addr>(addr);
   Dwfl_Line* line = dwfl_getsrc(dwfl, pc);
-
   if (!line) {
-    return false;
+    return out;
   }
 
   int lineno = 0;
   const char* filename =
       dwfl_lineinfo(line, nullptr, nullptr, &lineno, nullptr, nullptr);
 
-  if (filename && lineno > 0) {
-    outFileLine.resize(1024);
-    snprintf(outFileLine.getData(), 1023, "%s:%d", filename, lineno);
-    outFileLine.resize(strlen(outFileLine.getData()));
-    return true;
-  }
+  out.resize(1024);
+  snprintf(out.getData(), 1023, "%s:%d", filename, lineno);
+  out.resize(strlen(out.getData()));
+  return out;
 
-  return false;
+  // TODO(cgustafsson): 
+  return format("{}:{}", filename, lineno);
 }
 
 static Dwfl* initializeDwfl() {
@@ -455,9 +454,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
       char* fnName = abi::__cxa_demangle(symInfo.dli_sname, fnBuffer,
                                          &fnBufferLen, &status);
 
-      String fileLine = "?:?";
-
-      getLineInfo(dwfl, fnRetAddr[i], fileLine);
+	  String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
 
       if (status == 0 || status == -2) {
         const char* name = fnName ? fnName : symInfo.dli_sname;
