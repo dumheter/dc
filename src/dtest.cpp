@@ -207,14 +207,7 @@ int runTests(int argc, char** argv) {
   for (auto& [hash, category] : r.getTestCategories()) {
     if (vipActive && !r.containsVipCategory(hash)) continue;
 
-    testCount += category.tests.size();
-    LOG_INFO(
-        "---------------------------------------------------------------------"
-        "-");
-    LOG_INFO("{}, running {} tests.",
-             Paint(category.name, Color::Magenta).c_str(),
-             static_cast<int>(category.tests.size()));
-
+    usize categoryTestsRan = 0;
     const u64 catBefore = dc::getTimeUs();
     int i = 0;
     for (TestCase& test : category.tests) {
@@ -224,6 +217,15 @@ int runTests(int argc, char** argv) {
           !matchesPattern(fullName.toView(), g_filterPattern.toView())) {
         ++i;
         continue;
+      }
+
+      if (categoryTestsRan == 0) {
+        LOG_INFO(
+            "------------------------------------------------------------------"
+            "---"
+            "-");
+        LOG_INFO("{}, running matched tests.",
+                 Paint(category.name, Color::Magenta).c_str());
       }
 
       if (!g_silentMode) {
@@ -242,6 +244,8 @@ int runTests(int argc, char** argv) {
                  Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
         ++warnings;
       }
+      ++testCount;
+      ++categoryTestsRan;
       if (!g_silentMode || test.state.fail > 0) {
         LOG_INFO("\t{} {} {} in {.6}s, {} asserts.", i,
                  Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
@@ -254,11 +258,15 @@ int runTests(int argc, char** argv) {
     }
     const u64 catAfter = dc::getTimeUs();
 
-    if (!g_silentMode || category.fail > 0) {
-      LOG_INFO("{} {} in {.6}s", Paint(category.name, Color::Magenta).c_str(),
-               !category.fail ? Paint("PASSED", Color::Green).c_str()
-                              : Paint("FAILED", Color::Red).c_str(),
-               (catAfter - catBefore) / 1'000'000.f);
+    if (categoryTestsRan > 0) {
+      if (!g_silentMode || category.fail > 0) {
+        LOG_INFO("{} {} in {.6}s ({} tests ran)",
+                 Paint(category.name, Color::Magenta).c_str(),
+                 !category.fail ? Paint("PASSED", Color::Green).c_str()
+                                : Paint("FAILED", Color::Red).c_str(),
+                 (catAfter - catBefore) / 1'000'000.f,
+                 static_cast<int>(categoryTestsRan));
+      }
     }
   }
 
