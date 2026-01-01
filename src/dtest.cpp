@@ -57,8 +57,71 @@ using Paint = dc::log::Paint<100>;
 using Color = dc::log::Color;
 
 static bool g_silentMode = false;
+static dc::String g_filterPattern;
 
 bool isSilentMode() { return g_silentMode; }
+
+static bool matchesPattern(const dc::StringView testFullName,
+                           const dc::StringView pattern) {
+  const usize testLen = testFullName.getSize();
+  const usize patternLen = pattern.getSize();
+
+  usize testIdx = 0;
+  usize patternIdx = 0;
+
+  while (patternIdx < patternLen) {
+    if (pattern[patternIdx] == '*') {
+      ++patternIdx;
+
+      while (patternIdx < patternLen && pattern[patternIdx] == '*') {
+        ++patternIdx;
+      }
+
+      if (patternIdx == patternLen) {
+        return true;
+      }
+
+      usize nextStar = patternIdx;
+      while (nextStar < patternLen && pattern[nextStar] != '*') {
+        ++nextStar;
+      }
+
+      const usize subPatternLen = nextStar - patternIdx;
+
+      bool found = false;
+      while (testIdx <= testLen) {
+        if (testIdx + subPatternLen <= testLen) {
+          if (memcmp(testFullName.c_str() + testIdx,
+                     pattern.c_str() + patternIdx, subPatternLen) == 0) {
+            found = true;
+            testIdx += subPatternLen;
+            break;
+          }
+        }
+        ++testIdx;
+      }
+
+      if (!found) {
+        return false;
+      }
+
+      patternIdx = nextStar;
+    } else {
+      if (testIdx >= testLen) {
+        return false;
+      }
+
+      if (pattern[patternIdx] != testFullName[testIdx]) {
+        return false;
+      }
+
+      ++patternIdx;
+      ++testIdx;
+    }
+  }
+
+  return testIdx == testLen;
+}
 
 void Register::addTest(TestFunction fn, const char* testName,
                        const char* fileName, u64 filePathHash) {
@@ -109,20 +172,27 @@ int runTests(int argc, char** argv) {
   FixConsole();
 
   for (int i = 1; i < argc; ++i) {
-    if (dc::StringView(argv[i]) == "-s" ||
-        dc::StringView(argv[i]) == "--silent") {
+    dc::StringView arg(argv[i]);
+    if (arg == "-s" || arg == "--silent") {
       g_silentMode = true;
-    } else if (dc::StringView(argv[i]) == "-l" ||
-               dc::StringView(argv[i]) == "--list-tests" ||
-               dc::StringView(argv[i]) == "--gtest_list_tests") {
+    } else if (arg == "-l" || arg == "--list-tests" ||
+               arg == "--gtest_list_tests") {
       listTests();
       return 0;
+    } else if (memcmp(arg.c_str(), "-f=", 3) == 0 ||
+               memcmp(arg.c_str(), "--filter=", 9) == 0 ||
+               memcmp(arg.c_str(), "--gtest_filter=", 15) == 0) {
+      const char* equals = strchr(argv[i], '=');
+      if (equals) {
+        g_filterPattern = dc::String(equals + 1);
+      }
     }
   }
 
   Register& r = getRegister();
 
   const bool vipActive = r.hasVipCategories();
+  const bool filterActive = !g_filterPattern.isEmpty();
 
   LOG_INFO("~~~ D T E S T ~~~");
   LOG_INFO("{}Running {} test categories.", vipActive ? "! VIP Active ! " : "",
@@ -148,6 +218,14 @@ int runTests(int argc, char** argv) {
     const u64 catBefore = dc::getTimeUs();
     int i = 0;
     for (TestCase& test : category.tests) {
+      dc::String fullName = dc::format("{}.{}", category.name, test.state.name);
+
+      if (filterActive &&
+          !matchesPattern(fullName.toView(), g_filterPattern.toView())) {
+        ++i;
+        continue;
+      }
+
       if (!g_silentMode) {
         LOG_INFO("\t{} {} ...... ", i,
                  Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
