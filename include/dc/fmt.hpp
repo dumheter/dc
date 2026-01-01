@@ -37,9 +37,7 @@ template <>
 struct std::formatter<dc::StringView> : std::formatter<std::string_view> {
   auto format(const dc::StringView& sv, format_context& ctx) const {
     return std::formatter<std::string_view>::format(
-        std::string_view(reinterpret_cast<const char*>(sv.c_str()),
-                         sv.getSize()),
-        ctx);
+        std::string_view(sv.c_str(), sv.getSize()), ctx);
   }
 };
 
@@ -47,8 +45,7 @@ template <>
 struct std::formatter<dc::String> : std::formatter<std::string_view> {
   auto format(const dc::String& s, format_context& ctx) const {
     return std::formatter<std::string_view>::format(
-        std::string_view(reinterpret_cast<const char*>(s.c_str()), s.getSize()),
-        ctx);
+        std::string_view(s.c_str(), s.getSize()), ctx);
   }
 };
 
@@ -115,8 +112,7 @@ template <typename... Args>
 Result<NoneType, FormatErr> formatTo(List<char8>& out, const StringView fmt,
                                      Args&&... args) {
   try {
-    std::string_view sv(reinterpret_cast<const char*>(fmt.c_str()),
-                        fmt.getSize());
+    std::string_view sv(fmt.c_str(), fmt.getSize());
     std::vformat_to(BackInserter(out), sv, std::make_format_args(args...));
     out.add('\0');  // Maintain null termination convention of original
     return Ok(None);
