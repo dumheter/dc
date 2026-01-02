@@ -135,10 +135,6 @@ void Register::addTest(TestFunction fn, const char* testName,
   category.tests.push_back(dc::move(testCase));
 }
 
-void Register::addVip(u64 filePathHash) {
-  m_vipCategories.emplace(filePathHash);
-}
-
 Register& getRegister() {
   static Register r{};
   return r;
@@ -191,13 +187,11 @@ int runTests(int argc, char** argv) {
 
   Register& r = getRegister();
 
-  const bool vipActive = r.hasVipCategories();
   const bool filterActive = !g_filterPattern.isEmpty();
 
   LOG_INFO("~~~ D T E S T ~~~");
-  LOG_INFO("{}Found {} test files.", vipActive ? "! VIP Active ! " : "",
-           vipActive ? static_cast<int>(r.vipCount())
-                     : static_cast<int>(r.getTestCategories().size()));
+  LOG_INFO("Found {} test files.",
+           static_cast<int>(r.getTestCategories().size()));
 
   dc::Stopwatch stopwatch;
 
@@ -205,8 +199,6 @@ int runTests(int argc, char** argv) {
   usize assertCount = 0;
   int warnings = 0;
   for (auto& [hash, category] : r.getTestCategories()) {
-    if (vipActive && !r.containsVipCategory(hash)) continue;
-
     usize categoryTestsRan = 0;
     const u64 catBefore = dc::getTimeUs();
     int i = 0;

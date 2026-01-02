@@ -76,10 +76,6 @@
 #define ASSERT_EQ(a, b) ASSERT_EQ_IMPL(a, b, __LINE__)
 #define ASSERT_NE(a, b) ASSERT_NE_IMPL(a, b, __LINE__)
 
-/// Mark a test file as VIP, if a VIP is marked, only it and other VIP's will
-/// run.
-#define DTEST_VIP DTEST_MARK_CATEGORY_VIP(__FILE__)
-
 namespace dtest {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -255,18 +251,6 @@ class Register {
   void addTest(TestFunction fn, const char* testName, const char* fileName,
                u64 filePathHash);
 
-  void addVip(u64 filePathHash);
-
-  bool hasVipCategories() const { return !m_vipCategories.empty(); }
-
-  bool containsVipCategory(u64 vip) const {
-    return m_vipCategories.count(vip) > 0;
-  }
-
-  std::unordered_set<u64>::size_type vipCount() const {
-    return m_vipCategories.size();
-  }
-
   const std::unordered_map<u64, TestCategory>& getTestCategories() const {
     return m_testCategories;
   }
@@ -277,7 +261,6 @@ class Register {
 
  private:
   std::unordered_map<u64, TestCategory> m_testCategories;
-  std::unordered_set<u64> m_vipCategories;
 };
 
 /// Returnes a static instantitation of Register.
@@ -347,15 +330,6 @@ dc::String formatOrFallback(const char* value);
   DTEST_MAKE_VAR_NAME(testName, __LINE__);                      \
   void DTEST_MAKE_CLASS_NAME(testName, __LINE__)::testBody(     \
       dtest::internal::TestBodyState& dtestBodyState__you_must_have_an_assert)
-
-#define DTEST_MARK_CATEGORY_VIP(filePath)                               \
-  struct DTEST_MAKE_CLASS_NAME(vip_maker, __LINE__) {                   \
-    DTEST_MAKE_CLASS_NAME(vip_maker, __LINE__)() {                      \
-      dtest::internal::getRegister().addVip(dc::hash64fnv1a(filePath)); \
-    }                                                                   \
-  };                                                                    \
-  DTEST_MAKE_CLASS_NAME(vip_maker, __LINE__)                            \
-  DTEST_MAKE_VAR_NAME(vip_maker, __LINE__)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Assert Macro Impl
