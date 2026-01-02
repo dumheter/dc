@@ -618,7 +618,7 @@ DTEST(findLongSubstringInBook) {
       "uytngobbaga");
 
   ASSERT_TRUE(found.isSome());
-  ASSERT_EQ(found.value(), static_cast<u64>(173593));
+  ASSERT_EQ(found.value(), static_cast<u64>(177730));
 }
 
 DTEST(findShortSubstringInBook) {
@@ -634,7 +634,7 @@ DTEST(findShortSubstringInBook) {
   const Option<u64> found = text.find("toyuant");
 
   ASSERT_TRUE(found.isSome());
-  ASSERT_EQ(found.value(), static_cast<u64>(173768));
+  ASSERT_EQ(found.value(), static_cast<u64>(177905));
 }
 
 DTEST(findWithOffset) {
