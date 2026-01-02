@@ -427,12 +427,18 @@ template <typename T, u64 N>
 void List<T, N>::reserve(u64 capacity) {
   if (capacity > m_capacity) {
     const u64 size = getSize();
+
+	const bool hasAllocated = m_allocator.hasAllocated();
+
     T* newBegin =
-        static_cast<T*>(m_allocator.realloc(m_begin, sizeof(T) * capacity));
+        static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
     if (!newBegin) return;  // failed to alloc, noop
 
     for (T* elem = m_begin; elem != m_end; ++elem)
       new (newBegin + (elem - m_begin)) T(dc::move(*elem));
+
+	if (hasAllocated)
+	  m_allocator.free(m_begin);
 
     m_begin = newBegin;
     m_end = m_begin + size;
