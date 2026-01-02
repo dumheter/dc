@@ -291,27 +291,16 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
   getRegister().addTest(dc::forward<Fn>(fn), testName, fileName, filePathHash);
 }
 
-constexpr const char* kFallbackFormatString = "<cannot format type>";
+constexpr const char* kFallbackFormatString = "<cannot format type, please specialize a formatter>";
 template <typename T>
-dc::String formatOrFallback(const T&) {
-  // TODO cgustafsson: have a better fallback formatter, format the
-  // raw bytes?
-  return dc::String(kFallbackFormatString);
+dc::String formatOrFallback(const T& value)
+{
+  if constexpr (std::formattable<T, char>) {
+	return dc::format("{}", value);
+  } else {
+	return kFallbackFormatString;
+  }
 }
-
-template <typename T>
-dc::String formatOrFallback(
-    const typename dc::EnableIf<dc::isFundamental<T>, T>::Type& value) {
-  return dc::format("{}", value).unwrapOr(dc::String(kFallbackFormatString));
-}
-
-template <>
-dc::String formatOrFallback(const dc::String& value);
-
-template <>
-dc::String formatOrFallback<>(const dc::StringView& value);
-
-dc::String formatOrFallback(const char* value);
 
 }  // namespace dtest::internal
 
