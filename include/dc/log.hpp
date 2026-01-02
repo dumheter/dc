@@ -408,8 +408,10 @@ struct std::formatter<dc::Timestamp> {
 
   auto format(const dc::Timestamp& t, std::format_context& ctx) const {
     // Legacy default: "{<02}:{<02}:{<02.3}"
-    return std::format_to(ctx.out(), "{:0<2}:{:0<2}:{:0<6.3f}", t.hour,
-                          t.minute, t.second);
+    // Note: cast u8 to int to avoid std::format treating them as char
+    return std::format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>6.3f}",
+                          static_cast<int>(t.hour), static_cast<int>(t.minute),
+                          t.second);
   }
 };
 
