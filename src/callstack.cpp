@@ -384,13 +384,8 @@ static String getLineInfo(Dwfl* dwfl, void* addr) {
   const char* filename =
       dwfl_lineinfo(line, nullptr, nullptr, &lineno, nullptr, nullptr);
 
-  out.resize(1024);
-  snprintf(out.getData(), 1023, "%s:%d", filename, lineno);
-  out.resize(strlen(out.getData()));
+  formatTo(out, "{}:{}", filename, lineno);
   return out;
-
-  // TODO(cgustafsson):
-  return format("{}:{}", filename, lineno);
 }
 
 static Dwfl* initializeDwfl() {
