@@ -389,7 +389,7 @@ static String getLineInfo(Dwfl* dwfl, void* addr) {
   out.resize(strlen(out.getData()));
   return out;
 
-  // TODO(cgustafsson): 
+  // TODO(cgustafsson):
   return format("{}:{}", filename, lineno);
 }
 
@@ -441,37 +441,41 @@ Result<Callstack, CallstackErr> buildCallstack() {
   void* fnRetAddr[fnRetAddrSize];
   int size = backtrace(fnRetAddr, fnRetAddrSize);
 
-  constexpr usize fnBufferSize = 512;
-  char* fnBuffer = new char[fnBufferSize];
-
   for (int i = 0; i < size; ++i) {
     Dl_info symInfo;
     int res = dladdr(static_cast<const void*>(fnRetAddr[i]), &symInfo);
     if (res != 0) {
       int status;
-      usize fnBufferLen = fnBufferSize;
-      fnBuffer[0] = 0;
-      char* fnName = abi::__cxa_demangle(symInfo.dli_sname, fnBuffer,
-                                         &fnBufferLen, &status);
+      // __cxa_demangle allocates with malloc, so pass nullptr and let it
+      // allocate. We must free the result with free(), not delete[].
+      char* fnName =
+          abi::__cxa_demangle(symInfo.dli_sname, nullptr, nullptr, &status);
 
-	  String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
+      String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
 
+      bool shouldBreak = false;
       if (status == 0 || status == -2) {
         const char* name = fnName ? fnName : symInfo.dli_sname;
         if (name && strcmp(name, "dc::buildCallstack") != 0) {
           auto fmtRes = formatTo(str, "  {} ({})\n", name, fileLine);
-          if (fmtRes.isErr())
+          if (fmtRes.isErr()) {
+            free(fnName);
             return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                     CallstackErr::ErrType::Fmt, __LINE__));
-          if (name && strcmp(name, "main") == 0) break;
+          }
+          if (name && strcmp(name, "main") == 0) shouldBreak = true;
         }
       } else {
         auto fmtRes =
             formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));
-        if (fmtRes.isErr())
+        if (fmtRes.isErr()) {
+          free(fnName);
           return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                   CallstackErr::ErrType::Fmt, __LINE__));
+        }
       }
+      free(fnName);
+      if (shouldBreak) break;
 
     } else {
       LOG_WARNING("failed to dladdr");
@@ -483,16 +487,13 @@ Result<Callstack, CallstackErr> buildCallstack() {
     }
   }
 
-  delete[] fnBuffer;
-
   if (!str.isEmpty()) str.resize(str.getSize() - 1);
 
   return Ok(Callstack(str.toView()));
 }
 
 String CallstackErr::toString() const {
-  // TODO cgustafsson:
-  return "todo";
+  return "<error building the callstack>";
 }
 
 #endif
