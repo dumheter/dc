@@ -467,7 +467,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
         }
       } else {
         auto fmtRes =
-            formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));
+            formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
         if (fmtRes.isErr()) {
           free(fnName);
           return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
@@ -480,7 +480,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
     } else {
       LOG_WARNING("failed to dladdr");
       auto fmtRes =
-          formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));
+          formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
       if (fmtRes.isErr())
         return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                 CallstackErr::ErrType::Fmt, __LINE__));
