@@ -219,7 +219,7 @@ int runTests(int argc, char** argv) {
         continue;
       }
 
-      if (categoryTestsRan == 0) {
+      if (categoryTestsRan == 0 && !g_silentMode) {
         LOG_INFO(
             "------------------------------------------------------------------"
             "---"
