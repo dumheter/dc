@@ -11,29 +11,17 @@ File::~File() { close(); }
 static const char8* modeToCString(const File::Mode mode) {
   switch (mode) {
     case File::Mode::kRead: {
-#ifdef DC_PLATFORM_WINDOWS
       return "rb";
-#endif
-      return "r";
     }
     case File::Mode::kWrite: {
-#ifdef DC_PLATFORM_WINDOWS
       return "wb";
-#endif
-      return "w";
     }
     case File::Mode::kAppend: {
-#ifdef DC_PLATFORM_WINDOWS
       return "ab";
-#endif
-      return "a";
     }
   }
 
-#ifdef DC_PLATFORM_WINDOWS
   return "rb";
-#endif
-  return "r";
 }
 
 dc::Result<dc::String, File::Result> File::open(const dc::String& path,
