@@ -384,13 +384,8 @@ static String getLineInfo(Dwfl* dwfl, void* addr) {
   const char* filename =
       dwfl_lineinfo(line, nullptr, nullptr, &lineno, nullptr, nullptr);
 
-  out.resize(1024);
-  snprintf(out.getData(), 1023, "%s:%d", filename, lineno);
-  out.resize(strlen(out.getData()));
+  formatTo(out, "{}:{}", filename, lineno);
   return out;
-
-  // TODO(cgustafsson): 
-  return format("{}:{}", filename, lineno);
 }
 
 static Dwfl* initializeDwfl() {
@@ -441,49 +436,51 @@ Result<Callstack, CallstackErr> buildCallstack() {
   void* fnRetAddr[fnRetAddrSize];
   int size = backtrace(fnRetAddr, fnRetAddrSize);
 
-  constexpr usize fnBufferSize = 512;
-  char* fnBuffer = new char[fnBufferSize];
-
   for (int i = 0; i < size; ++i) {
     Dl_info symInfo;
     int res = dladdr(static_cast<const void*>(fnRetAddr[i]), &symInfo);
     if (res != 0) {
       int status;
-      usize fnBufferLen = fnBufferSize;
-      fnBuffer[0] = 0;
-      char* fnName = abi::__cxa_demangle(symInfo.dli_sname, fnBuffer,
-                                         &fnBufferLen, &status);
+      // __cxa_demangle allocates with malloc, so pass nullptr and let it
+      // allocate. We must free the result with free(), not delete[].
+      char* fnName =
+          abi::__cxa_demangle(symInfo.dli_sname, nullptr, nullptr, &status);
 
-	  String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
+      String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
 
+      bool shouldBreak = false;
       if (status == 0 || status == -2) {
         const char* name = fnName ? fnName : symInfo.dli_sname;
         if (name && strcmp(name, "dc::buildCallstack") != 0) {
           auto fmtRes = formatTo(str, "  {} ({})\n", name, fileLine);
-          if (fmtRes.isErr())
+          if (fmtRes.isErr()) {
+            free(fnName);
             return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                     CallstackErr::ErrType::Fmt, __LINE__));
-          if (name && strcmp(name, "main") == 0) break;
+          }
+          if (name && strcmp(name, "main") == 0) shouldBreak = true;
         }
       } else {
         auto fmtRes =
-            formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));
-        if (fmtRes.isErr())
+            formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
+        if (fmtRes.isErr()) {
+          free(fnName);
           return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                   CallstackErr::ErrType::Fmt, __LINE__));
+        }
       }
+      free(fnName);
+      if (shouldBreak) break;
 
     } else {
       LOG_WARNING("failed to dladdr");
       auto fmtRes =
-          formatTo(str, "{#x}\n", static_cast<const void*>(fnRetAddr[i]));
+          formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
       if (fmtRes.isErr())
         return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                 CallstackErr::ErrType::Fmt, __LINE__));
     }
   }
-
-  delete[] fnBuffer;
 
   if (!str.isEmpty()) str.resize(str.getSize() - 1);
 
@@ -491,8 +488,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
 }
 
 String CallstackErr::toString() const {
-  // TODO cgustafsson:
-  return "todo";
+  return "<error building the callstack>";
 }
 
 #endif

@@ -289,23 +289,6 @@ int runTests(int argc, char** argv) {
   return failedCategories;
 }
 
-template <>
-dc::String formatOrFallback(const dc::String& value) {
-  return dc::formatStrict("{}", value)
-      .unwrapOr(dc::String(kFallbackFormatString));
-}
-
-template <>
-dc::String formatOrFallback<>(const dc::StringView& value) {
-  return dc::formatStrict("{}", value)
-      .unwrapOr(dc::String(kFallbackFormatString));
-}
-
-dc::String formatOrFallback(const char* value) {
-  return dc::formatStrict("{}", value)
-      .unwrapOr(dc::String(kFallbackFormatString));
-}
-
 }  // namespace internal
 
 }  // namespace dtest

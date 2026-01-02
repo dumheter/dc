@@ -146,7 +146,26 @@ void debugBreak() {
   }
 #endif
 #elif defined(DC_PLATFORM_LINUX)
-  asm("int3");
+  // Only break if a debugger is attached
+  // Check for debugger by reading /proc/self/status
+  FILE* statusFile = fopen("/proc/self/status", "r");
+  bool debuggerPresent = false;
+  if (statusFile) {
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), statusFile)) {
+      if (strncmp(buffer, "TracerPid:", 10) == 0) {
+        int tracerPid = 0;
+        sscanf(buffer + 10, "%d", &tracerPid);
+        debuggerPresent = (tracerPid != 0);
+        break;
+      }
+    }
+    fclose(statusFile);
+  }
+
+  if (debuggerPresent) {
+    asm("int3");
+  }
 #else
   *static_cast<volatile int*>(nullptr) = 1;
 #endif
