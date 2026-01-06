@@ -51,7 +51,7 @@
 // Quick Start
 //
 
-/// 1. Put `DTEST_RUN();` in your main() function.
+/// 1. Put `dtest::run(argc, argv);` in your main() function.
 ///
 /// 2. Create a test file, such as 'integer.test.cpp'.
 ///
@@ -70,16 +70,6 @@
 // Macros
 //
 
-/// Run all registered tests.
-#define DTEST_RUN()                                                   \
-  [](int dtestArgc, char** dtestArgv) {                               \
-    dc::log::windowsFixConsole();                                     \
-    dc::log::init();                                                  \
-    const auto res = dtest::internal::runTests(dtestArgc, dtestArgv); \
-    dc::log::deinit();                                                \
-    return res;                                                       \
-  }(argc, argv)
-
 /// Register a new test.
 #define DTEST(testName) DTEST_REGISTER(testName, DC_FILENAME, __FILE__)
 
@@ -94,6 +84,9 @@
 #define TEST_ALLOCATOR (*dtestBodyState__you_must_have_an_assert.allocator)
 
 namespace dtest {
+
+/// Place this in your test main function.
+int main(int argc, char** argv);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helpers
@@ -404,7 +397,7 @@ dc::String formatOrFallback(const T& value) {
       ++dtestBodyState__you_must_have_an_assert.pass;                      \
     } else {                                                               \
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
-      LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                \
+      LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,				\
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       const auto lhs = dtest::internal::formatOrFallback(a);               \
       const auto rhs = dtest::internal::formatOrFallback(b);               \

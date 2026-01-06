@@ -52,6 +52,15 @@ void LifetimeStats::resetInstance() {
   instance.destructs = 0;
 }
 
+int main(int argc, char** argv)
+{
+  dc::log::windowsFixConsole();
+  dc::log::init();
+  const auto res = dtest::internal::runTests(argc, argv);	  
+  dc::log::deinit();                                                
+  return res;                                                       
+}
+
 namespace internal {
 
 using Paint = dc::log::Paint<100>;
