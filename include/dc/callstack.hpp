@@ -31,72 +31,32 @@
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
 
-///////////////////////////////////////////////////////////////////////////////
-// Quickstart
-//
-
-/// Code usage example - All-in-one function
-/*
-```cpp
-int main(int, char**) {
-  const Result<Callstack, CallstackErr> result
- * = buildCallstack();
-  const String& callstack =
-    result
- .match([](const
- * Callstack& cs) { return cs.callstack; },
-           [](const CallstackErr&
- * err) { return err.toString(); });
-  LOG_INFO("{}", callstack);
-
-  return
- * 0;
-}
-```
-*/
-
-/// Code usage example - Lazy resolution (capture now, resolve later)
-/*
-```cpp
-int main(int, char**) {
-  // Fast: Capture callstack addresses
-  const
- * Result<CallstackAddresses, CallstackErr> addresses = captureCallstack();
-  
-
- * // ... do some work ...
-  
-  // Resolve addresses to human-readable format
- * when needed
-  const Result<Callstack, CallstackErr> result =
- * resolveCallstack(addresses.value());
-  const String& callstack =
-    result
-
- * .match([](const Callstack& cs) { return cs.callstack; },
-           [](const
- * CallstackErr& err) { return err.toString(); });
-  LOG_INFO("{}",
- * callstack);
-
-  return 0;
-}
-```
-*/
-/// On linux, you need link option '-rdynamic' for linker to export function
-/// names to the dynamic symbol table.
-
-///////////////////////////////////////////////////////////////////////////////
-
 namespace dc {
 
 struct Callstack;
 struct CallstackAddresses;
 struct CallstackErr;
 
+/// Fast: Captures the current callstack addresses.
+/// Returns a Result containing CallstackAddresses or a CallstackErr.
+/// Use this when you want to capture the callstack now and resolve it later.
+/// On Linux, you need link option '-rdynamic' for the linker to export function
+/// names.
 Result<CallstackAddresses, CallstackErr> captureCallstack();
+
+/// Resolves previously captured callstack addresses to a human-readable format.
+/// @param addresses The addresses captured by captureCallstack().
+/// Returns a Result containing a Callstack with the resolved string or a
+/// CallstackErr. Use this to resolve addresses that were captured earlier,
+/// allowing you to do other work in between capture and resolution.
 Result<Callstack, CallstackErr> resolveCallstack(
     const CallstackAddresses& addresses);
+
+/// All-in-one function that captures and resolves the current callstack.
+/// Returns a Result containing a Callstack with the resolved string or a
+/// CallstackErr. Use this when you want to capture and resolve in a single
+/// call. On Linux, you need link option '-rdynamic' for the linker to export
+/// function names.
 Result<Callstack, CallstackErr> buildCallstack();
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,15 +69,19 @@ struct Callstack {
   String callstack;
 };
 
+/// Represents an error that occurred during callstack capture or resolution.
+/// Can be converted to a string via toString() for error reporting.
 struct CallstackErr {
   enum class ErrType {
-    Sys,
-    Fmt,
+    Sys,  ///< System-level error during capture/resolve
+    Fmt,  ///< Formatting error during string generation
   };
 
   CallstackErr(u64 errorCode, ErrType errorType, int lineNumber)
       : errCode(errorCode), errType(errorType), line(lineNumber) {}
 
+  /// Converts the error to a human-readable string.
+  /// @return A String describing the error.
   String toString() const;
 
   u64 errCode;
