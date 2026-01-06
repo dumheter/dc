@@ -60,6 +60,20 @@ DTEST(debugAllocatorLeakDetection) {
   });
 }
 
+DTEST(debugAllocatorLeakDetectionTwice) {
+  ASSERT_EXCEPTION({
+    DebugAllocator allocator;
+    void* ptr = allocator.alloc(64);
+    DC_UNUSED(ptr);
+  });
+
+  ASSERT_EXCEPTION({
+    DebugAllocator allocator;
+    void* ptr = allocator.alloc(64);
+    DC_UNUSED(ptr);
+  });
+}
+
 DTEST(debugAllocatorFreeNull) {
   DebugAllocator allocator;
   allocator.free(nullptr);

@@ -26,6 +26,9 @@ cmake --build build
 ```bash
 # Run all tests
 ./build/tests/dc_test.exe
+
+# Run a specific test
+./build/tests/dc_test.exe --gtest_filter=*<your test case>
 ```
 
 ### Formatting & Linting
