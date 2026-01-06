@@ -409,8 +409,6 @@ dc::String formatOrFallback(const T& value) {
     }                                                                      \
   } while (0)
 
-// TODO(cgustafsson): We only handle windows right now, extend to linux as well.
-// We should probably use signals on linux.
 #if defined(_WIN32)
 #if defined(__clang__)
 #define ASSERT_EXCEPTION_IMPL(expr, line)                                  \
