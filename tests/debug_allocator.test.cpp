@@ -1,17 +1,5 @@
 #include <dc/debug_allocator.hpp>
 #include <dc/dtest.hpp>
-#include "dc/allocator.hpp"
-#include "dc/time.hpp"
-
-#if defined(_MSC_VER)
-#if !defined(MEAN_AND_LEAN)
-#define MEAN_AND_LEAN
-#endif
-#if !defined(NO_MIN_MAX)
-#define NO_MIN_MAX
-#endif
-#include <Windows.h>
-#endif
 
 using namespace dc;
 
@@ -65,22 +53,11 @@ DTEST(debugAllocatorReallocFromNull) {
 }
 
 DTEST(debugAllocatorLeakDetection) {
-  DC_UNUSED(dtestBodyState__you_must_have_an_assert);
-  DC_TRY {
+  ASSERT_EXCEPTION({
     DebugAllocator allocator;
     void* ptr = allocator.alloc(64);
     DC_UNUSED(ptr);
-  }
-  DC_EXCEPT(EXCEPTION_EXECUTE_HANDLER) {
-    ASSERT_TRUE(true);
-    return;
-  }
-
-#ifndef WIN32
-  ASSERT_TRUE(true);
-#else
-  ASSERT_TRUE(false);
-#endif
+  });
 }
 
 DTEST(debugAllocatorFreeNull) {

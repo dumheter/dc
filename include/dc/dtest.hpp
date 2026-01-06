@@ -32,7 +32,16 @@
 #include <dc/types.hpp>
 #include <functional>
 #include <unordered_map>
-#include <unordered_set>
+
+#if defined(_WIN32)
+#if !defined(WIN32_LEAN_AND_MEAN)
+#define WIN32_LEAN_AND_MEAN
+#endif
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Quick Start
@@ -75,6 +84,7 @@
 #define ASSERT_FALSE(expr) ASSERT_FALSE_IMPL(expr, __LINE__)
 #define ASSERT_EQ(a, b) ASSERT_EQ_IMPL(a, b, __LINE__)
 #define ASSERT_NE(a, b) ASSERT_NE_IMPL(a, b, __LINE__)
+#define ASSERT_EXCEPTION(expr) ASSERT_EXCEPTION_IMPL(expr, __LINE__)
 
 namespace dtest {
 
@@ -274,14 +284,14 @@ void dtestAdd(Fn&& fn, const char* testName, const char* fileName,
   getRegister().addTest(dc::forward<Fn>(fn), testName, fileName, filePathHash);
 }
 
-constexpr const char* kFallbackFormatString = "<cannot format type, please specialize a formatter>";
+constexpr const char* kFallbackFormatString =
+    "<cannot format type, please specialize a formatter>";
 template <typename T>
-dc::String formatOrFallback(const T& value)
-{
+dc::String formatOrFallback(const T& value) {
   if constexpr (std::formattable<T, char>) {
-	return dc::format("{}", value);
+    return dc::format("{}", value);
   } else {
-	return kFallbackFormatString;
+    return kFallbackFormatString;
   }
 }
 
@@ -384,3 +394,58 @@ dc::String formatOrFallback(const T& value)
       return;                                                              \
     }                                                                      \
   } while (0)
+
+// TODO(cgustafsson): We only handle windows right now, extend to linux as well.
+// We should probably use signals on linux.
+#if defined(_WIN32)
+#if defined(__clang__)
+#define ASSERT_EXCEPTION_IMPL(expr, line)                                  \
+  do {                                                                     \
+    bool dtestExceptionCaught__ = false;                                   \
+    _Pragma("clang diagnostic push") _Pragma(                              \
+        "clang diagnostic ignored \"-Wlanguage-extension-token\"") __try { \
+      expr;                                                                \
+    }                                                                      \
+    __except (EXCEPTION_EXECUTE_HANDLER) {                                 \
+      dtestExceptionCaught__ = true;                                       \
+    }                                                                      \
+    _Pragma("clang diagnostic pop") if (dtestExceptionCaught__) {          \
+      ++dtestBodyState__you_must_have_an_assert.pass;                      \
+    }                                                                      \
+    else {                                                                 \
+      ++dtestBodyState__you_must_have_an_assert.fail;                      \
+      LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
+               dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      LOG_INFO("\t\t- Expected exception, but none was thrown");           \
+      dc::details::debugBreak();                                           \
+      return;                                                              \
+    }                                                                      \
+  } while (0)
+#else
+#define ASSERT_EXCEPTION_IMPL(expr, line)                                  \
+  do {                                                                     \
+    bool dtestExceptionCaught__ = false;                                   \
+    __try {                                                                \
+      expr;                                                                \
+    } __except (EXCEPTION_EXECUTE_HANDLER) {                               \
+      dtestExceptionCaught__ = true;                                       \
+    }                                                                      \
+    if (dtestExceptionCaught__) {                                          \
+      ++dtestBodyState__you_must_have_an_assert.pass;                      \
+    } else {                                                               \
+      ++dtestBodyState__you_must_have_an_assert.fail;                      \
+      LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
+               dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      LOG_INFO("\t\t- Expected exception, but none was thrown");           \
+      dc::details::debugBreak();                                           \
+      return;                                                              \
+    }                                                                      \
+  } while (0)
+#endif
+#else
+// Non-Windows: SEH not available, auto-pass for now
+#define ASSERT_EXCEPTION_IMPL(expr, line)           \
+  do {                                              \
+    ++dtestBodyState__you_must_have_an_assert.pass; \
+  } while (0)
+#endif
