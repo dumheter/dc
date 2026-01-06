@@ -173,84 +173,14 @@ class Symbol {
   SYMBOL_INFO* m_sym;
 };
 
-// TODO do we want to be able to catch SEH exceptions? see gtest.cc:2588
-// https://github.com/google/googletest/blob/f16d43cd38e9f2e41357dba8445f9d3a32d4e83d/googletest/src/gtest.cc
-// DWORD callstackFromException(_EXCEPTION_POINTERS* ep)
-// {
-// 	HANDLE thread = GetCurrentThread();
-// 	CONTEXT* context = ep->ContextRecord;
-
-// 	return callstack(thread, context);
-// }
-
-static Result<CallstackAddresses, CallstackErr> captureCallstackAux(
-    HANDLE process, HANDLE thread, CONTEXT* context);
-
 Result<CallstackAddresses, CallstackErr> captureCallstack() {
-  HANDLE process = GetCurrentProcess();
-  HANDLE thread = GetCurrentThread();
-  CONTEXT context;
-  RtlCaptureContext(&context);
-
-  return captureCallstackAux(process, thread, &context);
-}
-
-static Result<CallstackAddresses, CallstackErr> captureCallstackAux(
-    HANDLE process, HANDLE thread, CONTEXT* context) {
-  void* base = GetModuleHandle(NULL);
-  IMAGE_NT_HEADERS* imageHeader = ImageNtHeader(base);
-  if (!imageHeader)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()),
-                            CallstackErr::ErrType::Sys, __LINE__});
-  const DWORD machineType = imageHeader->FileHeader.Machine;
-
-  // SymInitialize is needed for StackWalk64 to work properly with
-  // SymFunctionTableAccess64 and SymGetModuleBase64
-  if (!SymInitialize(process, NULL, TRUE)) {
-    return Err(CallstackErr{static_cast<u64>(GetLastError()),
-                            CallstackErr::ErrType::Sys, __LINE__});
-  }
-
-#if defined(_M_X64)
-  STACKFRAME64 frame = {};
-  frame.AddrPC.Offset = context->Rip;
-  frame.AddrPC.Mode = AddrModeFlat;
-  frame.AddrStack.Offset = context->Rsp;
-  frame.AddrStack.Mode = AddrModeFlat;
-  frame.AddrFrame.Offset = context->Rbp;
-  frame.AddrFrame.Mode = AddrModeFlat;
-#elif defined(_M_IX86)
-  STACKFRAME64 frame = {};
-  frame.AddrPC.Offset = context->Eip;
-  frame.AddrPC.Mode = AddrModeFlat;
-  frame.AddrStack.Offset = context->Esp;
-  frame.AddrStack.Mode = AddrModeFlat;
-  frame.AddrFrame.Offset = context->Ebp;
-  frame.AddrFrame.Mode = AddrModeFlat;
-#else
-#error "platform not supported"
-#endif
-
   CallstackAddresses addresses;
-  addresses.addresses.reserve(64);
+  addresses.addresses.resize(64);
 
-  bool skipSelf = true;
-
-  do {
-    if (frame.AddrPC.Offset != 0) {
-      if (skipSelf) {
-        skipSelf = false;
-      } else {
-        addresses.addresses.add(reinterpret_cast<void*>(frame.AddrPC.Offset));
-      }
-
-      if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
-                       SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-        break;
-    }
-  } while (frame.AddrReturn.Offset != 0);
-
-  SymCleanup(process);
+  const USHORT framesCaptured = RtlCaptureStackBackTrace(
+      1 /*frames to skip*/, 64 /* max frames to capture */,
+      addresses.addresses.begin(), NULL /* optional hash */);
+  addresses.addresses.resize(framesCaptured);
 
   return Ok(dc::move(addresses));
 }
