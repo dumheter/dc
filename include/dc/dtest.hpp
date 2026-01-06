@@ -41,6 +41,9 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#else
+#include <csetjmp>
+#include <csignal>
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -276,6 +279,17 @@ class Register {
 /// Returnes a static instantitation of Register.
 Register& getRegister();
 
+#if !defined(_WIN32)
+inline thread_local sigjmp_buf g_exceptionJmpBuf;
+inline thread_local volatile sig_atomic_t g_exceptionCaught = 0;
+
+inline void exceptionSignalHandler(int sig) {
+  (void)sig;
+  g_exceptionCaught = 1;
+  siglongjmp(g_exceptionJmpBuf, 1);
+}
+#endif
+
 int runTests(int argc, char** argv);
 
 template <typename Fn>
@@ -443,9 +457,28 @@ dc::String formatOrFallback(const T& value) {
   } while (0)
 #endif
 #else
-// Non-Windows: SEH not available, auto-pass for now
-#define ASSERT_EXCEPTION_IMPL(expr, line)           \
-  do {                                              \
-    ++dtestBodyState__you_must_have_an_assert.pass; \
+// Non-Windows: Use signals to catch exceptions
+#define ASSERT_EXCEPTION_IMPL(expr, line)                                  \
+  do {                                                                     \
+    dtest::internal::g_exceptionCaught = 0;                                \
+    struct sigaction dtestNewAction__, dtestOldAction__;                   \
+    dtestNewAction__.sa_handler = dtest::internal::exceptionSignalHandler; \
+    sigemptyset(&dtestNewAction__.sa_mask);                                \
+    dtestNewAction__.sa_flags = 0;                                         \
+    sigaction(SIGABRT, &dtestNewAction__, &dtestOldAction__);              \
+    if (sigsetjmp(dtest::internal::g_exceptionJmpBuf, 1) == 0) {           \
+      expr;                                                                \
+    }                                                                      \
+    sigaction(SIGABRT, &dtestOldAction__, nullptr);                        \
+    if (dtest::internal::g_exceptionCaught) {                              \
+      ++dtestBodyState__you_must_have_an_assert.pass;                      \
+    } else {                                                               \
+      ++dtestBodyState__you_must_have_an_assert.fail;                      \
+      LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
+               dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
+      LOG_INFO("\t\t- Expected exception, but none was thrown");           \
+      dc::details::debugBreak();                                           \
+      return;                                                              \
+    }                                                                      \
   } while (0)
 #endif

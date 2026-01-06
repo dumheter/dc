@@ -51,8 +51,6 @@ class DebugAllocator final : public IAllocator {
 
   void reportLeaks() const;
 
-  static constexpr u32 kDebugAllocatorLeakException = 0xDC000001;
-
  private:
   struct Record {
     Callstack callstack;

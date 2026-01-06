@@ -35,9 +35,19 @@
 #define NO_MIN_MAX
 #endif
 #include <Windows.h>
+#else
+#include <csignal>
 #endif
 
 namespace dc {
+
+namespace {
+#ifdef _WIN32
+constexpr u32 kDebugAllocatorLeakException = 0xDC000001;
+#else
+constexpr int kDebugAllocatorLeakException = SIGABRT;
+#endif
+}  // namespace
 
 DebugAllocator::DebugAllocator(IAllocator& backing) : m_backing(backing) {}
 
@@ -47,8 +57,7 @@ DebugAllocator::~DebugAllocator() {
 #ifdef _WIN32
     RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
-    DC_FATAL_ASSERT(false,
-                    "DebugAllocator destroyed with outstanding allocations");
+    raise(kDebugAllocatorLeakException);
 #endif
   }
 }
