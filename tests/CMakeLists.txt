@@ -7,6 +7,7 @@ project(dc_test CXX)
 set(TEST_SOURCES
   assert.test.cpp
   callstack.test.cpp
+  debug_allocator.test.cpp
   file.test.cpp
   fmt.test.cpp
   list.test.cpp

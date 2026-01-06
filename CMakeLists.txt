@@ -26,6 +26,7 @@ set(DC_SOURCES
   include/dc/allocator.hpp
   include/dc/assert.hpp
   include/dc/callstack.hpp
+  include/dc/debug_allocator.hpp
   include/dc/list.hpp
   include/dc/log.hpp
   include/dc/file.hpp
@@ -43,6 +44,7 @@ set(DC_SOURCES
   src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp
+  src/debug_allocator.cpp
   src/fmt.cpp
   src/log.cpp
   src/file.cpp
