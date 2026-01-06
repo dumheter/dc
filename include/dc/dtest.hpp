@@ -25,6 +25,7 @@
 #pragma once
 
 #include <dc/assert.hpp>
+#include <dc/debug_allocator.hpp>
 #include <dc/log.hpp>
 #include <dc/macros.hpp>
 #include <dc/math.hpp>
@@ -88,6 +89,9 @@
 #define ASSERT_EQ(a, b) ASSERT_EQ_IMPL(a, b, __LINE__)
 #define ASSERT_NE(a, b) ASSERT_NE_IMPL(a, b, __LINE__)
 #define ASSERT_EXCEPTION(expr) ASSERT_EXCEPTION_IMPL(expr, __LINE__)
+
+/// Get the test allocator for memory leak detection
+#define TEST_ALLOCATOR (*dtestBodyState__you_must_have_an_assert.allocator)
 
 namespace dtest {
 
@@ -238,6 +242,7 @@ struct TestBodyState {
   const char* name = nullptr;
   int pass = 0;
   int fail = 0;
+  dc::DebugAllocator* allocator = nullptr;
 };
 
 bool isSilentMode();

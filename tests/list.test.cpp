@@ -5,7 +5,7 @@ using namespace dc;
 using namespace dtest;
 
 DTEST(canAdd) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
 
   v.add(1337);
 
@@ -15,12 +15,12 @@ DTEST(canAdd) {
 }
 
 DTEST(emptyDefaultListIsEmpty) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
   ASSERT_EQ(v.getSize(), 0);
 }
 
 DTEST(growWhenOOM) {
-  List<float> v(1);
+  List<float> v(1, TEST_ALLOCATOR);
 
   v.add(10);
   ASSERT_EQ(v.getSize(), 1);
@@ -32,7 +32,7 @@ DTEST(growWhenOOM) {
 DTEST(removeByPosition) {
   LifetimeStats::resetInstance();
   LifetimeStats& stats = LifetimeStats::getInstance();
-  List<LifetimeTracker<int>> list;
+  List<LifetimeTracker<int>> list(TEST_ALLOCATOR);
 
   list.add(10);
   list.add(20);
@@ -50,7 +50,7 @@ DTEST(removeByPosition) {
 DTEST(removeByIterator) {
   LifetimeStats::resetInstance();
   LifetimeStats& stats = LifetimeStats::getInstance();
-  List<LifetimeTracker<int*>> list;
+  List<LifetimeTracker<int*>> list(TEST_ALLOCATOR);
 
   int abc[3];
   abc[0] = 10;
@@ -75,7 +75,7 @@ DTEST(removeByIterator) {
 DTEST(removeByReference) {
   LifetimeStats::resetInstance();
   LifetimeStats& stats = LifetimeStats::getInstance();
-  List<LifetimeTracker<int*>> list;
+  List<LifetimeTracker<int*>> list(TEST_ALLOCATOR);
 
   int abc[3];
   abc[0] = 10;
@@ -102,7 +102,7 @@ DTEST(removeByReference) {
 }
 
 DTEST(removeIfHappyPath) {
-  List<int> list;
+  List<int> list(TEST_ALLOCATOR);
 
   list.add(1);
   list.add(2);
@@ -127,7 +127,7 @@ DTEST(removeIfHappyPath) {
 }
 
 DTEST(removeIfRemovesNothing) {
-  List<int> list;
+  List<int> list(TEST_ALLOCATOR);
 
   list.add(1);
   list.add(2);
@@ -155,7 +155,7 @@ DTEST(removeIfRemovesNothing) {
 }
 
 DTEST(removeIfWithLargeDataSet) {
-  List<int> list;
+  List<int> list(TEST_ALLOCATOR);
 
   for (int i = 0; i < 10000; ++i) {
     list.add(i % 10);
@@ -182,7 +182,7 @@ DTEST(removeIfWithLargeDataSet) {
 }
 
 DTEST(find) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
 
   v.add(10);
   v.add(11);
@@ -201,7 +201,7 @@ DTEST(find) {
 }
 
 DTEST(clone) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
 
   v.add(10);
   v.add(20);
@@ -215,7 +215,7 @@ DTEST(clone) {
 }
 
 DTEST(constIterator) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
 
   v.add(1);
   v.add(2);
@@ -228,7 +228,7 @@ DTEST(constIterator) {
 }
 
 DTEST(mutableIterator) {
-  List<int> v;
+  List<int> v(TEST_ALLOCATOR);
 
   v.add(1);
   v.add(2);
@@ -243,7 +243,7 @@ DTEST(mutableIterator) {
 }
 
 DTEST(addRangeForTrivialElementType) {
-  List<char8> v;
+  List<char8> v(TEST_ALLOCATOR);
 
   const char8* str = " world";
 
@@ -266,12 +266,12 @@ DTEST(addRangeForNonTrivialElementType) {
     bool operator==(int other) const { return a == other; }
   };
 
-  List<A> l0;
+  List<A> l0(TEST_ALLOCATOR);
   l0.add(A{20});
   l0.add(A{21});
   l0.add(A{22});
 
-  List<A> l1;
+  List<A> l1(TEST_ALLOCATOR);
   l1.add(A{18});
   l1.add(A{19});
 

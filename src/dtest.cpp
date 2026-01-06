@@ -23,6 +23,7 @@
  */
 
 #include <dc/assert.hpp>
+#include <dc/debug_allocator.hpp>
 #include <dc/dtest.hpp>
 #include <dc/time.hpp>
 
@@ -226,7 +227,21 @@ int runTests(int argc, char** argv) {
                      .c_str());
       }
       const u64 testBefore = dc::getTimeUs();
+
+      // Create a DebugAllocator for this test
+      dc::DebugAllocator testAllocator;
+      test.state.allocator = &testAllocator;
+
       test.fn(test.state);
+
+      // Check for memory leaks
+      if (testAllocator.hasLeaks()) {
+        ++test.state.fail;
+        LOG_INFO("\t\t- {}",
+                 Paint("Memory leak detected!", Color::Red).c_str());
+        testAllocator.reportLeaks();
+      }
+
       const u64 testAfter = dc::getTimeUs();
       category.fail += (test.state.fail > 0);
       if (test.state.fail == 0) category.pass++;

@@ -5,20 +5,20 @@
 using namespace dc;
 
 DTEST(encode1) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode('x', str);
 
-  String correct;
+  String correct(TEST_ALLOCATOR);
   correct += 'x';
   ASSERT_EQ(str, correct);
   ASSERT_EQ(str.getSize(), 1);
 }
 
 DTEST(encode2) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x01B5, str);  // Latin Capital Letter Z with Stroke.
 
-  String correct;
+  String correct(TEST_ALLOCATOR);
   correct += 0xC6;
   correct += 0xB5;
   ASSERT_EQ(str, correct);
@@ -26,10 +26,10 @@ DTEST(encode2) {
 }
 
 DTEST(encode3) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x2605, str);  // Black Star
 
-  String correct;
+  String correct(TEST_ALLOCATOR);
   correct += 0xE2;
   correct += 0x98;
   correct += 0x85;
@@ -38,10 +38,10 @@ DTEST(encode3) {
 }
 
 DTEST(encode4) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);  // Fire emoji
 
-  String correct;
+  String correct(TEST_ALLOCATOR);
   correct += 0xF0;
   correct += 0x9F;
   correct += 0x94;
@@ -51,7 +51,7 @@ DTEST(encode4) {
 }
 
 DTEST(decode1) {
-  String str = "x";
+  String str("x", TEST_ALLOCATOR);
   utf8::CodePoint cp;
   utf8::CodeSize size = utf8::decode(str, 0, cp);
   ASSERT_EQ(cp, 'x');
@@ -59,7 +59,7 @@ DTEST(decode1) {
 }
 
 DTEST(decode2) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xC6;
   str += 0xB5;
   utf8::CodePoint cp;
@@ -69,7 +69,7 @@ DTEST(decode2) {
 }
 
 DTEST(decode3) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xE1;
   str += 0xBD;
   str += 0xA8;
@@ -80,7 +80,7 @@ DTEST(decode3) {
 }
 
 DTEST(decode4) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xF0;
   str += 0x9F;
   str += 0x94;
@@ -92,7 +92,7 @@ DTEST(decode4) {
 }
 
 DTEST(validateOnValidUtf8) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xF0;
   str += 0x9F;
   str += 0x94;
@@ -103,7 +103,7 @@ DTEST(validateOnValidUtf8) {
 }
 
 DTEST(validateOnInvalidUtf8) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xF0;
   str += 0x9F;
   str += 0x94;

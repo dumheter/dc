@@ -22,7 +22,7 @@ static const StringView kLoremIpsum(
 //
 
 DTEST(utf8IteratorEndComparison) {
-  const String abc = "abc";
+  const String abc("abc", TEST_ALLOCATOR);
 
   Utf8Iterator iterBeforeBegin(abc.c_str(), abc.getSize(), -1);
   Utf8Iterator iterBegin(abc.c_str(), abc.getSize(), 0);
@@ -37,7 +37,7 @@ DTEST(utf8IteratorEndComparison) {
 }
 
 DTEST(utf8IteratorCanIncrementToEnd) {
-  const String abc = "abc";
+  const String abc("abc", TEST_ALLOCATOR);
 
   Utf8Iterator iter(abc.c_str(), abc.getSize(), 0);
   Utf8Iterator iterEnd(abc.c_str(), abc.getSize(), 3);
@@ -58,7 +58,7 @@ DTEST(utf8IteratorCanIncrementToEnd) {
 }
 
 DTEST(utf8IteratorCanDecrementToBeforeBegin) {
-  const String abc = "abc";
+  const String abc("abc", TEST_ALLOCATOR);
 
   Utf8Iterator iter(abc.c_str(), abc.getSize(), 2);
   Utf8Iterator iterBeforeBegin(abc.c_str(), abc.getSize(), -1);
@@ -79,7 +79,7 @@ DTEST(utf8IteratorCanDecrementToBeforeBegin) {
 }
 
 DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);  // Fire emoji
   utf8::encode(' ', str);
   utf8::encode(0x1F68, str);  // Greek Capital Letter Omega with Psili
@@ -114,7 +114,7 @@ DTEST(utf8IteratorCanIncrementToEndWithLargeUtf8Characters) {
 }
 
 DTEST(utf8IteratorCanDecrementToBeforeBeginWithLargeUtf8Characters) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);  // Fire emoji
   utf8::encode(' ', str);
   utf8::encode(0x1F68, str);  // Greek Capital Letter Omega with Psili
@@ -161,7 +161,7 @@ DTEST(utf8IteratorCanDecrementToBeforeBeginWithLargeUtf8Characters) {
 // }
 
 DTEST(stringViewRunTime) {
-  String runtimeString("runtime length");
+  String runtimeString("runtime length", TEST_ALLOCATOR);
   StringView view = runtimeString.toView();
 
   ASSERT_EQ(runtimeString.getSize(), view.getSize());
@@ -170,7 +170,7 @@ DTEST(stringViewRunTime) {
 }
 
 DTEST(stringViewConstructedFromString) {
-  String str("Hello World");
+  String str("Hello World", TEST_ALLOCATOR);
   StringView view(str);
 
   ASSERT_EQ(str.getSize(), view.getSize());
@@ -188,7 +188,7 @@ DTEST(stringCopyConstructedFromStringView) {
 }
 
 DTEST(stringViewAndStringRoundTrip) {
-  String original("Round Trip Test");
+  String original("Round Trip Test", TEST_ALLOCATOR);
   StringView view(original);
   String copied(view);
 
@@ -198,7 +198,7 @@ DTEST(stringViewAndStringRoundTrip) {
 }
 
 DTEST(stringViewUtf8Iterator) {
-  String str;
+  String str(TEST_ALLOCATOR);
 
   utf8::CodePoint cps[3];
   utf8::CodePoint cp;
@@ -253,50 +253,51 @@ DTEST(stringViewSubString) {
 //
 
 DTEST(empty) {
-  String nothing("");
+  String nothing("", TEST_ALLOCATOR);
   ASSERT_TRUE(nothing.isEmpty());
 }
 
 DTEST(notEmpty) {
-  String something("abc");
+  String something("abc", TEST_ALLOCATOR);
   ASSERT_FALSE(something.isEmpty());
 }
 
 DTEST(emptyAfterBeingBigString) {
-  String str("123456789.123456789.123456789.123456789.123456789");
+  String str("123456789.123456789.123456789.123456789.123456789",
+             TEST_ALLOCATOR);
   ASSERT_FALSE(str.isEmpty());
   str = "";
   ASSERT_TRUE(str.isEmpty());
 }
 
 DTEST(clone) {
-  const String original("friday");
+  const String original("friday", TEST_ALLOCATOR);
   const String copy = original.clone();
   ASSERT_EQ(original, copy);
 }
 
 DTEST(size) {
-  String msg("123");
+  String msg("123", TEST_ALLOCATOR);
   ASSERT_EQ(msg.getSize(), 3);
 
-  String empty;
+  String empty(TEST_ALLOCATOR);
   ASSERT_EQ(empty.getSize(), 0);
 }
 
 DTEST(sizeWhenEmpty) {
-  String msg("");
+  String msg("", TEST_ALLOCATOR);
   ASSERT_EQ(msg.getSize(), 0);
 }
 
 DTEST(sizeWhenBigString) {
   const usize len = strlen("abc, abc, abc, abc, abc, abc, ");
-  String str = "abc, abc, abc, abc, abc, abc, ";
+  String str("abc, abc, abc, abc, abc, abc, ", TEST_ALLOCATOR);
 
   ASSERT_EQ(str.getSize(), len);
 }
 
 DTEST(subString) {
-  String str("Hello World");
+  String str("Hello World", TEST_ALLOCATOR);
 
   String sub1 = str.subString(0, 5);
   ASSERT_EQ(sub1.getSize(), 5);
@@ -313,21 +314,21 @@ DTEST(subString) {
 
 DTEST(isSameAsCString) {
   const char* cstr = "abc";
-  String str = "abc";
+  String str("abc", TEST_ALLOCATOR);
 
   ASSERT_TRUE(strcmp(cstr, str.c_str()) == 0);
 }
 
 DTEST(isSameAsCStringLooong) {
   const char* cstr = "abc, abc, abc, abc, abc, abc, ";
-  String str = "abc, abc, abc, abc, abc, abc, ";
+  String str("abc, abc, abc, abc, abc, abc, ", TEST_ALLOCATOR);
 
   ASSERT_TRUE(strcmp(cstr, str.c_str()) == 0);
 }
 
 DTEST(stringAssignedFromStringView) {
   StringView view("Test String");
-  String str;
+  String str(TEST_ALLOCATOR);
   str = view;
 
   ASSERT_EQ(str.getSize(), view.getSize());
@@ -336,7 +337,7 @@ DTEST(stringAssignedFromStringView) {
 }
 
 DTEST(stringAssignedFromStringViewOverwrites) {
-  String original("Original");
+  String original("Original", TEST_ALLOCATOR);
   StringView view("New String");
   original = view;
 
@@ -346,7 +347,7 @@ DTEST(stringAssignedFromStringViewOverwrites) {
 }
 
 DTEST(canIterate) {
-  String str = "The quick brown fox jumps over the fence.";
+  String str("The quick brown fox jumps over the fence.", TEST_ALLOCATOR);
   usize i = 0;
   auto iter = str.utf8Iterator();
   for (auto it = iter.begin(); it != iter.end(); ++it) {
@@ -357,13 +358,13 @@ DTEST(canIterate) {
 }
 
 DTEST(lengthOf1CodePointString) {
-  String str = "abc";
+  String str("abc", TEST_ALLOCATOR);
   ASSERT_EQ(3, str.getLength());
   ASSERT_EQ(3, str.getSize());
 }
 
 DTEST(lengthOfMultiCodePointString) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += 0xF0;
   str += 0x9F;
   str += 0x94;
@@ -373,20 +374,20 @@ DTEST(lengthOfMultiCodePointString) {
 }
 
 DTEST(appendSmallToBig) {
-  String str = "small";
+  String str("small", TEST_ALLOCATOR);
   ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
   str += " The quick brown fox jumps over the fence.";
   ASSERT_TRUE(str.getCapacity() > detail::kCachelineMinusListBytes);
 }
 
 DTEST(insertInMiddleOfString) {
-  String str = "Hellx World";
+  String str("Hellx World", TEST_ALLOCATOR);
   str.insert("o", 4);
   ASSERT_EQ(str, "Hello World");
 }
 
 DTEST(insertMakesStringGrow) {
-  String str = "The ...";
+  String str("The ...", TEST_ALLOCATOR);
   const usize before = str.getCapacity();
   str.insert("quick brown fox jumped over the fence.", 4);
   ASSERT_EQ(str, "The quick brown fox jumped over the fence.");
@@ -400,7 +401,7 @@ DTEST(insertMakesStringGrow) {
 // }
 
 DTEST(resize) {
-  String str;
+  String str(TEST_ALLOCATOR);
 
   for (usize i = 0; i < 100; ++i) {
     str.resize(i);
@@ -429,13 +430,14 @@ non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
 */
 
 DTEST(appendAfterMove) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += "str";
   ASSERT_EQ(str, "str");
 
-  String b;
+  String b(TEST_ALLOCATOR);
   {
-    String a = move(str);
+    String a(TEST_ALLOCATOR);
+    a = move(str);
     a += " a";
     ASSERT_EQ(a, "str a");
 
@@ -446,7 +448,7 @@ DTEST(appendAfterMove) {
 }
 
 DTEST(constructStringByTakingList) {
-  List<char8> list;
+  List<char8> list(TEST_ALLOCATOR);
   list.resize(kLoremIpsum.getSize() + 1);
   memcpy(list.begin(), kLoremIpsum.c_str(), kLoremIpsum.getSize() + 1);
 
@@ -460,71 +462,71 @@ DTEST(constructStringByTakingList) {
 //
 
 DTEST(findBasicPattern) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findPatternAtBeginning) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("Hello");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
 }
 
 DTEST(findPatternAtEnd) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findPatternNotFound) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("Python");
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findEmptyPattern) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("");
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findEmptyText) {
-  const String text("");
+  const String text("", TEST_ALLOCATOR);
   Option<u64> found = text.find("Hello");
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findPatternLongerThanText) {
-  const String text("Hi");
+  const String text("Hi", TEST_ALLOCATOR);
   Option<u64> found = text.find("Hello World");
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findMultipleOccurrencesReturnsFirst) {
-  const String text("abcabcabc");
+  const String text("abcabcabc", TEST_ALLOCATOR);
   Option<u64> found = text.find("abc");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
 }
 
 DTEST(findSingleCharacter) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("W");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findWithUtf8Characters) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);
   str += "abc";
   utf8::encode(0x1'F525, str);
 
-  String pattern;
+  String pattern(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, pattern);
   pattern += "abc";
 
@@ -534,12 +536,12 @@ DTEST(findWithUtf8Characters) {
 }
 
 DTEST(findUtf8PatternInMiddle) {
-  String str;
+  String str(TEST_ALLOCATOR);
   str += "Hello ";
   utf8::encode(0x1'F525, str);
   str += " World";
 
-  String pattern;
+  String pattern(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, pattern);
 
   Option<u64> found = str.find(pattern.toView());
@@ -548,11 +550,11 @@ DTEST(findUtf8PatternInMiddle) {
 }
 
 DTEST(findPatternNotInUtf8String) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);
   str += "abc";
 
-  String pattern;
+  String pattern(TEST_ALLOCATOR);
   utf8::encode(0x1'F68, pattern);
 
   Option<u64> found = str.find(pattern.toView());
@@ -560,21 +562,22 @@ DTEST(findPatternNotInUtf8String) {
 }
 
 DTEST(findEntireString) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("Hello World");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
 }
 
 DTEST(findInLongerString) {
-  const String text("The quick brown fox jumps over the lazy dog");
+  const String text("The quick brown fox jumps over the lazy dog",
+                    TEST_ALLOCATOR);
   Option<u64> found = text.find("fox");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(16));
 }
 
 DTEST(findOverlappingPatterns) {
-  const String text("aaaaa");
+  const String text("aaaaa", TEST_ALLOCATOR);
   Option<u64> found = text.find("aa");
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
@@ -638,40 +641,40 @@ DTEST(findShortSubstringInBook) {
 }
 
 DTEST(findWithOffset) {
-  const String text("Hello World Hello World");
+  const String text("Hello World Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World", 10);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(18));
 }
 
 DTEST(findWithOffsetNotFound) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("Hello", 5);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findWithOffsetBeyondEnd) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World", 20);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findWithOffsetZero) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World", 0);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findWithOffsetMultipleOccurrences) {
-  const String text("abcabcabc");
+  const String text("abcabcabc", TEST_ALLOCATOR);
   Option<u64> found = text.find("abc", 3);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(3));
 }
 
 DTEST(findWithOffsetAtPatternStart) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find("World", 6);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
@@ -697,33 +700,33 @@ DTEST(findViewWithOffsetBeyondEnd) {
 }
 
 DTEST(findChar8InString) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find('W');
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(6));
 }
 
 DTEST(findChar8InStringNotFound) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find('z');
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringWithOffset) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find('o', 5);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(7));
 }
 
 DTEST(findChar8InStringWithOffsetNotFound) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find('H', 1);
   ASSERT_TRUE(found.isNone());
 }
 
 DTEST(findChar8InStringWithOffsetBeyondEnd) {
-  const String text("Hello World");
+  const String text("Hello World", TEST_ALLOCATOR);
   Option<u64> found = text.find('H', 20);
   ASSERT_TRUE(found.isNone());
 }
@@ -761,21 +764,21 @@ DTEST(findChar8InStringViewWithOffsetBeyondEnd) {
 }
 
 DTEST(findChar8MultipleOccurrencesReturnsFirst) {
-  const String text("aaa");
+  const String text("aaa", TEST_ALLOCATOR);
   Option<u64> found = text.find('a');
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(0));
 }
 
 DTEST(findChar8WithOffsetMultipleOccurrences) {
-  const String text("aaa");
+  const String text("aaa", TEST_ALLOCATOR);
   Option<u64> found = text.find('a', 1);
   ASSERT_TRUE(found.isSome());
   ASSERT_EQ(found.value(), static_cast<u64>(1));
 }
 
 DTEST(findChar8InEmptyString) {
-  const String text("");
+  const String text("", TEST_ALLOCATOR);
   Option<u64> found = text.find('a');
   ASSERT_TRUE(found.isNone());
 }
@@ -791,7 +794,7 @@ DTEST(findChar8InEmptyStringView) {
 //
 
 DTEST(reallocSmallToHeapViaReserve) {
-  String str("hello");
+  String str("hello", TEST_ALLOCATOR);
   ASSERT_TRUE(strcmp(str.c_str(), "hello") == 0);
   ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
 
@@ -801,7 +804,7 @@ DTEST(reallocSmallToHeapViaReserve) {
 }
 
 DTEST(reallocViaResize) {
-  String str("small");
+  String str("small", TEST_ALLOCATOR);
   const usize originalCapacity = str.getCapacity();
   ASSERT_TRUE(strcmp(str.c_str(), "small") == 0);
 
@@ -812,7 +815,7 @@ DTEST(reallocViaResize) {
 }
 
 DTEST(reallocViaResizeWithContentPreservation) {
-  String str("preserve");
+  String str("preserve", TEST_ALLOCATOR);
   const StringView expected("preserve");
   ASSERT_TRUE(strcmp(str.c_str(), "preserve") == 0);
 
@@ -825,7 +828,7 @@ DTEST(reallocViaResizeWithContentPreservation) {
 }
 
 DTEST(reallocViaAppend) {
-  String str("start");
+  String str("start", TEST_ALLOCATOR);
   ASSERT_TRUE(str.getCapacity() <= detail::kCachelineMinusListBytes);
 
   str +=
@@ -837,7 +840,7 @@ DTEST(reallocViaAppend) {
 }
 
 DTEST(reallocViaInsert) {
-  String str("beginning end");
+  String str("beginning end", TEST_ALLOCATOR);
   const usize originalCapacity = str.getCapacity();
   ASSERT_TRUE(strcmp(str.c_str(), "beginning end") == 0);
 
@@ -850,7 +853,7 @@ DTEST(reallocViaInsert) {
 }
 
 DTEST(reallocMultipleTimes) {
-  String str("base");
+  String str("base", TEST_ALLOCATOR);
   ASSERT_TRUE(strcmp(str.c_str(), "base") == 0);
 
   for (usize i = 0; i < 10; ++i) {
@@ -865,7 +868,7 @@ DTEST(reallocMultipleTimes) {
 }
 
 DTEST(reallocWithUtf8Characters) {
-  String str;
+  String str(TEST_ALLOCATOR);
   utf8::encode(0x1'F525, str);
   utf8::encode(' ', str);
   utf8::encode(0x1F68, str);
@@ -887,7 +890,7 @@ DTEST(reallocWithUtf8Characters) {
 }
 
 DTEST(reallocAfterAssignment) {
-  String str("short");
+  String str("short", TEST_ALLOCATOR);
   str = "";
   ASSERT_TRUE(str.isEmpty());
 

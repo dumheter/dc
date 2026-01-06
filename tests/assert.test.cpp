@@ -25,7 +25,7 @@ DTEST(assertFalseWillLogCallstack) {
   dc::log::Logger& logger = dc::log::getGlobalLogger();
   ASSERT_TRUE(drainLogger(logger));
 
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   logger.attachSink(BufferSink(buf), "bufferSink");
 
   DC_ASSERT(false, "test assert :)");
