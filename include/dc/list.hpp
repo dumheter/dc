@@ -257,8 +257,12 @@ List<T, N>::List(List&& other)
   } else {
     m_begin = m_buffer;
     m_end = m_buffer + other.getSize();
-    for (u64 i = 0; i < other.getSize(); ++i) {
-      new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+    if constexpr (isTriviallyRelocatable<T>) {
+      memcpy(m_begin, other.m_begin, sizeof(T) * other.getSize());
+    } else {
+      for (u64 i = 0; i < other.getSize(); ++i) {
+        new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+      }
     }
   }
 
@@ -281,8 +285,12 @@ List<T, N>& List<T, N>::operator=(List&& other) noexcept {
     } else {
       m_begin = m_buffer;
       m_end = m_buffer + other.getSize();
-      for (u64 i = 0; i < other.getSize(); ++i) {
-        new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+      if constexpr (isTriviallyRelocatable<T>) {
+        memcpy(m_begin, other.m_begin, sizeof(T) * other.getSize());
+      } else {
+        for (u64 i = 0; i < other.getSize(); ++i) {
+          new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+        }
       }
     }
 
@@ -296,7 +304,9 @@ List<T, N>& List<T, N>::operator=(List&& other) noexcept {
 
 template <typename T, u64 N>
 List<T, N>::~List() {
-  for (T& elem : *this) elem.~T();
+  if constexpr (!isTriviallyRelocatable<T>) {
+    for (T& elem : *this) elem.~T();
+  }
 
   m_allocator.free(m_begin);
   m_begin = nullptr;
@@ -354,11 +364,17 @@ void List<T, N>::remove(T* elem) {
   DC_ASSERT(elem < m_end && elem >= m_begin,
             "Trying to erase an element outside of bounds.");
 
-  // TODO cgustafsson: if trivial, then we could just memcpy
-  elem->~T();
-
-  for (; (elem + 1) != m_end; ++elem) {
-    new (elem) T(dc::move(*(elem + 1)));
+  if constexpr (isTriviallyRelocatable<T>) {
+    // Use memmove for overlapping regions
+    const usize remaining = static_cast<usize>(m_end - elem - 1);
+    if (remaining > 0) {
+      memmove(elem, elem + 1, sizeof(T) * remaining);
+    }
+  } else {
+    elem->~T();
+    for (; (elem + 1) != m_end; ++elem) {
+      new (elem) T(dc::move(*(elem + 1)));
+    }
   }
 
   --m_end;
@@ -427,28 +443,48 @@ template <typename T, u64 N>
 void List<T, N>::reserve(u64 capacity) {
   if (capacity > m_capacity) {
     const u64 size = getSize();
+    const bool hasAllocated = m_allocator.hasAllocated();
 
-	const bool hasAllocated = m_allocator.hasAllocated();
+    if constexpr (isTriviallyRelocatable<T>) {
+      if (hasAllocated) {
+        // Fast path: realloc (data already on heap)
+        T* newBegin =
+            static_cast<T*>(m_allocator.realloc(m_begin, sizeof(T) * capacity));
+        if (!newBegin) return;  // failed to realloc, noop
+        m_begin = newBegin;
+        m_end = m_begin + size;
+        m_capacity = capacity;
+        return;
+      }
+      // Moving from internal buffer: alloc + memcpy
+      T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
+      if (!newBegin) return;  // failed to alloc, noop
+      memcpy(newBegin, m_begin, sizeof(T) * size);
+      m_begin = newBegin;
+      m_end = m_begin + size;
+      m_capacity = capacity;
+    } else {
+      // Non-trivial: alloc + move-construct + free
+      T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
+      if (!newBegin) return;  // failed to alloc, noop
 
-    T* newBegin =
-        static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
-    if (!newBegin) return;  // failed to alloc, noop
+      for (T* elem = m_begin; elem != m_end; ++elem)
+        new (newBegin + (elem - m_begin)) T(dc::move(*elem));
 
-    for (T* elem = m_begin; elem != m_end; ++elem)
-      new (newBegin + (elem - m_begin)) T(dc::move(*elem));
+      if (hasAllocated) m_allocator.free(m_begin);
 
-	if (hasAllocated)
-	  m_allocator.free(m_begin);
-
-    m_begin = newBegin;
-    m_end = m_begin + size;
-    m_capacity = capacity;
+      m_begin = newBegin;
+      m_end = m_begin + size;
+      m_capacity = capacity;
+    }
   }
 }
 
 template <typename T, u64 N>
 void List<T, N>::resize(u64 newSize) {
-  if (newSize > m_capacity) reserve(newSize);
+  if (newSize > m_capacity) {
+	reserve(newSize + newSize / 10);
+  }
 
   if (newSize <= m_capacity) {
     m_end = m_begin + newSize;
@@ -459,9 +495,10 @@ template <typename T, u64 N>
 void List<T, N>::clear() {
   if (m_end - m_begin == 0) return;
 
-  for (T* elem = m_end - 1; elem != m_begin; --elem) elem->~T();
-
-  m_begin->~T();
+  if constexpr (!isTriviallyRelocatable<T>) {
+    for (T* elem = m_end - 1; elem != m_begin; --elem) elem->~T();
+    m_begin->~T();
+  }
   m_end = m_begin;
 }
 

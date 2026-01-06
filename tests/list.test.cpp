@@ -311,3 +311,198 @@ DTEST(staticList) {
   ASSERT_EQ(4, list.getSize());
   ASSERT_EQ(8, list.getLast());
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Trivially Relocatable Optimization
+//
+
+DTEST(reserveNonTrivialStillMoves) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  List<LifetimeTracker<int>, 2> list(TEST_ALLOCATOR);
+  list.add(1);
+  list.add(2);
+
+  const int movesBefore = stats.moves;
+  list.reserve(100);
+
+  // Should have moved 2 elements
+  ASSERT_EQ(stats.moves, movesBefore + 2);
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 2);
+  ASSERT_EQ(list.getCapacity(), 100);
+}
+
+DTEST(reserveTrivialDoesNotMove) {
+  // int is trivially relocatable, so reserve should use realloc/memcpy
+  List<int, 2> list(TEST_ALLOCATOR);
+  list.add(1);
+  list.add(2);
+
+  // Force reallocation by exceeding internal buffer
+  list.reserve(100);
+
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 2);
+  ASSERT_EQ(list.getCapacity(), 100);
+
+  // Add more to verify the data is correct after realloc
+  list.add(3);
+  list.add(4);
+  ASSERT_EQ(list[2], 3);
+  ASSERT_EQ(list[3], 4);
+}
+
+DTEST(reserveTrivialFromInternalBuffer) {
+  // Test moving from internal buffer to heap for trivially relocatable type
+  List<int, 4> list(TEST_ALLOCATOR);
+  list.add(10);
+  list.add(20);
+  list.add(30);
+  list.add(40);
+
+  // Should use memcpy from internal buffer to newly allocated memory
+  list.reserve(100);
+
+  ASSERT_EQ(list.getSize(), 4);
+  ASSERT_EQ(list[0], 10);
+  ASSERT_EQ(list[1], 20);
+  ASSERT_EQ(list[2], 30);
+  ASSERT_EQ(list[3], 40);
+}
+
+DTEST(reserveTrivialReallocOnHeap) {
+  // Test realloc path when already on heap
+  List<int, 1> list(TEST_ALLOCATOR);
+  list.add(1);
+
+  // First reserve moves from internal buffer to heap
+  list.reserve(10);
+  ASSERT_EQ(list[0], 1);
+
+  // Second reserve should use realloc (already on heap)
+  list.reserve(100);
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list.getCapacity(), 100);
+}
+
+DTEST(removeTrivialUsesMemmove) {
+  List<int> list(TEST_ALLOCATOR);
+  list.add(1);
+  list.add(2);
+  list.add(3);
+  list.add(4);
+  list.add(5);
+
+  list.removeAt(1);  // Remove '2'
+
+  ASSERT_EQ(list.getSize(), 4);
+  ASSERT_EQ(list[0], 1);
+  ASSERT_EQ(list[1], 3);
+  ASSERT_EQ(list[2], 4);
+  ASSERT_EQ(list[3], 5);
+
+  list.removeAt(0);  // Remove '1'
+  ASSERT_EQ(list.getSize(), 3);
+  ASSERT_EQ(list[0], 3);
+  ASSERT_EQ(list[1], 4);
+  ASSERT_EQ(list[2], 5);
+
+  list.removeAt(2);  // Remove '5' (last element)
+  ASSERT_EQ(list.getSize(), 2);
+  ASSERT_EQ(list[0], 3);
+  ASSERT_EQ(list[1], 4);
+}
+
+DTEST(clearTrivialSkipsDestructors) {
+  // For trivially relocatable types, clear should just reset m_end
+  List<int> list(TEST_ALLOCATOR);
+  list.add(1);
+  list.add(2);
+  list.add(3);
+
+  list.clear();
+
+  ASSERT_EQ(list.getSize(), 0);
+  ASSERT_TRUE(list.isEmpty());
+
+  // Can add again after clear
+  list.add(10);
+  ASSERT_EQ(list.getSize(), 1);
+  ASSERT_EQ(list[0], 10);
+}
+
+DTEST(clearNonTrivialCallsDestructors) {
+  LifetimeStats::resetInstance();
+  LifetimeStats& stats = LifetimeStats::getInstance();
+
+  {
+    List<LifetimeTracker<int>> list(TEST_ALLOCATOR);
+    list.add(1);
+    list.add(2);
+    list.add(3);
+
+    const int destructsBefore = stats.destructs;
+    list.clear();
+
+    // Should have called 3 destructors
+    ASSERT_EQ(stats.destructs, destructsBefore + 3);
+    ASSERT_EQ(list.getSize(), 0);
+  }
+}
+
+DTEST(moveConstructTrivialUsesMemcpy) {
+  // When moving from internal buffer, trivially relocatable types use memcpy
+  List<int, 4> list1(TEST_ALLOCATOR);
+  list1.add(100);
+  list1.add(200);
+  list1.add(300);
+
+  List<int, 4> list2(dc::move(list1));
+
+  ASSERT_EQ(list2.getSize(), 3);
+  ASSERT_EQ(list2[0], 100);
+  ASSERT_EQ(list2[1], 200);
+  ASSERT_EQ(list2[2], 300);
+}
+
+DTEST(moveAssignTrivialUsesMemcpy) {
+  List<int, 4> list1(TEST_ALLOCATOR);
+  list1.add(10);
+  list1.add(20);
+
+  List<int, 4> list2(TEST_ALLOCATOR);
+  list2.add(99);
+
+  list2 = dc::move(list1);
+
+  ASSERT_EQ(list2.getSize(), 2);
+  ASSERT_EQ(list2[0], 10);
+  ASSERT_EQ(list2[1], 20);
+}
+
+DTEST(customTriviallyRelocatableType) {
+  // Test a custom type marked as trivially relocatable
+  struct TrivialStruct {
+    using IsTriviallyRelocatable = bool;
+    int x;
+    int y;
+
+    bool operator==(int other) const { return x == other; }
+  };
+
+  static_assert(isTriviallyRelocatable<TrivialStruct>);
+
+  List<TrivialStruct, 2> list(TEST_ALLOCATOR);
+  list.add(TrivialStruct{1, 2});
+  list.add(TrivialStruct{3, 4});
+
+  // Force reallocation
+  list.reserve(100);
+
+  ASSERT_EQ(list[0].x, 1);
+  ASSERT_EQ(list[0].y, 2);
+  ASSERT_EQ(list[1].x, 3);
+  ASSERT_EQ(list[1].y, 4);
+}
