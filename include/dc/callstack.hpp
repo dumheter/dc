@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <dc/list.hpp>
 #include <dc/macros.hpp>
 #include <dc/result.hpp>
 #include <dc/string.hpp>
@@ -34,16 +35,49 @@
 // Quickstart
 //
 
-/// Code usage example
+/// Code usage example - All-in-one function
 /*
 ```cpp
 int main(int, char**) {
-  const Result<Callstack, CallstackErr> result = buildCallstack();
+  const Result<Callstack, CallstackErr> result
+ * = buildCallstack();
   const String& callstack =
     result
-    .match([](const Callstack& cs) { return cs.toString(); },
-           [](const CallstackErr& err) { return err.toString(); });
+ .match([](const
+ * Callstack& cs) { return cs.callstack; },
+           [](const CallstackErr&
+ * err) { return err.toString(); });
   LOG_INFO("{}", callstack);
+
+  return
+ * 0;
+}
+```
+*/
+
+/// Code usage example - Lazy resolution (capture now, resolve later)
+/*
+```cpp
+int main(int, char**) {
+  // Fast: Capture callstack addresses
+  const
+ * Result<CallstackAddresses, CallstackErr> addresses = captureCallstack();
+  
+
+ * // ... do some work ...
+  
+  // Resolve addresses to human-readable format
+ * when needed
+  const Result<Callstack, CallstackErr> result =
+ * resolveCallstack(addresses.value());
+  const String& callstack =
+    result
+
+ * .match([](const Callstack& cs) { return cs.callstack; },
+           [](const
+ * CallstackErr& err) { return err.toString(); });
+  LOG_INFO("{}",
+ * callstack);
 
   return 0;
 }
@@ -57,11 +91,19 @@ int main(int, char**) {
 namespace dc {
 
 struct Callstack;
+struct CallstackAddresses;
 struct CallstackErr;
 
+Result<CallstackAddresses, CallstackErr> captureCallstack();
+Result<Callstack, CallstackErr> resolveCallstack(
+    const CallstackAddresses& addresses);
 Result<Callstack, CallstackErr> buildCallstack();
 
 ///////////////////////////////////////////////////////////////////////////////
+
+struct CallstackAddresses {
+  List<void*> addresses;
+};
 
 struct Callstack {
   String callstack;
