@@ -53,7 +53,7 @@ class DebugAllocator final : public IAllocator {
 
  private:
   struct Record {
-    Callstack callstack;
+    CallstackAddresses callstack;
     usize size;
     usize alignment;
   };
