@@ -58,7 +58,7 @@ class Map {
     Value value;
   };
 
- private:
+private:
   struct InternalEntry {
     u32 probeSequenceLength;  // 0 = empty/tombstone
     Entry entry;
@@ -229,12 +229,9 @@ class Map {
 
   bool resize(u64 newCapacity);
 
-  List<InternalEntry, 1> m_data;
+  List<InternalEntry> m_data;
   u64 m_size = 0;
   f32 m_maxLoadFactor = kDefaultMaxLoadFactor;
-
-  HashFn m_hash;
-  EqualFn m_equal;
 };
 
 // ========================================================================== //
@@ -283,7 +280,7 @@ Value* Map<Key, Value, HashFn, EqualFn>::insert(Key key) {
     }
   }
 
-  const u64 hash = m_hash(key);
+  const u64 hash = HashFn{}(key);
   u64 bucket = hash % getCapacity();
 
   u32 probeSequenceLength = 1;
@@ -353,7 +350,7 @@ Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) {
     return nullptr;
   }
 
-  const u64 hash = m_hash(key);
+  const u64 hash = HashFn{}(key);
   u64 bucket = hash % getCapacity();
   u32 probeSequenceLength = 1;
 
@@ -363,7 +360,7 @@ Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) {
       break;
     }
 
-    if (m_equal(key, m_data[bucket].entry.key)) {
+    if (EqualFn{}(key, m_data[bucket].entry.key)) {
       return &m_data[bucket].entry;
     }
 
@@ -384,7 +381,7 @@ Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) const {
     return nullptr;
   }
 
-  const u64 hash = m_hash(key);
+  const u64 hash = HashFn{}(key);
   u64 bucket = hash % getCapacity();
   u32 probeSequenceLength = 1;
 
@@ -394,7 +391,7 @@ Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) const {
       break;
     }
 
-    if (m_equal(key, m_data[bucket].entry.key)) {
+    if (EqualFn{}(key, m_data[bucket].entry.key)) {
       return &m_data[bucket].entry;
     }
 
