@@ -488,3 +488,108 @@ DTEST(mapRobinHoodSwapping) {
     ASSERT_EQ(entry->value, i);
   }
 }
+
+// ========================================================================== //
+// RemoveIf
+// ========================================================================== //
+
+DTEST(mapRemoveIfEmpty) {
+  Map<u64, u64> map(TEST_ALLOCATOR);
+
+  map.removeIf([](const auto& entry) {
+    DC_UNUSED(entry);
+    return true;
+  });
+
+  ASSERT_EQ(map.getSize(), 0);
+}
+
+DTEST(mapRemoveIfNoneMatch) {
+  Map<u64, u64> map(TEST_ALLOCATOR);
+
+  for (u64 i = 0; i < 10; ++i) {
+    u64* val = map[i];
+    ASSERT_TRUE(val != nullptr);
+    *val = i * 10;
+  }
+
+  map.removeIf([](const auto& entry) { return entry.value > 1000; });
+
+  ASSERT_EQ(map.getSize(), 10);
+
+  for (u64 i = 0; i < 10; ++i) {
+    auto* entry = map.tryGet(i);
+    ASSERT_TRUE(entry != nullptr);
+    ASSERT_EQ(entry->value, i * 10);
+  }
+}
+
+DTEST(mapRemoveIfAllMatch) {
+  Map<u64, u64> map(TEST_ALLOCATOR);
+
+  for (u64 i = 0; i < 10; ++i) {
+    u64* val = map[i];
+    ASSERT_TRUE(val != nullptr);
+    *val = i * 10;
+  }
+
+  map.removeIf([](const auto& entry) {
+    DC_UNUSED(entry);
+    return true;
+  });
+
+  ASSERT_EQ(map.getSize(), 0);
+}
+
+DTEST(mapRemoveIfEvenValues) {
+  Map<u64, u64> map(TEST_ALLOCATOR);
+
+  for (u64 i = 0; i < 10; ++i) {
+    u64* val = map[i];
+    ASSERT_TRUE(val != nullptr);
+    *val = i;
+  }
+
+  map.removeIf([](const auto& entry) { return entry.value % 2 == 0; });
+
+  ASSERT_EQ(map.getSize(), 5);
+
+  // Verify only odd values remain
+  for (u64 i = 1; i < 10; i += 2) {
+    auto* entry = map.tryGet(i);
+    ASSERT_TRUE(entry != nullptr);
+    ASSERT_EQ(entry->value, i);
+  }
+
+  // Verify even values are gone
+  for (u64 i = 0; i < 10; i += 2) {
+    auto* entry = map.tryGet(i);
+    ASSERT_TRUE(entry == nullptr);
+  }
+}
+
+DTEST(mapRemoveIfByKey) {
+  Map<u64, u64> map(TEST_ALLOCATOR);
+
+  for (u64 i = 0; i < 10; ++i) {
+    u64* val = map[i];
+    ASSERT_TRUE(val != nullptr);
+    *val = i * 10;
+  }
+
+  // Remove keys greater than 5
+  map.removeIf([](const auto& entry) { return entry.key > 5; });
+
+  ASSERT_EQ(map.getSize(), 6);
+
+  for (u64 i = 0; i <= 5; ++i) {
+    auto* entry = map.tryGet(i);
+    ASSERT_TRUE(entry != nullptr);
+    ASSERT_EQ(entry->value, i * 10);
+  }
+
+  for (u64 i = 6; i < 10; ++i) {
+    auto* entry = map.tryGet(i);
+    ASSERT_TRUE(entry == nullptr);
+  }
+}

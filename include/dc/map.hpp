@@ -116,6 +116,14 @@ class Map {
   /// @return true if found and removed, false otherwise
   bool remove(const Key& key, Value* valueOut);
 
+  /// Evaluate each entry in the map with @ref fn, remove those who match.
+  /// @param Fn A function that takes a const Entry& and returns true if it
+  /// should be removed
+  template <typename Fn,
+            bool enable = isInvocable<Fn, const Entry&> &&
+                          isSame<InvokeResultT<Fn, const Entry&>, bool>>
+  void removeIf(Fn fn);
+
   // ------------------------------------------------------------------------ //
   // Capacity
   // ------------------------------------------------------------------------ //
@@ -495,6 +503,33 @@ bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
   }
 
   return true;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+template <typename Fn, bool enable>
+void Map<Key, Value, HashFn, EqualFn>::removeIf(Fn fn) {
+  static_assert(isInvocable<Fn, const Entry&>,
+                "Cannot call 'Fn', is it a function with argument 'const "
+                "Entry&'?");
+  static_assert(isSame<InvokeResultT<Fn, const Entry&>, bool>,
+                "The return type of 'Fn' is not bool.");
+
+  if (isEmpty()) {
+    return;
+  }
+
+  // Collect keys to remove (can't modify while iterating)
+  List<Key, 16> keysToRemove;
+  for (const auto& entry : *this) {
+    if (fn(entry)) {
+      keysToRemove.add(entry.key);
+    }
+  }
+
+  // Remove all marked entries
+  for (const auto& key : keysToRemove) {
+    remove(key);
+  }
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
