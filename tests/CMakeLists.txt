@@ -13,6 +13,7 @@ set(TEST_SOURCES
   list.test.cpp
   log.test.cpp
   main.test.cpp
+  map.test.cpp
   math.test.cpp
   pointer_int_pair.test.cpp
   result.intrusive_option.test.cpp

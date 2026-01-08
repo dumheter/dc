@@ -24,334 +24,552 @@
 
 #pragma once
 
+#include <cstring>
+#include <dc/allocator.hpp>
+#include <dc/assert.hpp>
+#include <dc/hash.hpp>
+#include <dc/list.hpp>
+#include <dc/macros.hpp>
+#include <dc/traits.hpp>
 #include <dc/types.hpp>
 
-namespace dc
-{
-
-// <beginning of c code>
+namespace dc {
 
 // ========================================================================== //
-// Types & Constants
-// ========================================================================== //
-
-typedef PmU32 ProbeSequenceLength;
-
-#if !defined(kPmMapDefaultMaxLoadFactor)
-#define kPmMapDefaultMaxLoadFactor 0.75f
-#endif
-
-#if !defined(kPmMapEntryTombstone)
-#define kPmMapEntryTombstone 0
-#endif
-
-// ========================================================================== //
-// Macros
+// Map
 // ========================================================================== //
 
 /// Hash map with robin hood open addressing collision resolution.
 ///
-/// Macro function is used to declare a map type with the given name,
-/// containing values of a specific type. It will declare the map type as well
-/// as the functions, but will not implement them.
-///
-/// \param hashFn Use definition: PmU64 hash(const Key* key);
-/// \param compareFn Use definition: PmBool compare(const Key* a, const Key* b);
-/// \param keyDestroyFn Use definition: void keyDestroy(Key* key, void*
-/// userData);
-#define PM_MAP_DECLARE(Name, Key, Value, hashFn, compareFn, keyDestroyFn)      \
-  typedef struct Pm##Name##Entry                                               \
-  {                                                                            \
-    Key key;                                                                   \
-    Value value;                                                               \
-  } Pm##Name##Entry;                                                           \
-                                                                               \
-  typedef struct Pm##Name##InternalEntry                                       \
-  {                                                                            \
-    ProbeSequenceLength probeSequenceLength;                                   \
-    Pm##Name##Entry entry;                                                     \
-  } Pm##Name##InternalEntry;                                                   \
-                                                                               \
-  typedef struct Pm##Name                                                      \
-  {                                                                            \
-    PmAllocator* allocator;                                                    \
-    Pm##Name##InternalEntry* data;                                             \
-    PmU64 capacity;                                                            \
-    PmU64 size;                                                                \
-    PmF32 maxLoadFactor;                                                       \
-    void* userData;                                                            \
-  } Pm##Name;                                                                  \
-                                                                               \
-  PM_API PM_NODISCARD PmResult pm##Name##Create(PM_IN PmAllocator* allocator,  \
-                                                PM_OUT Pm##Name* mapOut,       \
-                                                PmU64 capacity,                \
-                                                PmF32 maxLoadFactor,           \
-                                                PM_IN_OPT void* userData);     \
-                                                                               \
-  PM_API void pm##Name##Destroy(PM_IN Pm##Name* map);                          \
-                                                                               \
-  PM_API PM_NODISCARD PmResult pm##Name##Resize(PM_IN Pm##Name* map,           \
-                                                PmU64 newCapacity);            \
-                                                                               \
-  PM_API PM_NODISCARD PM_RESULT PmResult pm##Name##Insert(                     \
-    PM_IN Pm##Name* map,                                                       \
-    PM_IN const Key* key,                                                      \
-    PM_OUT_PTR_MAYBENULL Value** valueOut);                                    \
-                                                                               \
-  PM_API PM_NODISCARD PM_RETURN_MAYBENULL Pm##Name##Entry* pm##Name##TryGet(   \
-    PM_IN Pm##Name* map, PM_IN const Key* key);                                \
-                                                                               \
-  PM_API PM_NODISCARD PM_RESULT PmResult pm##Name##Remove(                     \
-    PM_IN Pm##Name* map, PM_IN const Key* key, PM_OUT_OPT Value* valueOut);
+/// @tparam Key The key type
+/// @tparam Value The value type
+/// @tparam HashFn Hash functor, defaults to Hash<Key>
+/// @tparam EqualFn Equality functor, defaults to Equal<Key>
+template <typename Key, typename Value, typename HashFn = Hash<Key>,
+          typename EqualFn = Equal<Key>>
+class Map {
+ public:
+  // ------------------------------------------------------------------------ //
+  // Types
+  // ------------------------------------------------------------------------ //
 
-// -------------------------------------------------------------------------- //
+  struct Entry {
+    Key key;
+    Value value;
+  };
 
-/// Macro function that is used to define a map type with the given name,
-/// containing values of a specific type. It declare the type and functions as
-/// well as implements the functions.
-///
-/// Note that for a specific name of map this can only occur once in a single
-/// compilation unit. Otherwise there will be multiply defined symbols.
-#define PM_MAP_DEFINE(Name, Key, Value, hashFn, compareFn, keyDestroyFn)       \
-  PM_MAP_DECLARE(Name, Key, Value, hashFn, compareFn, keyDestoryFn)            \
-                                                                               \
-  PM_API PM_NODISCARD PmResult pm##Name##Create(PM_IN PmAllocator* allocator,  \
-                                                PM_OUT Pm##Name* mapOut,       \
-                                                PmU64 capacity,                \
-                                                PmF32 maxLoadFactor,           \
-                                                PM_IN_OPT void* userData)      \
-  {                                                                            \
-    mapOut->allocator = allocator;                                             \
-    mapOut->capacity = 0;                                                      \
-    mapOut->size = 0;                                                          \
-    mapOut->userData = userData;                                               \
-                                                                               \
-    if (maxLoadFactor > .9f) {                                                 \
-      return kPmResultInvalidArgument;                                         \
-    }                                                                          \
-    mapOut->maxLoadFactor = maxLoadFactor;                                     \
-                                                                               \
-    mapOut->data = pmAllocatorAllocateArrayT(                                  \
-      mapOut->allocator, Pm##Name##InternalEntry, capacity);                   \
-    if (!mapOut->data) {                                                       \
-      return kPmResultOutOfMemory;                                             \
-    }                                                                          \
-    mapOut->capacity = capacity;                                               \
-    pmMemoryClear(mapOut->data,                                                \
-                  mapOut->capacity * sizeof(Pm##Name##InternalEntry));         \
-                                                                               \
-    return kPmResultSuccess;                                                   \
-  }                                                                            \
-                                                                               \
-  PM_API void pm##Name##Destroy(PM_IN Pm##Name* map)                           \
-  {                                                                            \
-    if (map->data) {                                                           \
-      pmAllocatorFree(map->allocator, map->data);                              \
-    }                                                                          \
-  }                                                                            \
-                                                                               \
-  PM_API PM_NODISCARD PmResult pm##Name##Resize(PM_IN Pm##Name* map,           \
-                                                PmU64 newCapacity)             \
-  {                                                                            \
-    if (newCapacity <= map->capacity) {                                        \
-      return kPmResultSuccess;                                                 \
-    }                                                                          \
-                                                                               \
-    Pm##Name##InternalEntry* data = pmAllocatorAllocateArrayT(                 \
-      map->allocator, Pm##Name##InternalEntry, newCapacity);                   \
-    if (!data) {                                                               \
-      return kPmResultOutOfMemory;                                             \
-    }                                                                          \
-                                                                               \
-    pmMemoryClear(data, newCapacity * sizeof(Pm##Name##InternalEntry));        \
-                                                                               \
-    const PmU64 oldCapacity = map->capacity;                                   \
-    const PmU64 oldSize = map->size;                                           \
-    Pm##Name##InternalEntry* oldData = map->data;                              \
-    map->data = data;                                                          \
-    map->size = 0;                                                             \
-    map->capacity = newCapacity;                                               \
-                                                                               \
-    PmResult result = kPmResultSuccess;                                        \
-    for (PmU64 i = 0; i < oldCapacity; ++i) {                                  \
-      if (oldData[i].probeSequenceLength == kPmMapEntryTombstone) {            \
-        continue;                                                              \
-      }                                                                        \
-                                                                               \
-      Value* value = nullptr;                                                  \
-      result =                                                                 \
-        pm##Name##Insert(map, (const Key*)&oldData[i].entry.key, &value);      \
-      if (PM_IS_FAILURE(result)) {                                             \
-        break;                                                                 \
-      }                                                                        \
-      /* TODO(cgustafsson): convince SAL that value cannot be nullptr */       \
-      if (value)                                                               \
-        pmMemoryCopyT(value, &oldData[i].entry.value, Value, 1);               \
-    }                                                                          \
-                                                                               \
-    if (PM_IS_FAILURE(result)) {                                               \
-      /* revert the resizing */                                                \
-      map->data = oldData;                                                     \
-      map->capacity = oldCapacity;                                             \
-      map->size = oldSize;                                                     \
-      pmAllocatorFree(map->allocator, data);                                   \
-      return result;                                                           \
-    }                                                                          \
-                                                                               \
-    pmAllocatorFree(map->allocator, oldData);                                  \
-                                                                               \
-    return kPmResultSuccess;                                                   \
-  }                                                                            \
-                                                                               \
-  PM_API PM_NODISCARD PM_RESULT PmResult pm##Name##Insert(                     \
-    PM_IN Pm##Name* map,                                                       \
-    PM_IN const Key* key,                                                      \
-    PM_OUT_PTR_MAYBENULL Value** valueOut)                                     \
-  {                                                                            \
-    PM_OUT_SET(valueOut, nullptr);                                             \
-    if ((PmF32)map->size / (PmF32)map->capacity > map->maxLoadFactor) {        \
-      PM_TRY(pm##Name##Resize(map, map->capacity * 2));                        \
-    }                                                                          \
-                                                                               \
-    const PmU64 hash = hashFn(key, map->userData);                             \
-    PmU64 bucket = hash % map->capacity;                                       \
-                                                                               \
-    ProbeSequenceLength probeSequenceLength = 1;                               \
-    for (;;) {                                                                 \
-      Pm##Name##InternalEntry* entry = &map->data[bucket];                     \
-                                                                               \
-      if (probeSequenceLength > entry->probeSequenceLength) {                  \
-        if (entry->probeSequenceLength == 0) {                                 \
-          /* Bucket empty */                                                   \
-          map->data[bucket].probeSequenceLength = probeSequenceLength;         \
-          pmMemoryCopyT(&map->data[bucket].entry.key, key, Key, 1);            \
-          PM_OUT_SET(valueOut, &map->data[bucket].entry.value);                \
-          map->size += 1;                                                      \
-          break;                                                               \
-        }                                                                      \
-                                                                               \
-        /* Bucket occupied, lets move it. Robin hood! */                       \
-        Key tmpKey;                                                            \
-        pmMemoryCopyT(&tmpKey, &map->data[bucket].entry.key, Key, 1);          \
-        Value tmpValue;                                                        \
-        pmMemoryCopyT(&tmpValue, &map->data[bucket].entry.value, Value, 1);    \
-                                                                               \
-        const ProbeSequenceLength backupOldProbeSequnceLength =                \
-          map->data[bucket].probeSequenceLength;                               \
-                                                                               \
-        map->data[bucket].probeSequenceLength = probeSequenceLength;           \
-        pmMemoryCopyT(&map->data[bucket].entry.key, key, Key, 1);              \
-        PM_OUT_SET(valueOut, &map->data[bucket].entry.value);                  \
-        /* We inserted one, but removed one. No change in size */              \
-        /* map->size += 1 - 1; */                                              \
-                                                                               \
-        Value* insertValue = nullptr;                                          \
-        if (PM_IS_FAILURE(                                                     \
-              pm##Name##Insert(map, (const Key*)&tmpKey, &insertValue))) {     \
-          /* On failure we have to undo the move. */                           \
-          map->data[bucket].probeSequenceLength = backupOldProbeSequnceLength; \
-          pmMemoryCopyT(&map->data[bucket].entry.key, &tmpKey, Key, 1);        \
-          pmMemoryCopyT(&map->data[bucket].entry.value, &tmpValue, Value, 1);  \
-        } else {                                                               \
-          pmMemoryCopyT(insertValue, &tmpValue, Value, 1);                     \
-        }                                                                      \
-                                                                               \
-        break;                                                                 \
-      }                                                                        \
-                                                                               \
-      /* Bucket occupied and with smaller PSL than ours, try next. */          \
-      ++probeSequenceLength;                                                   \
-      ++bucket;                                                                \
-      if (bucket >= map->capacity) {                                           \
-        bucket = 0;                                                            \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    return kPmResultSuccess;                                                   \
-  }                                                                            \
-                                                                               \
-  PM_API PM_NODISCARD PM_RETURN_MAYBENULL Pm##Name##Entry* pm##Name##TryGet(   \
-    PM_IN Pm##Name* map, PM_IN const Key* key)                                 \
-  {                                                                            \
-    const PmU64 hash = hashFn(key, map->userData);                             \
-    PmU64 bucket = hash % map->capacity;                                       \
-                                                                               \
-    for (;;) {                                                                 \
-      if (map->data[bucket].probeSequenceLength == kPmMapEntryTombstone) {     \
-        break;                                                                 \
-      }                                                                        \
-                                                                               \
-      if (compareFn(                                                           \
-            key, (const Key*)&map->data[bucket].entry.key, map->userData)) {   \
-        return &map->data[bucket].entry;                                       \
-      }                                                                        \
-                                                                               \
-      ++bucket;                                                                \
-    }                                                                          \
-                                                                               \
-    return nullptr;                                                            \
-  }                                                                            \
-                                                                               \
-  PM_API PM_NODISCARD PM_RESULT PmResult pm##Name##Remove(                     \
-    PM_IN Pm##Name* map, PM_IN const Key* key, PM_OUT_OPT Value* valueOut)     \
-  {                                                                            \
-    /* TODO cgustafsson: If load factor too small, we should downsize. */      \
-    /* if ((PmF32)map->size / (PmF32)map->capacity > map->minLoadFactor) { */  \
-    /*  PM_TRY(mapResize(map, map->capacity / 2)); */                          \
-    /*} */                                                                     \
-                                                                               \
-    Pm##Name##Entry* userEntry = pm##Name##TryGet(map, key);                   \
-    if (userEntry) {                                                           \
-      Pm##Name##InternalEntry* entry =                                         \
-        (Pm##Name##InternalEntry*)(((uintptr_t)userEntry) -                    \
-                                   sizeof(ProbeSequenceLength));               \
-                                                                               \
-      entry->probeSequenceLength = kPmMapEntryTombstone;                       \
-      PM_OUT_COPY_OPT(valueOut, &userEntry->value);                            \
-      keyDestroyFn(&userEntry->key, &map->userData);                           \
-      map->size -= 1;                                                          \
-      /* If next entry has PSL of larger than 1 we move it and anything */     \
-      /* after.*/                                                              \
-      PmU64 bucket = ((PmU64)((uintptr_t)entry - (uintptr_t)map->data)) /      \
-                     sizeof(Pm##Name##InternalEntry);                          \
-      PmU64 prevBucket = bucket;                                               \
-      PmU32 moves = 0;                                                         \
-      for (;;) {                                                               \
-        prevBucket = bucket;                                                   \
-        ++bucket;                                                              \
-        if (bucket >= map->capacity) {                                         \
-          bucket = 0;                                                          \
-        }                                                                      \
-                                                                               \
-        if (map->data[bucket].probeSequenceLength <= 1) {                      \
-          break;                                                               \
-        }                                                                      \
-                                                                               \
-        map->data[prevBucket].probeSequenceLength =                            \
-          map->data[bucket].probeSequenceLength - 1;                           \
-        pmMemoryCopyT(&map->data[prevBucket].entry.key,                        \
-                      &map->data[bucket].entry.key,                            \
-                      Key,                                                     \
-                      1);                                                      \
-        pmMemoryCopyT(&map->data[prevBucket].entry.value,                      \
-                      &map->data[bucket].entry.value,                          \
-                      Value,                                                   \
-                      1);                                                      \
-        ++moves;                                                               \
-      }                                                                        \
-                                                                               \
-      if (moves > 0) {                                                         \
-        /* Don't forget to clear what we moved. */                             \
-        map->data[prevBucket].probeSequenceLength = kPmMapEntryTombstone;      \
-      }                                                                        \
-      return kPmResultSuccess;                                                 \
-    }                                                                          \
-                                                                               \
-    PM_OUT_COPY_OPT(valueOut, &(Value){ 0 });                                  \
-                                                                               \
-    return kPmResultInvalidArgument;                                           \
+ private:
+  struct InternalEntry {
+    u32 probeSequenceLength;  // 0 = empty/tombstone
+    Entry entry;
+  };
+
+  static constexpr u32 kTombstone = 0;
+  static constexpr f32 kDefaultMaxLoadFactor = 0.75f;
+  static constexpr u64 kDefaultCapacity = 16;
+
+ public:
+  // ------------------------------------------------------------------------ //
+  // Construction & Destruction
+  // ------------------------------------------------------------------------ //
+
+  explicit Map(IAllocator& allocator = getDefaultAllocator());
+  Map(u64 capacity, f32 maxLoadFactor = kDefaultMaxLoadFactor,
+      IAllocator& allocator = getDefaultAllocator());
+  ~Map() = default;
+
+  DC_DELETE_COPY(Map);
+  Map(Map&& other) noexcept = default;
+  Map& operator=(Map&& other) noexcept = default;
+
+  [[nodiscard]] Map clone() const;
+
+  // ------------------------------------------------------------------------ //
+  // Core Operations
+  // ------------------------------------------------------------------------ //
+
+  /// Insert a key into the map.
+  /// @param key The key to insert
+  /// @return Pointer to the value slot to be filled, or nullptr if allocation
+  ///         failed during resize.
+  Value* insert(Key key);
+
+  /// Try to get an entry by key.
+  /// @param key The key to look up
+  /// @return Pointer to the entry if found, nullptr otherwise
+  [[nodiscard]] Entry* tryGet(const Key& key);
+  [[nodiscard]] const Entry* tryGet(const Key& key) const;
+
+  /// Access value by key, inserting default if not present.
+  /// @param key The key to look up or insert
+  /// @return Reference to the value
+  Value& operator[](const Key& key);
+
+  /// Remove an entry by key.
+  /// @param key The key to remove
+  /// @return true if found and removed, false otherwise
+  bool remove(const Key& key);
+
+  /// Remove an entry by key and retrieve its value.
+  /// @param key The key to remove
+  /// @param valueOut Pointer to store the removed value (if found)
+  /// @return true if found and removed, false otherwise
+  bool remove(const Key& key, Value* valueOut);
+
+  // ------------------------------------------------------------------------ //
+  // Capacity
+  // ------------------------------------------------------------------------ //
+
+  [[nodiscard]] u64 getSize() const noexcept { return m_size; }
+  [[nodiscard]] u64 getCapacity() const noexcept {
+    return m_data.getCapacity();
+  }
+  [[nodiscard]] bool isEmpty() const noexcept { return m_size == 0; }
+
+  void clear();
+  void reserve(u64 newCapacity);
+
+  // ------------------------------------------------------------------------ //
+  // Iteration
+  // ------------------------------------------------------------------------ //
+
+  class Iterator {
+   public:
+    Iterator(InternalEntry* current, InternalEntry* end)
+        : m_current(current), m_end(end) {
+      skipEmpty();
+    }
+
+    Entry& operator*() const { return m_current->entry; }
+    Entry* operator->() const { return &m_current->entry; }
+
+    Iterator& operator++() {
+      ++m_current;
+      skipEmpty();
+      return *this;
+    }
+
+    bool operator!=(const Iterator& other) const {
+      return m_current != other.m_current;
+    }
+
+    bool operator==(const Iterator& other) const {
+      return m_current == other.m_current;
+    }
+
+   private:
+    void skipEmpty() {
+      while (m_current != m_end &&
+             m_current->probeSequenceLength == kTombstone) {
+        ++m_current;
+      }
+    }
+
+    InternalEntry* m_current;
+    InternalEntry* m_end;
+  };
+
+  class ConstIterator {
+   public:
+    ConstIterator(const InternalEntry* current, const InternalEntry* end)
+        : m_current(current), m_end(end) {
+      skipEmpty();
+    }
+
+    const Entry& operator*() const { return m_current->entry; }
+    const Entry* operator->() const { return &m_current->entry; }
+
+    ConstIterator& operator++() {
+      ++m_current;
+      skipEmpty();
+      return *this;
+    }
+
+    bool operator!=(const ConstIterator& other) const {
+      return m_current != other.m_current;
+    }
+
+    bool operator==(const ConstIterator& other) const {
+      return m_current == other.m_current;
+    }
+
+   private:
+    void skipEmpty() {
+      while (m_current != m_end &&
+             m_current->probeSequenceLength == kTombstone) {
+        ++m_current;
+      }
+    }
+
+    const InternalEntry* m_current;
+    const InternalEntry* m_end;
+  };
+
+  Iterator begin() { return Iterator(m_data.begin(), m_data.end()); }
+  Iterator end() { return Iterator(m_data.end(), m_data.end()); }
+  ConstIterator begin() const {
+    return ConstIterator(m_data.begin(), m_data.end());
+  }
+  ConstIterator end() const {
+    return ConstIterator(m_data.end(), m_data.end());
   }
 
-// <end of c code>
+ private:
+  // ------------------------------------------------------------------------ //
+  // Private Helpers
+  // ------------------------------------------------------------------------ //
 
+  bool resize(u64 newCapacity);
+
+  List<InternalEntry, 1> m_data;
+  u64 m_size = 0;
+  f32 m_maxLoadFactor = kDefaultMaxLoadFactor;
+
+  HashFn m_hash;
+  EqualFn m_equal;
+};
+
+// ========================================================================== //
+// Template Implementation
+// ========================================================================== //
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Map<Key, Value, HashFn, EqualFn>::Map(IAllocator& allocator)
+    : Map(kDefaultCapacity, kDefaultMaxLoadFactor, allocator) {}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Map<Key, Value, HashFn, EqualFn>::Map(u64 capacity, f32 maxLoadFactor,
+                                      IAllocator& allocator)
+    : m_data(capacity, allocator), m_size(0), m_maxLoadFactor(maxLoadFactor) {
+  DC_ASSERT(maxLoadFactor <= 0.9f, "Max load factor must be <= 0.9");
+
+  // Initialize all entries to empty (PSL = 0)
+  m_data.resize(capacity);
+  for (u64 i = 0; i < capacity; ++i) {
+    m_data[i].probeSequenceLength = kTombstone;
+  }
 }
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Map<Key, Value, HashFn, EqualFn> Map<Key, Value, HashFn, EqualFn>::clone()
+    const {
+  // Note: clone() requires Key to be copy-constructible
+  Map result(getCapacity(), m_maxLoadFactor);
+  for (const auto& entry : *this) {
+    Key keyCopy = entry.key;
+    Value* val = result.insert(dc::move(keyCopy));
+    if (val) {
+      *val = entry.value;
+    }
+  }
+  return result;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Value* Map<Key, Value, HashFn, EqualFn>::insert(Key key) {
+  // Check if we need to resize
+  if (static_cast<f32>(m_size) / static_cast<f32>(getCapacity()) >
+      m_maxLoadFactor) {
+    if (!resize(getCapacity() * 2)) {
+      return nullptr;  // Resize failed
+    }
+  }
+
+  const u64 hash = m_hash(key);
+  u64 bucket = hash % getCapacity();
+
+  u32 probeSequenceLength = 1;
+  for (;;) {
+    InternalEntry* entry = &m_data[bucket];
+
+    if (probeSequenceLength > entry->probeSequenceLength) {
+      if (entry->probeSequenceLength == 0) {
+        // Bucket empty
+        m_data[bucket].probeSequenceLength = probeSequenceLength;
+        if constexpr (isTriviallyRelocatable<Key>) {
+          memcpy(&m_data[bucket].entry.key, &key, sizeof(Key));
+        } else {
+          new (&m_data[bucket].entry.key) Key(dc::move(key));
+        }
+        m_size += 1;
+        return &m_data[bucket].entry.value;
+      }
+
+      // Bucket occupied, lets move it. Robin hood!
+      // We need to:
+      // 1. Take the existing entry's key and value (displaced)
+      // 2. Put our new key in this bucket
+      // 3. Recursively insert the displaced key
+      // 4. Move the displaced value to the new location
+
+      // Swap PSLs
+      dc::swap(m_data[bucket].probeSequenceLength, probeSequenceLength);
+
+      // Swap keys (now 'key' holds the displaced key)
+      dc::swap(m_data[bucket].entry.key, key);
+
+      // Save displaced value before we potentially overwrite it
+      Value displacedValue = dc::move(m_data[bucket].entry.value);
+
+      // valueOut points to where caller will write the NEW value
+      Value* valueOut = &m_data[bucket].entry.value;
+
+      // Recursively insert the displaced key
+      Value* insertValue = insert(dc::move(key));
+      if (!insertValue) {
+        // Fatal: we've already modified state and can't easily rollback
+        DC_FATAL_ASSERT(false,
+                        "Failed to insert displaced entry in robin hood");
+        return nullptr;
+      }
+
+      // Move displaced value to its new home
+      *insertValue = dc::move(displacedValue);
+
+      return valueOut;
+    }
+
+    // Bucket occupied and with smaller PSL than ours, try next
+    ++probeSequenceLength;
+    ++bucket;
+    if (bucket >= getCapacity()) {
+      bucket = 0;
+    }
+  }
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+typename Map<Key, Value, HashFn, EqualFn>::Entry*
+Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) {
+  if (getCapacity() == 0) {
+    return nullptr;
+  }
+
+  const u64 hash = m_hash(key);
+  u64 bucket = hash % getCapacity();
+  u32 probeSequenceLength = 1;
+
+  for (;;) {
+    if (probeSequenceLength > m_data[bucket].probeSequenceLength) {
+      // If empty OR our PSL exceeds what's stored here, key doesn't exist
+      break;
+    }
+
+    if (m_equal(key, m_data[bucket].entry.key)) {
+      return &m_data[bucket].entry;
+    }
+
+    ++probeSequenceLength;
+    ++bucket;
+    if (bucket >= getCapacity()) {
+      bucket = 0;
+    }
+  }
+
+  return nullptr;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+const typename Map<Key, Value, HashFn, EqualFn>::Entry*
+Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) const {
+  if (getCapacity() == 0) {
+    return nullptr;
+  }
+
+  const u64 hash = m_hash(key);
+  u64 bucket = hash % getCapacity();
+  u32 probeSequenceLength = 1;
+
+  for (;;) {
+    if (probeSequenceLength > m_data[bucket].probeSequenceLength) {
+      // If empty OR our PSL exceeds what's stored here, key doesn't exist
+      break;
+    }
+
+    if (m_equal(key, m_data[bucket].entry.key)) {
+      return &m_data[bucket].entry;
+    }
+
+    ++probeSequenceLength;
+    ++bucket;
+    if (bucket >= getCapacity()) {
+      bucket = 0;
+    }
+  }
+
+  return nullptr;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Value& Map<Key, Value, HashFn, EqualFn>::operator[](const Key& key) {
+  Entry* entry = tryGet(key);
+  if (entry) {
+    return entry->value;
+  }
+
+  Value* val = insert(key);
+  DC_ASSERT(val != nullptr, "Failed to insert key into map");
+  new (val) Value();
+  return *val;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key) {
+  return remove(key, nullptr);
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
+  Entry* userEntry = tryGet(key);
+  if (!userEntry) {
+    return false;
+  }
+
+  InternalEntry* entry = reinterpret_cast<InternalEntry*>(
+      reinterpret_cast<uintptr>(userEntry) - sizeof(u32));
+
+  u64 bucket = static_cast<u64>(reinterpret_cast<uintptr>(entry) -
+                                reinterpret_cast<uintptr>(m_data.begin())) /
+               sizeof(InternalEntry);
+
+  // Copy out the value if requested
+  if (valueOut) {
+    if constexpr (isTriviallyRelocatable<Value>) {
+      memcpy(valueOut, &userEntry->value, sizeof(Value));
+    } else {
+      new (valueOut) Value(dc::move(userEntry->value));
+    }
+  }
+
+  m_size -= 1;
+
+  // Backshift entries with PSL > 1 to fill the gap
+  for (;;) {
+    u64 nextBucket = bucket + 1;
+    if (nextBucket >= getCapacity()) {
+      nextBucket = 0;
+    }
+
+    if (m_data[nextBucket].probeSequenceLength <= 1) {
+      // No more entries to backshift, mark current bucket as empty
+      m_data[bucket].probeSequenceLength = kTombstone;
+
+      // Destroy the key/value in this slot
+      // (safe to call destructor on moved-from objects)
+      if constexpr (!isTriviallyRelocatable<Key>) {
+        m_data[bucket].entry.key.~Key();
+      }
+      if constexpr (!isTriviallyRelocatable<Value>) {
+        m_data[bucket].entry.value.~Value();
+      }
+      break;
+    }
+
+    // Backshift the next entry into current bucket
+    m_data[bucket].probeSequenceLength =
+        m_data[nextBucket].probeSequenceLength - 1;
+
+    // Move key
+    if constexpr (isTriviallyRelocatable<Key>) {
+      memcpy(&m_data[bucket].entry.key, &m_data[nextBucket].entry.key,
+             sizeof(Key));
+    } else {
+      m_data[bucket].entry.key.~Key();
+      new (&m_data[bucket].entry.key)
+          Key(dc::move(m_data[nextBucket].entry.key));
+    }
+
+    // Move value
+    if constexpr (isTriviallyRelocatable<Value>) {
+      memcpy(&m_data[bucket].entry.value, &m_data[nextBucket].entry.value,
+             sizeof(Value));
+    } else {
+      m_data[bucket].entry.value.~Value();
+      new (&m_data[bucket].entry.value)
+          Value(dc::move(m_data[nextBucket].entry.value));
+    }
+
+    bucket = nextBucket;
+  }
+
+  return true;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+void Map<Key, Value, HashFn, EqualFn>::clear() {
+  // Destroy all entries
+  if constexpr (!isTriviallyRelocatable<Key> ||
+                !isTriviallyRelocatable<Value>) {
+    for (u64 i = 0; i < getCapacity(); ++i) {
+      if (m_data[i].probeSequenceLength != kTombstone) {
+        if constexpr (!isTriviallyRelocatable<Key>) {
+          m_data[i].entry.key.~Key();
+        }
+        if constexpr (!isTriviallyRelocatable<Value>) {
+          m_data[i].entry.value.~Value();
+        }
+      }
+    }
+  }
+
+  // Reset all PSL to 0
+  for (u64 i = 0; i < getCapacity(); ++i) {
+    m_data[i].probeSequenceLength = kTombstone;
+  }
+  m_size = 0;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+void Map<Key, Value, HashFn, EqualFn>::reserve(u64 newCapacity) {
+  if (newCapacity > getCapacity()) {
+    resize(newCapacity);
+  }
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+bool Map<Key, Value, HashFn, EqualFn>::resize(u64 newCapacity) {
+  if (newCapacity <= getCapacity()) {
+    return true;
+  }
+
+  // Save old data
+  List<InternalEntry, 1> oldData = dc::move(m_data);
+  const u64 oldSize = m_size;
+
+  // Allocate new data
+  m_data = List<InternalEntry, 1>(newCapacity);
+  m_data.resize(newCapacity);
+  for (u64 i = 0; i < newCapacity; ++i) {
+    m_data[i].probeSequenceLength = kTombstone;
+  }
+  m_size = 0;
+
+  // Rehash all entries
+  for (u64 i = 0; i < oldData.getCapacity(); ++i) {
+    if (oldData[i].probeSequenceLength == kTombstone) {
+      continue;
+    }
+
+    Value* value = insert(dc::move(oldData[i].entry.key));
+    if (!value) {
+      // Revert the resizing - need to restore keys that were moved
+      m_data = dc::move(oldData);
+      m_size = oldSize;
+      return false;
+    }
+
+    if constexpr (isTriviallyRelocatable<Value>) {
+      memcpy(value, &oldData[i].entry.value, sizeof(Value));
+    } else {
+      new (value) Value(dc::move(oldData[i].entry.value));
+      oldData[i].entry.value.~Value();
+    }
+  }
+
+  // Keys were moved, values were moved, old data will be cleaned up by List
+  // destructor
+
+  return true;
+}
+
+}  // namespace dc
