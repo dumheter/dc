@@ -102,8 +102,8 @@ class Map {
 
   /// Access value by key, inserting default if not present.
   /// @param key The key to look up or insert
-  /// @return Reference to the value
-  Value& operator[](const Key& key);
+  /// @return Pointer to the value, or nullptr if allocation failed
+  Value* operator[](const Key& key);
 
   /// Remove an entry by key.
   /// @param key The key to remove
@@ -401,16 +401,18 @@ Map<Key, Value, HashFn, EqualFn>::tryGet(const Key& key) const {
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
-Value& Map<Key, Value, HashFn, EqualFn>::operator[](const Key& key) {
+Value* Map<Key, Value, HashFn, EqualFn>::operator[](const Key& key) {
   Entry* entry = tryGet(key);
   if (entry) {
-    return entry->value;
+    return &entry->value;
   }
 
   Value* val = insert(key);
-  DC_ASSERT(val != nullptr, "Failed to insert key into map");
+  if (val == nullptr) {
+    return nullptr;  // Allocation failed
+  }
   new (val) Value();
-  return *val;
+  return val;
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
