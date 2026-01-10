@@ -435,20 +435,13 @@ DTEST(forRangeIteratorWraparound) {
   ring.reserve(2);
 
   ring.add(1);
-  LOG_INFO("size: {}", ring.size());
   ring.remove();
-  LOG_INFO("size: {}", ring.size());
-
   ring.add(2);
-  LOG_INFO("size: {}", ring.size());
   ring.add(3);
-
-  LOG_INFO("size: {}", ring.size());
 
   dc::List<s32> list;
   for (const s32 elem : ring) {
 	list.add(elem);
-	LOG_INFO("elem: {}", elem);
   }
 
   ASSERT_EQ(list.getSize(), 2);
