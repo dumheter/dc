@@ -435,8 +435,8 @@ bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
   InternalEntry* entry = reinterpret_cast<InternalEntry*>(
       reinterpret_cast<uintptr>(userEntry) - sizeof(u32));
 
-  u64 bucket = static_cast<u64>(reinterpret_cast<uintptr>(entry) -
-                                reinterpret_cast<uintptr>(m_data.begin())) /
+  u64 bucket = (reinterpret_cast<uintptr>(entry) -
+                reinterpret_cast<uintptr>(m_data.begin())) /
                sizeof(InternalEntry);
 
   // Copy out the value if requested
