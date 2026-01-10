@@ -335,8 +335,8 @@ DTEST(ringBeginEnd) {
 
   s32 sum = 0;
   s32 count = 0;
-  for (s32* elem = ring.begin(); elem != ring.end(); ++elem) {
-    sum += *elem;
+  for (s32 elem : ring) {
+    sum += elem;
     ++count;
   }
 
@@ -349,7 +349,7 @@ DTEST(ringIterationEmpty) {
   ring.reserve(4);
 
   s32 count = 0;
-  for (s32* elem = ring.begin(); elem != ring.end(); ++elem) {
+  for (s32 _ : ring) {
     ++count;
   }
 
@@ -367,8 +367,8 @@ DTEST(ringIterationModify) {
   ring.add(dc::move(v2));
   ring.add(dc::move(v3));
 
-  for (s32* elem = ring.begin(); elem != ring.end(); ++elem) {
-    *elem *= 10;
+  for (s32& elem : ring) {
+    elem *= 10;
   }
 
   const s32* first = ring.remove();
@@ -429,3 +429,30 @@ DTEST(ringContinuousAddRemove) {
 
   ASSERT_TRUE(ring.isEmpty());
 }
+
+DTEST(forRangeIteratorWraparound) {
+  dc::Ring<s32> ring;
+  ring.reserve(2);
+
+  ring.add(1);
+  LOG_INFO("size: {}", ring.size());
+  ring.remove();
+  LOG_INFO("size: {}", ring.size());
+
+  ring.add(2);
+  LOG_INFO("size: {}", ring.size());
+  ring.add(3);
+
+  LOG_INFO("size: {}", ring.size());
+
+  dc::List<s32> list;
+  for (const s32 elem : ring) {
+	list.add(elem);
+	LOG_INFO("elem: {}", elem);
+  }
+
+  ASSERT_EQ(list.getSize(), 2);
+  ASSERT_EQ(list[0], 2);
+  ASSERT_EQ(list[1], 3);
+}
+  

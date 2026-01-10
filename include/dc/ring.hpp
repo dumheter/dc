@@ -63,10 +63,6 @@ struct Ring {
 
   bool isFull() const { return size() == capacity; }
 
-  T* begin() { return &data[read]; }
-
-  T* end() { return &data[mask(write)]; }
-
   bool reserve(u32 newCapacity) {
     newCapacity = roundUpToPowerOf2(newCapacity);
     DC_ASSERT(newCapacity < 0x80000000, "Must be less than 31 bits");
@@ -88,6 +84,26 @@ struct Ring {
 
     return data != nullptr;
   }
+
+  struct Iterator {
+    T& operator*() { return ring.data[ring.mask(index)]; }
+
+    Iterator& operator++() {
+      ++index;
+      return *this;
+    }
+
+    bool operator!=(const Iterator& other) const {
+      return index != other.index;
+    }
+
+    Ring& ring;
+    u32 index;
+  };
+
+  Iterator begin() { return Iterator{.ring = *this, .index = read}; }
+
+  Iterator end() { return Iterator{.ring = *this, .index = write}; }
 
   u32 mask(u32 index) const { return index & (capacity - 1); }
 
