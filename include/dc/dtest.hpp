@@ -470,7 +470,7 @@ dc::String formatOrFallback(const T& value) {
       ++dtestBodyState__you_must_have_an_assert.pass;                      \
     } else {                                                               \
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
-      LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
+      LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION({}) {}", line, #expr,     \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       LOG_INFO("\t\t- Expected exception, but none was thrown");           \
       dc::details::debugBreak();                                           \

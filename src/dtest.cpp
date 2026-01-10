@@ -52,13 +52,12 @@ void LifetimeStats::resetInstance() {
   instance.destructs = 0;
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
   dc::log::windowsFixConsole();
   dc::log::init();
-  const auto res = dtest::internal::runTests(argc, argv);	  
-  dc::log::deinit();                                                
-  return res;                                                       
+  const auto res = dtest::internal::runTests(argc, argv);
+  dc::log::deinit();
+  return res;
 }
 
 namespace internal {
@@ -177,6 +176,21 @@ static void listTests() {
 int runTests(int argc, char** argv) {
   FixConsole();
 
+  // Suppress abort on leak globally so tests can continue after a leak
+  dc::DebugAllocator::setGlobalSuppressAbortOnLeak(true);
+
+  // Thread-local pointer to the current test state
+  static thread_local TestBodyState* g_currentTestState = nullptr;
+
+  // Set up a callback to mark tests as failed when any DebugAllocator detects
+  // leaks
+  dc::DebugAllocator::setGlobalLeakCallback([](usize leakCount) {
+    if (g_currentTestState) {
+      ++g_currentTestState->fail;
+      LOG_INFO("\t\t- {}", Paint("Memory leak detected!", Color::Red).c_str());
+    }
+  });
+
   for (int i = 1; i < argc; ++i) {
     dc::StringView arg(argv[i]);
     if (arg == "-s" || arg == "--silent") {
@@ -237,19 +251,33 @@ int runTests(int argc, char** argv) {
       }
       const u64 testBefore = dc::getTimeUs();
 
-      // Create a DebugAllocator for this test
-      dc::DebugAllocator testAllocator;
-      test.state.allocator = &testAllocator;
+      // Set the global current test state so leak callbacks can mark the test
+      // as failed
+      g_currentTestState = &test.state;
 
-      test.fn(test.state);
+      // Run the test in a scope so all allocators destruct before we clear the
+      // test state
+      {
+        // Create a DebugAllocator for this test
+        dc::DebugAllocator testAllocator;
+        test.state.allocator = &testAllocator;
 
-      // Check for memory leaks
-      if (testAllocator.hasLeaks()) {
-        ++test.state.fail;
-        LOG_INFO("\t\t- {}",
-                 Paint("Memory leak detected!", Color::Red).c_str());
-        testAllocator.reportLeaks();
+        test.fn(test.state);
+
+        // Check for memory leaks in the framework allocator
+        if (testAllocator.hasLeaks()) {
+          ++test.state.fail;
+          LOG_INFO("\t\t- {}",
+                   Paint("Memory leak detected!", Color::Red).c_str());
+          testAllocator.reportLeaks();
+          // Suppress abort on destruction since we've already reported the leak
+          testAllocator.setSuppressAbortOnLeak(true);
+        }
+        // testAllocator and any test-created allocators destruct here
       }
+
+      // Clear the global test state after all allocators have destructed
+      g_currentTestState = nullptr;
 
       const u64 testAfter = dc::getTimeUs();
       category.fail += (test.state.fail > 0);

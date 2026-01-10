@@ -47,18 +47,30 @@ constexpr u32 kDebugAllocatorLeakException = 0xDC000001;
 #else
 constexpr int kDebugAllocatorLeakException = SIGABRT;
 #endif
+
+bool g_globalSuppressAbortOnLeak = false;
+DebugAllocator::LeakCallback g_globalLeakCallback = nullptr;
 }  // namespace
 
 DebugAllocator::DebugAllocator(IAllocator& backing) : m_backing(backing) {}
 
 DebugAllocator::~DebugAllocator() {
   if (hasLeaks()) {
+    const usize leakCount = m_allocations.size();
     reportLeaks();
+
+    // Notify the global callback if set (e.g., for test frameworks)
+    if (g_globalLeakCallback) {
+      g_globalLeakCallback(leakCount);
+    }
+
+    if (!m_suppressAbortOnLeak && !g_globalSuppressAbortOnLeak) {
 #ifdef _WIN32
-    RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
+      RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
-    raise(kDebugAllocatorLeakException);
+      raise(kDebugAllocatorLeakException);
 #endif
+    }
   }
 }
 
@@ -132,6 +144,18 @@ void DebugAllocator::reportLeaks() const {
     }
     ++index;
   }
+}
+
+void DebugAllocator::setSuppressAbortOnLeak(bool suppress) {
+  m_suppressAbortOnLeak = suppress;
+}
+
+void DebugAllocator::setGlobalSuppressAbortOnLeak(bool suppress) {
+  g_globalSuppressAbortOnLeak = suppress;
+}
+
+void DebugAllocator::setGlobalLeakCallback(LeakCallback callback) {
+  g_globalLeakCallback = dc::move(callback);
 }
 
 }  // namespace dc

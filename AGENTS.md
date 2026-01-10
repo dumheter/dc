@@ -24,11 +24,17 @@ cmake --build build
 
 ### Testing
 ```bash
-# Run all tests
+# Run all tests on windows
 ./build/tests/dc_test.exe
 
-# Run a specific test
+# Run all tests on linux
+./build/tests/dc_test.exe
+
+# Run a specific test on windows
 ./build/tests/dc_test.exe --gtest_filter=*<your test case>
+
+# Run a specific test on linux
+./build/tests/dc_test --gtest_filter=*<your test case>
 ```
 
 ### Formatting & Linting

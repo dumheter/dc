@@ -39,6 +39,13 @@ template <typename T>
 struct Ring {
   Ring(IAllocator& alloc = getDefaultAllocator()) : allocator(alloc) {}
 
+  ~Ring() {
+	for (T& elem : *this) {
+	  elem.~T();
+	}
+	allocator.free(data);
+  }
+
   /// Add an element. Does not grow the container automatically.
   /// Reserve more memory on failure.
   bool add(T&& elem) {

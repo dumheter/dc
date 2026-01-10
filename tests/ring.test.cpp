@@ -22,8 +22,10 @@
  * SOFTWARE.
  */
 
+#include <dc/debug_allocator.hpp>
 #include <dc/dtest.hpp>
 #include <dc/ring.hpp>
+#include <dc/string.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Test: Constructor
@@ -441,11 +443,34 @@ DTEST(forRangeIteratorWraparound) {
 
   dc::List<s32> list;
   for (const s32 elem : ring) {
-	list.add(elem);
+    list.add(elem);
   }
 
   ASSERT_EQ(list.getSize(), 2);
   ASSERT_EQ(list[0], 2);
   ASSERT_EQ(list[1], 3);
 }
-  
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Test: String element type - tests destructor behavior
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DTEST(ringStringElementType) {
+  dc::DebugAllocator debugAlloc;
+  dc::Ring<dc::String> ring(debugAlloc);
+  ring.reserve(4);
+
+  dc::String str1("Hello", debugAlloc);
+  dc::String str2("World", debugAlloc);
+  dc::String str3("Test", debugAlloc);
+
+  ring.add(dc::move(str1));
+  ring.add(dc::move(str2));
+  ring.add(dc::move(str3));
+
+  ASSERT_EQ(ring.size(), 3u);
+
+  const dc::String* first = ring.remove();
+  ASSERT_NE(first, nullptr);
+  ASSERT_EQ(first->toView(), "Hello");
+}
