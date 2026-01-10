@@ -37,7 +37,7 @@ static dc::String generateTestFileName() {
 }
 
 DTEST(fileWriteAndReadString) {
-  const dc::String testContent = dc::String("Hello, World!");
+  const dc::String testContent("Hello, World!", TEST_ALLOCATOR);
   const dc::String testFileName = generateTestFileName();
 
   File file;
@@ -108,8 +108,8 @@ DTEST(fileWriteAndReadBuffer) {
 
 DTEST(fileAppendMode) {
   const dc::String testFileName = generateTestFileName();
-  const dc::String firstContent = dc::String("First line\n");
-  const dc::String secondContent = dc::String("Second line\n");
+  const dc::String firstContent("First line\n", TEST_ALLOCATOR);
+  const dc::String secondContent("Second line\n", TEST_ALLOCATOR);
 
   File writeFile;
   auto openWriteResult = writeFile.open(testFileName, File::Mode::kWrite);
@@ -136,7 +136,7 @@ DTEST(fileAppendMode) {
   auto readResult = readFile.read();
   ASSERT_TRUE(readResult.isOk());
 
-  dc::String combined = firstContent.clone();
+  dc::String combined(firstContent.clone());
   combined += secondContent;
   ASSERT_EQ(readResult.value(), combined);
 
@@ -147,8 +147,8 @@ DTEST(fileAppendMode) {
 }
 
 DTEST(fileGetSize) {
-  const dc::String testContent =
-      dc::String("This is a test string for checking file size.");
+  const dc::String testContent("This is a test string for checking file size.",
+                               TEST_ALLOCATOR);
   const dc::String testFileName = generateTestFileName();
 
   File file;
@@ -171,7 +171,7 @@ DTEST(fileGetSize) {
 DTEST(fileRename) {
   const dc::String oldFileName = generateTestFileName();
   const dc::String newFileName = generateTestFileName();
-  const dc::String testContent = dc::String("Content to rename");
+  const dc::String testContent("Content to rename", TEST_ALLOCATOR);
 
   File file;
   auto openResult = file.open(oldFileName, File::Mode::kWrite);
@@ -204,7 +204,7 @@ DTEST(fileRename) {
 
 DTEST(fileExists) {
   const dc::String testFileName = generateTestFileName();
-  const dc::String testContent = dc::String("Test content");
+  const dc::String testContent("Test content", TEST_ALLOCATOR);
 
   ASSERT_FALSE(File::fileExists(testFileName));
 
@@ -256,7 +256,7 @@ DTEST(writeAndReadEmptyFile) {
   auto openResult = file.open(testFileName, File::Mode::kWrite);
   ASSERT_TRUE(openResult.isOk());
 
-  auto writeResult = file.write(dc::String(""));
+  auto writeResult = file.write(dc::String("", TEST_ALLOCATOR));
   ASSERT_EQ(writeResult, File::Result::kSuccess);
 
   file.close();
@@ -280,7 +280,7 @@ DTEST(writeAndReadEmptyFile) {
 }
 
 DTEST(readWithReference) {
-  const dc::String testContent = dc::String("Test content");
+  const dc::String testContent("Test content", TEST_ALLOCATOR);
   const dc::String testFileName = generateTestFileName();
 
   File writeFile;
@@ -296,7 +296,7 @@ DTEST(readWithReference) {
   auto openReadResult = readFile.open(testFileName, File::Mode::kRead);
   ASSERT_TRUE(openReadResult.isOk());
 
-  dc::String readContent;
+  dc::String readContent(TEST_ALLOCATOR);
   auto readResult = readFile.read(readContent);
   ASSERT_EQ(readResult, File::Result::kSuccess);
   ASSERT_EQ(readContent, testContent);
@@ -364,27 +364,27 @@ DTEST(filePathTracking) {
 
 DTEST(resultToString) {
   ASSERT_EQ(File::resultToString(File::Result::kSuccess),
-            dc::String("success"));
+            dc::String("success", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kCannotOpenPath),
-            dc::String("cannot open path"));
+            dc::String("cannot open path", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kFailedToSeek),
-            dc::String("failed to seek"));
+            dc::String("failed to seek", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kFailedToRead),
-            dc::String("failed to read"));
+            dc::String("failed to read", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kFailedToGetPos),
-            dc::String("failed to get pos"));
+            dc::String("failed to get pos", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kUnknownError),
-            dc::String("unknown error"));
+            dc::String("unknown error", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kFileNotOpen),
-            dc::String("file not open"));
+            dc::String("file not open", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kWriteFailed),
-            dc::String("write failed"));
+            dc::String("write failed", TEST_ALLOCATOR));
   ASSERT_EQ(File::resultToString(File::Result::kFailedRename),
-            dc::String("failed rename"));
+            dc::String("failed rename", TEST_ALLOCATOR));
 }
 
 DTEST(writeLargeContent) {
-  dc::String largeContent;
+  dc::String largeContent(TEST_ALLOCATOR);
   for (int i = 0; i < 10000; ++i) {
     largeContent += dc::format("Line {}\n", i);
   }

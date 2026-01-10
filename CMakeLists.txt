@@ -27,8 +27,10 @@ set(DC_SOURCES
   include/dc/assert.hpp
   include/dc/callstack.hpp
   include/dc/debug_allocator.hpp
+  include/dc/hash.hpp
   include/dc/list.hpp
   include/dc/log.hpp
+  include/dc/map.hpp
   include/dc/file.hpp
   include/dc/mac.hpp
   include/dc/macros.hpp
@@ -47,6 +49,7 @@ set(DC_SOURCES
   src/callstack.cpp
   src/debug_allocator.cpp
   src/fmt.cpp
+  src/hash.cpp
   src/log.cpp
   src/file.cpp
   src/mac.cpp

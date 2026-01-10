@@ -13,7 +13,7 @@ struct [[nodiscard]] BufferSink {
 };
 
 DTEST(isLoggingCorrectly) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "test sink");
   logger.start();
 
@@ -29,7 +29,7 @@ DTEST(isLoggingCorrectly) {
 }
 
 DTEST(levelVerbose) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Verbose);
   logger.start();
@@ -46,7 +46,7 @@ DTEST(levelVerbose) {
 }
 
 DTEST(levelInfo) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Info);
   logger.start();
@@ -63,7 +63,7 @@ DTEST(levelInfo) {
 }
 
 DTEST(levelWarning) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Warning);
   logger.start();
@@ -80,7 +80,7 @@ DTEST(levelWarning) {
 }
 
 DTEST(levelError) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Error);
   logger.start();
@@ -97,7 +97,7 @@ DTEST(levelError) {
 }
 
 DTEST(levelRaw) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::Raw);
   logger.start();
@@ -114,7 +114,7 @@ DTEST(levelRaw) {
 }
 
 DTEST(levelNone) {
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   dc::log::Logger logger(BufferSink(buf), "buf sink");
   logger.setLevel(dc::log::Level::None);
   logger.start();
@@ -247,7 +247,7 @@ DTEST(canAttachSinkToGlobalLoggerAndDetach) {
   dc::log::Logger& logger = dc::log::getGlobalLogger();
   ASSERT_TRUE(drainLogger(logger));
 
-  dc::String buf;
+  dc::String buf(TEST_ALLOCATOR);
   logger.attachSink(BufferSink(buf), "bufferSink");
 
   LOG_INFO("you");

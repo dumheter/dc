@@ -66,7 +66,7 @@ void* DebugAllocator::alloc(usize count, usize align) {
   void* ptr = m_backing.alloc(count, align);
   if (ptr) {
     Record record;
-    auto callstackResult = buildCallstack();
+    auto callstackResult = captureCallstack();
     if (callstackResult.isOk()) {
       record.callstack = dc::move(callstackResult.value());
     }
@@ -92,7 +92,7 @@ void* DebugAllocator::realloc(void* data, usize count, usize align) {
   void* newPtr = m_backing.realloc(data, count, align);
   if (newPtr) {
     Record record;
-    auto callstackResult = buildCallstack();
+    auto callstackResult = captureCallstack();
     if (callstackResult.isOk()) {
       record.callstack = dc::move(callstackResult.value());
     }
@@ -123,7 +123,13 @@ void DebugAllocator::reportLeaks() const {
   for (const auto& [ptr, record] : m_allocations) {
     LOG_ERROR("Leak #{}: {} bytes at {} (alignment {})", index, record.size,
               ptr, record.alignment);
-    LOG_ERROR("Allocation callstack:\n{}", record.callstack.callstack);
+    auto resolvedCallstack = resolveCallstack(record.callstack);
+    if (resolvedCallstack.isOk()) {
+      LOG_ERROR("Allocation callstack:\n{}",
+                resolvedCallstack.value().callstack);
+    } else {
+      LOG_ERROR("Failed to resolve callstack");
+    }
     ++index;
   }
 }

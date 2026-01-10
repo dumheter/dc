@@ -84,7 +84,4 @@ A few math related functions.
 A lightweight test library, uses dc/log.
 
 ## TODO
-[ ] String with boyer-moore search algo  
-[ ] Make a hash map  
-[ ] Profiler, maybe new git repo.  
-[ ] go c++ 20  
+[ ] Failing allocator to test allocation failure.

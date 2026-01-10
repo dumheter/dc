@@ -64,7 +64,7 @@ DTEST(err) {
   auto maybeString = dc::move(result).err();
   ASSERT_FALSE(maybeInt);
   ASSERT_TRUE(maybeString);
-  ASSERT_EQ(maybeString.value(), dc::String("carrot"));
+  ASSERT_EQ(maybeString.value(), dc::String("carrot", TEST_ALLOCATOR));
 }
 
 DTEST(value) {
@@ -162,7 +162,7 @@ DTEST(asConstRef) {
   LifetimeStats::resetInstance();
   LifetimeStats& stats = LifetimeStats::getInstance();
 
-  LifetimeTracker<String> original(String("hey"));
+  LifetimeTracker<String> original(String("hey", TEST_ALLOCATOR));
   const auto result = makeOk<LifetimeTracker<String>, int>(dc::move(original));
   const auto constRef = result.asConstRef();
 
@@ -174,7 +174,7 @@ DTEST(asMutRef) {
   LifetimeStats::resetInstance();
   LifetimeStats& stats = LifetimeStats::getInstance();
 
-  LifetimeTracker<String> original(String("hey"));
+  LifetimeTracker<String> original(String("hey", TEST_ALLOCATOR));
   auto result = makeOk<LifetimeTracker<String>, int>(dc::move(original));
   auto mutRef = result.asMutRef();
   ASSERT_EQ(result.value(), mutRef.value().get());
@@ -191,10 +191,10 @@ DTEST(asMutRef) {
 
 DTEST(contains) {
   const auto resultOk = makeOk<int, String>(-133);
-  const auto resultErr = makeErr<int, String>(String("wow"));
+  const auto resultErr = makeErr<int, String>(String("wow", TEST_ALLOCATOR));
   ASSERT_TRUE(resultOk.contains(-133));
-  ASSERT_TRUE(resultErr.containsErr(String("wow")));
-  ASSERT_FALSE(resultOk.containsErr(String("wow")));
+  ASSERT_TRUE(resultErr.containsErr(String("wow", TEST_ALLOCATOR)));
+  ASSERT_FALSE(resultOk.containsErr(String("wow", TEST_ALLOCATOR)));
   ASSERT_FALSE(resultErr.contains(-133));
 }
 
@@ -347,7 +347,7 @@ DTEST(makeOk) {
 }
 
 DTEST(makeErr) {
-  auto result = makeErr<int, String>("hey");
+  auto result = makeErr<int, String>(String("hey", TEST_ALLOCATOR));
   ASSERT_TRUE(result.isErr());
 }
 

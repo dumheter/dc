@@ -173,43 +173,22 @@ class Symbol {
   SYMBOL_INFO* m_sym;
 };
 
-// TODO do we want to be able to catch SEH exceptions? see gtest.cc:2588
-// https://github.com/google/googletest/blob/f16d43cd38e9f2e41357dba8445f9d3a32d4e83d/googletest/src/gtest.cc
-// DWORD callstackFromException(_EXCEPTION_POINTERS* ep)
-// {
-// 	HANDLE thread = GetCurrentThread();
-// 	CONTEXT* context = ep->ContextRecord;
+Result<CallstackAddresses, CallstackErr> captureCallstack() {
+  CallstackAddresses addresses;
+  addresses.addresses.resize(64);
 
-// 	return callstack(thread, context);
-// }
+  const USHORT framesCaptured = RtlCaptureStackBackTrace(
+      1 /*frames to skip*/, 64 /* max frames to capture */,
+      addresses.addresses.begin(), NULL /* optional hash */);
+  addresses.addresses.resize(framesCaptured);
 
-static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
-                                                         HANDLE thread,
-                                                         CONTEXT* context);
-
-Result<Callstack, CallstackErr> buildCallstack() {
-  HANDLE process = GetCurrentProcess();
-  HANDLE thread = GetCurrentThread();
-  CONTEXT context;
-  RtlCaptureContext(&context);
-
-  // TODO cgustafsson: make thread safe, symInitialize is not thread safe
-  Result<Callstack, CallstackErr> out =
-      SymInitialize(process, NULL, false)
-          ? buildCallstackAux(process, thread, &context)
-          : Err(CallstackErr{static_cast<u64>(GetLastError()),
-                             CallstackErr::ErrType::Sys, __LINE__});
-
-  SymCleanup(process);
-
-  return out;
+  return Ok(dc::move(addresses));
 }
 
-/// Note: Using an aux function to ensure we can return on error, but still do
-/// the cleanup before fully returning to the caller.
-static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
-                                                         HANDLE thread,
-                                                         CONTEXT* context) {
+Result<Callstack, CallstackErr> resolveCallstack(
+    const CallstackAddresses& addresses) {
+  HANDLE process = GetCurrentProcess();
+
   if (!SymInitialize(process, NULL, false))
     return Err(CallstackErr{static_cast<u64>(GetLastError()),
                             CallstackErr::ErrType::Sys, __LINE__});
@@ -225,9 +204,11 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
       process, moduleHandles.begin(),
       static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
       &bytesNeeded);
-  if (!ok)
+  if (!ok) {
+    SymCleanup(process);
     return Err(CallstackErr{static_cast<u64>(GetLastError()),
                             CallstackErr::ErrType::Sys, __LINE__});
+  }
 
   if (bytesNeeded > 0) {
     moduleHandles.resize(bytesNeeded / sizeof(HMODULE));
@@ -235,47 +216,19 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
         process, moduleHandles.begin(),
         static_cast<DWORD>(moduleHandles.getSize() * sizeof(HMODULE)),
         &bytesNeeded);
-    if (!ok)
+    if (!ok) {
+      SymCleanup(process);
       return Err(CallstackErr{static_cast<u64>(GetLastError()),
                               CallstackErr::ErrType::Sys, __LINE__});
+    }
   }
 
-  // TODO cgustafsson: why load all modules when only using 1?
   List<ModuleInfo> modules;
   modules.reserve(40);
   for (HMODULE module : moduleHandles) {
     auto res = ModuleInfo::create(process, module);
     if (res.isOk()) modules.add(dc::move(res).unwrap());
-    // else
-    //   return dc::move(res).map([](ModuleInfo&&) { return Callstack(); });
   }
-
-  void* base = modules[0].baseAddr;
-  IMAGE_NT_HEADERS* imageHeader = ImageNtHeader(base);
-  if (!imageHeader)
-    return Err(CallstackErr{static_cast<u64>(GetLastError()),
-                            CallstackErr::ErrType::Sys, __LINE__});
-  const DWORD machineType = imageHeader->FileHeader.Machine;
-
-#if defined(_M_X64)
-  STACKFRAME64 frame;
-  frame.AddrPC.Offset = context->Rip;
-  frame.AddrPC.Mode = AddrModeFlat;
-  frame.AddrStack.Offset = context->Rsp;
-  frame.AddrStack.Mode = AddrModeFlat;
-  frame.AddrFrame.Offset = context->Rbp;
-  frame.AddrFrame.Mode = AddrModeFlat;
-#elif defined(_M_IX86)
-  STACKFRAME64 frame;
-  frame.AddrPC.Offset = context->Eip;
-  frame.AddrPC.Mode = AddrModeFlat;
-  frame.AddrStack.Offset = context->Esp;
-  frame.AddrStack.Mode = AddrModeFlat;
-  frame.AddrFrame.Offset = context->Ebp;
-  frame.AddrFrame.Mode = AddrModeFlat;
-#else
-#error "platform not supported"
-#endif
 
   String str;
 
@@ -283,63 +236,65 @@ static Result<Callstack, CallstackErr> buildCallstackAux(HANDLE process,
   line.SizeOfStruct = sizeof(line);
   DWORD offsetFromSymbol = 0;
 
-  do {
-    if (frame.AddrPC.Offset != 0) {
-      Result<Symbol, CallstackErr> symbol =
-          Symbol::create(process, frame.AddrPC.Offset);
+  for (void* addr : addresses.addresses) {
+    DWORD64 addrPC = reinterpret_cast<DWORD64>(addr);
 
-      Result<String, CallstackErr> fnName = symbol.match(
-          [](const Symbol& symbol) { return symbol.undecoratedName(); },
-          [frame](const CallstackErr&) -> Result<String, CallstackErr> {
-            return dc::move(dc::formatStrict("{#x}", frame.AddrPC.Offset))
-                .mapErr([](const FormatErr& err) {
-                  return CallstackErr(static_cast<u64>(err.kind),
-                                      CallstackErr::ErrType::Fmt, __LINE__);
-                });
-          });
+    Result<Symbol, CallstackErr> symbol = Symbol::create(process, addrPC);
 
-      if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
-        const BOOL hasLine = SymGetLineFromAddr64(process, frame.AddrPC.Offset,
-                                                  &offsetFromSymbol, &line);
+    Result<String, CallstackErr> fnName = symbol.match(
+        [](const Symbol& symbol) { return symbol.undecoratedName(); },
+        [addrPC](const CallstackErr&) -> Result<String, CallstackErr> {
+          return dc::move(dc::formatStrict("{#x}", addrPC))
+              .mapErr([](const FormatErr& err) {
+                return CallstackErr(static_cast<u64>(err.kind),
+                                    CallstackErr::ErrType::Fmt, __LINE__);
+              });
+        });
 
-        String fileLine;
-        if (hasLine) {
-          fileLine = dc::formatStrict("{}:{}", line.FileName, line.LineNumber)
-                         .unwrapOr("?:?");
-        } else {
-          fileLine = "?:?";
-        }
+    if (fnName.isOk() && fnName.value() != "dc::buildCallstack") {
+      const BOOL hasLine =
+          SymGetLineFromAddr64(process, addrPC, &offsetFromSymbol, &line);
 
-        auto res = formatTo(
-            str, "  {} ({})\n",
-            fnName.match(
-                [](const String& s) -> String { return s.clone(); },
-                [](const CallstackErr&) -> String { return String("?fn?"); }),
-            fileLine);
-        if (res.isErr())
-          return Err(CallstackErr(static_cast<u64>(-1),
-                                  CallstackErr::ErrType::Fmt, __LINE__));
-
-        // TODO cgustafsson: how to handle RaiseException
-        if (fnName.isOk() && fnName.value() == "RaiseException") break;
-
-        if (fnName.isOk() && fnName.value() == "main") break;
+      String fileLine;
+      if (hasLine) {
+        fileLine = dc::formatStrict("{}:{}", line.FileName, line.LineNumber)
+                       .unwrapOr("?:?");
       } else {
-        auto res = formatTo(str, "  (No symbols: AddrPC.Offset == 0)\n");
-        if (res.isErr())
-          return Err(CallstackErr(static_cast<u64>(-1),
-                                  CallstackErr::ErrType::Fmt, __LINE__));
+        fileLine = "?:?";
       }
 
-      if (!StackWalk64(machineType, process, thread, &frame, context, NULL,
-                       SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-        break;
+      auto res = formatTo(
+          str, "  {} ({})\n",
+          fnName.match(
+              [](const String& s) -> String { return s.clone(); },
+              [](const CallstackErr&) -> String { return String("?fn?"); }),
+          fileLine);
+      if (res.isErr()) {
+        for (const ModuleInfo& module : modules)
+          SymUnloadModule64(process, (DWORD64)module.baseAddr);
+        SymCleanup(process);
+        return Err(CallstackErr(static_cast<u64>(-1),
+                                CallstackErr::ErrType::Fmt, __LINE__));
+      }
+
+      if (fnName.isOk() && fnName.value() == "RaiseException") break;
+      if (fnName.isOk() && fnName.value() == "main") break;
     }
-  } while (frame.AddrReturn.Offset != 0);
+  }
+
   for (const ModuleInfo& module : modules)
     SymUnloadModule64(process, (DWORD64)module.baseAddr);
 
+  SymCleanup(process);
+
   return Ok(Callstack{dc::move(str)});
+}
+
+Result<Callstack, CallstackErr> buildCallstack() {
+  Result<CallstackAddresses, CallstackErr> addresses = captureCallstack();
+  if (addresses.isErr()) return Err(dc::move(addresses).errValue());
+
+  return resolveCallstack(addresses.value());
 }
 
 String CallstackErr::toString() const {
@@ -423,7 +378,28 @@ static Dwfl* initializeDwfl() {
   return s_dwfl;
 }
 
-Result<Callstack, CallstackErr> buildCallstack() {
+Result<CallstackAddresses, CallstackErr> captureCallstack() {
+  constexpr usize fnRetAddrSize = 128;
+  void* fnRetAddr[fnRetAddrSize];
+  int size = backtrace(fnRetAddr, fnRetAddrSize);
+
+  CallstackAddresses addresses;
+  addresses.addresses.reserve(static_cast<usize>(size));
+
+  bool skipSelf = true;
+  for (int i = 0; i < size; ++i) {
+    if (skipSelf) {
+      skipSelf = false;
+      continue;
+    }
+    addresses.addresses.add(fnRetAddr[i]);
+  }
+
+  return Ok(dc::move(addresses));
+}
+
+Result<Callstack, CallstackErr> resolveCallstack(
+    const CallstackAddresses& addresses) {
   Dwfl* dwfl = initializeDwfl();
   if (!dwfl) {
     return Err(CallstackErr(0, CallstackErr::ErrType::Sys, __LINE__));
@@ -432,13 +408,9 @@ Result<Callstack, CallstackErr> buildCallstack() {
   String str;
   str.getInternalList().reserve(2048);
 
-  constexpr usize fnRetAddrSize = 64;
-  void* fnRetAddr[fnRetAddrSize];
-  int size = backtrace(fnRetAddr, fnRetAddrSize);
-
-  for (int i = 0; i < size; ++i) {
+  for (void* addr : addresses.addresses) {
     Dl_info symInfo;
-    int res = dladdr(static_cast<const void*>(fnRetAddr[i]), &symInfo);
+    int res = dladdr(static_cast<const void*>(addr), &symInfo);
     if (res != 0) {
       int status;
       // __cxa_demangle allocates with malloc, so pass nullptr and let it
@@ -446,7 +418,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
       char* fnName =
           abi::__cxa_demangle(symInfo.dli_sname, nullptr, nullptr, &status);
 
-      String fileLine = getLineInfo(dwfl, fnRetAddr[i]);
+      String fileLine = getLineInfo(dwfl, addr);
 
       bool shouldBreak = false;
       if (status == 0 || status == -2) {
@@ -461,8 +433,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
           if (name && strcmp(name, "main") == 0) shouldBreak = true;
         }
       } else {
-        auto fmtRes =
-            formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
+        auto fmtRes = formatTo(str, "{}\n", static_cast<const void*>(addr));
         if (fmtRes.isErr()) {
           free(fnName);
           return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
@@ -474,8 +445,7 @@ Result<Callstack, CallstackErr> buildCallstack() {
 
     } else {
       LOG_WARNING("failed to dladdr");
-      auto fmtRes =
-          formatTo(str, "{}\n", static_cast<const void*>(fnRetAddr[i]));
+      auto fmtRes = formatTo(str, "{}\n", static_cast<const void*>(addr));
       if (fmtRes.isErr())
         return Err(CallstackErr(static_cast<u64>(fmtRes.errValue().kind),
                                 CallstackErr::ErrType::Fmt, __LINE__));
@@ -485,6 +455,13 @@ Result<Callstack, CallstackErr> buildCallstack() {
   if (!str.isEmpty()) str.resize(str.getSize() - 1);
 
   return Ok(Callstack(str.toView()));
+}
+
+Result<Callstack, CallstackErr> buildCallstack() {
+  Result<CallstackAddresses, CallstackErr> addresses = captureCallstack();
+  if (addresses.isErr()) return Err(dc::move(addresses).errValue());
+
+  return resolveCallstack(addresses.value());
 }
 
 String CallstackErr::toString() const {

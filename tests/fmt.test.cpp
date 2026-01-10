@@ -250,14 +250,14 @@ DTEST(formatS64Limits) {
 }
 
 DTEST(formatString) {
-  String fact("Yellow is a color.");
+  String fact("Yellow is a color.", TEST_ALLOCATOR);
   auto res = dc::formatStrict("Fact: {}", fact);
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(res.value(), "Fact: Yellow is a color.");
 }
 
 DTEST(print) {
-  String fact("Yellow is a color.");
+  String fact("Yellow is a color.", TEST_ALLOCATOR);
   auto res = dc::formatStrict("Fact: {}", fact);
   ASSERT_TRUE(res.isOk());
   ASSERT_EQ(*res, "Fact: Yellow is a color.");

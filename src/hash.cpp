@@ -22,44 +22,26 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include <dc/allocator.hpp>
-#include <dc/callstack.hpp>
-#include <dc/macros.hpp>
-#include <dc/types.hpp>
-#include <unordered_map>
+#include <cstring>
+#include <dc/hash.hpp>
+#include <dc/string.hpp>
 
 namespace dc {
 
-class DebugAllocator final : public IAllocator {
- public:
-  explicit DebugAllocator(IAllocator& backing = getDefaultAllocator());
-  ~DebugAllocator();
+u64 Hash<String>::operator()(const String& key) const {
+  return hashBytes(reinterpret_cast<const u8*>(key.c_str()), key.getSize());
+}
 
-  DC_DELETE_COPY(DebugAllocator);
-  DC_DELETE_MOVE(DebugAllocator);
+u64 Hash<StringView>::operator()(const StringView& key) const {
+  return hashBytes(reinterpret_cast<const u8*>(key.c_str()), key.getSize());
+}
 
-  void* alloc(usize count, usize align = kMinimumAlignment) override;
-  void* realloc(void* data, usize count,
-                usize align = kMinimumAlignment) override;
-  void free(void* data) override;
-
-  [[nodiscard]] usize getAllocationCount() const;
-
-  [[nodiscard]] bool hasLeaks() const;
-
-  void reportLeaks() const;
-
- private:
-  struct Record {
-    CallstackAddresses callstack;
-    usize size;
-    usize alignment;
-  };
-
-  IAllocator& m_backing;
-  std::unordered_map<void*, Record> m_allocations;
-};
+bool Equal<StringView>::operator()(const StringView& a,
+                                   const StringView& b) const {
+  if (a.getSize() != b.getSize()) {
+    return false;
+  }
+  return memcmp(a.c_str(), b.c_str(), a.getSize()) == 0;
+}
 
 }  // namespace dc

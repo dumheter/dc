@@ -33,6 +33,7 @@
 #include <dc/traits.hpp>
 #include <functional>
 #include <thread>
+#include <mutex>
 
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
@@ -73,11 +74,22 @@ struct Logger::Data {
   using Queue = moodycamel::BlockingConcurrentQueue<Payload>;
   moodycamel::LightweightSemaphore loggerDeadSem;
   Queue queue;
-  std::vector<TaggedSink> sinks;
+  std::mutex internalSinksMutex;
+  std::vector<TaggedSink> internalSinks;
+
+  struct SinksAccessor {
+	std::scoped_lock<std::mutex> lock;
+	std::vector<TaggedSink>* sinks;
+  };
+
+  SinksAccessor sinksAccesssor()
+  {
+	return SinksAccessor(std::scoped_lock<std::mutex>(internalSinksMutex), &internalSinks);
+  }
 };
 
 Logger::Logger(Sink sink, const char* name) : m_data(new Data) {
-  m_data->sinks.push_back({dc::move(sink), dc::hash32fnv1a(name)});
+  m_data->internalSinks.push_back({dc::move(sink), dc::hash32fnv1a(name)});
 }
 
 Logger::~Logger() { delete m_data; }
@@ -144,7 +156,8 @@ void Logger::run() {
   for (;;) {
     m_data->queue.wait_dequeue(payload);
     if (isShutdownPayload(payload)) break;
-    for (auto& taggedSink : m_data->sinks)
+	Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+    for (auto& taggedSink : *sinksAccessor.sinks)
       if (payload.level >= m_level) taggedSink.sink(payload, m_level);
   }
 
@@ -157,7 +170,8 @@ void Logger::run() {
     ++payloadsDrained;
     if (isShutdownPayload(payload))
       continue;  //< protect from multiple shutdowns
-    for (auto& taggedSink : m_data->sinks) taggedSink.sink(payload, m_level);
+	Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+    for (auto& taggedSink : *sinksAccessor.sinks) taggedSink.sink(payload, m_level);
   }
 
 #if defined(DC_LOG_DEBUG)
@@ -172,17 +186,19 @@ void Logger::run() {
 }
 
 Logger& Logger::attachSink(Sink sink, const char* name) {
-  m_data->sinks.push_back({dc::move(sink), dc::hash32fnv1a(name)});
+  Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+  sinksAccessor.sinks->push_back({dc::move(sink), dc::hash32fnv1a(name)});
   return *this;
 }
 
 Logger& Logger::detachSink(const char* name) {
   const u32 tag = dc::hash32fnv1a(name);
-  m_data->sinks.erase(std::remove_if(m_data->sinks.begin(), m_data->sinks.end(),
+  Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+  sinksAccessor.sinks->erase(std::remove_if(sinksAccessor.sinks->begin(), sinksAccessor.sinks->end(),
                                      [tag](const TaggedSink& taggedSink) {
                                        return taggedSink.tag == tag;
                                      }),
-                      m_data->sinks.end());
+                      sinksAccessor.sinks->end());
   return *this;
 }
 
