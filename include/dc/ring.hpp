@@ -33,11 +33,14 @@
 
 namespace dc {
 
+/// Ring buffer.
 /// Design from https://www.snellman.net/blog/archive/2016-12-13-ring-buffers/
 template <typename T>
 struct Ring {
   Ring(IAllocator& alloc = getDefaultAllocator()) : allocator(alloc) {}
 
+  /// Add an element. Does not grow the container automatically.
+  /// Reserve more memory on failure.
   bool add(T&& elem) {
     if (isFull()) return false;
 
@@ -45,6 +48,8 @@ struct Ring {
     return true;
   }
 
+  /// Add an element. Does not grow the container automatically.
+  /// Reserve more memory on failure.
   T* add() {
     if (isFull()) return nullptr;
 
