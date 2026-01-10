@@ -118,6 +118,21 @@ constexpr T log2(T n) {
   return ((n < 2) ? 0 : 1 + log2(n / 2));
 }
 
+/// Round up to the nearest power of 2 for a u32.
+/// @param n The value to round up.
+/// @return The smallest power of 2 >= n. Returns 0 if n is 0.
+/// @note If n > 2^31, the result will overflow to 0.
+[[nodiscard]] inline constexpr u32 roundUpToPowerOf2(u32 n) {
+  if (n == 0) return 0;
+  --n;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  return n + 1;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 // FNV1a c++11 constexpr compile time hash functions, 32 and 64 bit

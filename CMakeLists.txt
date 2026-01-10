@@ -35,6 +35,7 @@ set(DC_SOURCES
   include/dc/math.hpp
   include/dc/platform.hpp
   include/dc/result.hpp
+  include/dc/ring.hpp
   include/dc/string.hpp
   include/dc/time.hpp
   include/dc/traits.hpp

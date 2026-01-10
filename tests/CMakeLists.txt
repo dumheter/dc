@@ -18,6 +18,7 @@ set(TEST_SOURCES
   result.intrusive_option.test.cpp
   result.option.test.cpp
   result.result.test.cpp
+  ring.test.cpp
   string.test.cpp
   time.test.cpp
   track_lifetime.test.cpp

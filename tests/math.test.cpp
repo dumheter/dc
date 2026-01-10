@@ -48,3 +48,52 @@ DTEST(setBitsSetOutOfRangeWithValueKeepingItsValueWithOffset) {
 
   ASSERT_EQ(value, (3) + (4));
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// roundUpToPowerOf2
+//
+
+DTEST(roundUpToPowerOf2Zero) {
+  const u32 result = roundUpToPowerOf2(0);
+  ASSERT_EQ(result, 0u);
+}
+
+DTEST(roundUpToPowerOf2One) {
+  const u32 result = roundUpToPowerOf2(1);
+  ASSERT_EQ(result, 1u);
+}
+
+DTEST(roundUpToPowerOf2Two) {
+  const u32 result = roundUpToPowerOf2(2);
+  ASSERT_EQ(result, 2u);
+}
+
+DTEST(roundUpToPowerOf2Three) {
+  const u32 result = roundUpToPowerOf2(3);
+  ASSERT_EQ(result, 4u);
+}
+
+DTEST(roundUpToPowerOf2Five) {
+  const u32 result = roundUpToPowerOf2(5);
+  ASSERT_EQ(result, 8u);
+}
+
+DTEST(roundUpToPowerOf2AlreadyPowerOf2) {
+  const u32 result = roundUpToPowerOf2(16);
+  ASSERT_EQ(result, 16u);
+}
+
+DTEST(roundUpToPowerOf2Seventeen) {
+  const u32 result = roundUpToPowerOf2(17);
+  ASSERT_EQ(result, 32u);
+}
+
+DTEST(roundUpToPowerOf2LargeValue) {
+  const u32 result = roundUpToPowerOf2(1000000);
+  ASSERT_EQ(result, 1048576u);  // 2^20
+}
+
+DTEST(roundUpToPowerOf2MaxValidValue) {
+  const u32 result = roundUpToPowerOf2(0x80000000);  // 2^31
+  ASSERT_EQ(result, 0x80000000u);
+}
