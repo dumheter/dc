@@ -46,6 +46,7 @@ DebugAllocator::DebugAllocator(IAllocator& backing) : m_backing(backing) {}
 DebugAllocator::~DebugAllocator() {
   if (hasLeaks()) {
     reportLeaks();
+    std::unordered_map<void*, Record>().swap(m_allocations);
 #ifdef _WIN32
     RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
