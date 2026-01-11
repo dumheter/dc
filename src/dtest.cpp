@@ -176,20 +176,14 @@ static void listTests() {
 int runTests(int argc, char** argv) {
   FixConsole();
 
-  // Suppress abort on leak globally so tests can continue after a leak
-  dc::DebugAllocator::setGlobalSuppressAbortOnLeak(true);
-
-  // Thread-local pointer to the current test state
-  static thread_local TestBodyState* g_currentTestState = nullptr;
-
-  // Set up a callback to mark tests as failed when any DebugAllocator detects
-  // leaks
-  dc::DebugAllocator::setGlobalLeakCallback([](usize leakCount) {
-    if (g_currentTestState) {
-      ++g_currentTestState->fail;
-      LOG_INFO("\t\t- {}", Paint("Memory leak detected!", Color::Red).c_str());
-    }
-  });
+#if !defined(_WIN32)
+  // Install global signal handler for leak detection (Linux)
+  struct sigaction leakAction, oldAction;
+  leakAction.sa_handler = internal::leakSignalHandler;
+  sigemptyset(&leakAction.sa_mask);
+  leakAction.sa_flags = 0;
+  sigaction(SIGABRT, &leakAction, &oldAction);
+#endif
 
   for (int i = 1; i < argc; ++i) {
     dc::StringView arg(argv[i]);
@@ -251,33 +245,39 @@ int runTests(int argc, char** argv) {
       }
       const u64 testBefore = dc::getTimeUs();
 
-      // Set the global current test state so leak callbacks can mark the test
-      // as failed
-      g_currentTestState = &test.state;
-
-      // Run the test in a scope so all allocators destruct before we clear the
-      // test state
-      {
-        // Create a DebugAllocator for this test
+      // Run the test with leak detection
+      bool leakDetected = false;
+#if defined(_WIN32)
+      // Windows: Use SEH to catch leak exceptions
+      __try {
         dc::DebugAllocator testAllocator;
         test.state.allocator = &testAllocator;
-
         test.fn(test.state);
-
-        // Check for memory leaks in the framework allocator
-        if (testAllocator.hasLeaks()) {
-          ++test.state.fail;
-          LOG_INFO("\t\t- {}",
-                   Paint("Memory leak detected!", Color::Red).c_str());
-          testAllocator.reportLeaks();
-          // Suppress abort on destruction since we've already reported the leak
-          testAllocator.setSuppressAbortOnLeak(true);
-        }
-        // testAllocator and any test-created allocators destruct here
+        // testAllocator destructs here, may raise exception if leaks
+      } __except (GetExceptionCode() == dc::kDebugAllocatorLeakException
+                      ? EXCEPTION_EXECUTE_HANDLER
+                      : EXCEPTION_CONTINUE_SEARCH) {
+        leakDetected = true;
       }
+#else
+      // Linux: Use sigsetjmp/siglongjmp to catch SIGABRT from leak detection
+      internal::g_leakCaught = 0;
+      if (sigsetjmp(internal::g_leakJmpBuf, 1) == 0) {
+        dc::DebugAllocator testAllocator;
+        test.state.allocator = &testAllocator;
+        test.fn(test.state);
+        // testAllocator destructs here, may raise SIGABRT if leaks
+      }
+      if (internal::g_leakCaught) {
+        leakDetected = true;
+      }
+#endif
 
-      // Clear the global test state after all allocators have destructed
-      g_currentTestState = nullptr;
+      if (leakDetected) {
+        ++test.state.fail;
+        LOG_INFO("\t\t- {}",
+                 Paint("Memory leak detected!", Color::Red).c_str());
+      }
 
       const u64 testAfter = dc::getTimeUs();
       category.fail += (test.state.fail > 0);
@@ -337,6 +337,11 @@ int runTests(int argc, char** argv) {
   if (warnings)
     LOG_INFO("With {} {}", warnings,
              Paint("warning(s)", Color::BrightYellow).c_str());
+
+#if !defined(_WIN32)
+  // Restore original signal handler (Linux)
+  sigaction(SIGABRT, &oldAction, nullptr);
+#endif
 
   return failedCategories;
 }

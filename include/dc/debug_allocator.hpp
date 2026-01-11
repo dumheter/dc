@@ -28,7 +28,6 @@
 #include <dc/callstack.hpp>
 #include <dc/macros.hpp>
 #include <dc/types.hpp>
-#include <functional>
 #include <unordered_map>
 
 namespace dc {
@@ -52,18 +51,6 @@ class DebugAllocator final : public IAllocator {
 
   void reportLeaks() const;
 
-  void setSuppressAbortOnLeak(bool suppress);
-
-  /// Set global flag to suppress abort on leak for all DebugAllocators.
-  /// This is useful when running tests that should continue after a leak.
-  static void setGlobalSuppressAbortOnLeak(bool suppress);
-
-  /// Set a global callback that is invoked when any DebugAllocator detects
-  /// leaks during destruction. The callback receives the number of leaks
-  /// detected. This is useful for test frameworks to mark tests as failed.
-  using LeakCallback = std::function<void(usize leakCount)>;
-  static void setGlobalLeakCallback(LeakCallback callback);
-
  private:
   struct Record {
     CallstackAddresses callstack;
@@ -73,7 +60,12 @@ class DebugAllocator final : public IAllocator {
 
   IAllocator& m_backing;
   std::unordered_map<void*, Record> m_allocations;
-  bool m_suppressAbortOnLeak = false;
 };
+
+#ifdef _WIN32
+constexpr u32 kDebugAllocatorLeakException = 0xDC000001;
+#else
+constexpr int kDebugAllocatorLeakSignal = 6; //#define	SIGABRT		6	/* Abnormal termination.  */
+#endif
 
 }  // namespace dc

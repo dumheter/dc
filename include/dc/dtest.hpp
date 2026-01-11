@@ -286,6 +286,16 @@ inline void exceptionSignalHandler(int sig) {
   g_exceptionCaught = 1;
   siglongjmp(g_exceptionJmpBuf, 1);
 }
+
+// Global leak handler infrastructure
+inline thread_local sigjmp_buf g_leakJmpBuf;
+inline thread_local volatile sig_atomic_t g_leakCaught = 0;
+
+inline void leakSignalHandler(int sig) {
+  (void)sig;
+  g_leakCaught = 1;
+  siglongjmp(g_leakJmpBuf, 1);
+}
 #endif
 
 int runTests(int argc, char** argv);
@@ -397,7 +407,7 @@ dc::String formatOrFallback(const T& value) {
       ++dtestBodyState__you_must_have_an_assert.pass;                      \
     } else {                                                               \
       ++dtestBodyState__you_must_have_an_assert.fail;                      \
-      LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,				\
+      LOG_INFO("\t\t- Assert:{} " #a " != " #b " {}", line,                \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       const auto lhs = dtest::internal::formatOrFallback(a);               \
       const auto rhs = dtest::internal::formatOrFallback(b);               \
