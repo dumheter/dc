@@ -47,6 +47,7 @@ DebugAllocator::~DebugAllocator() {
   if (hasLeaks()) {
     reportLeaks();
     m_allocations.clear();
+	m_allocations = Map<void*, Record>();
 #ifdef _WIN32
     RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
