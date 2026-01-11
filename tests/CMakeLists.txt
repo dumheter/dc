@@ -74,7 +74,7 @@ endif ()
 #//////////////////////////////////////////////////////////////////////////////
 #// Declare libraries / executables
 
-target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_DATETIME=2)
+target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_DATETIME=4)
 target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_LEVEL=0)
 target_compile_definitions(dc PRIVATE -DDC_LOG_PREFIX_FUNCTION=0)
 

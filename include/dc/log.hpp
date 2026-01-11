@@ -358,9 +358,7 @@ class Paint {
 //
 
 template <>
-struct std::formatter<dc::log::Level> {
-  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
-
+struct std::formatter<dc::log::Level> : std::formatter<std::string_view> {
   auto format(dc::log::Level level, std::format_context& ctx) const {
     std::string_view str;
     switch (level) {
@@ -385,7 +383,7 @@ struct std::formatter<dc::log::Level> {
       default:
         str = "unknown";
     }
-    return std::format_to(ctx.out(), "{}", str);
+    return std::formatter<std::string_view>::format(str, ctx);
   }
 };
 
@@ -407,11 +405,34 @@ struct std::formatter<dc::Timestamp> {
   }
 
   auto format(const dc::Timestamp& t, std::format_context& ctx) const {
-    // Legacy default: "{<02}:{<02}:{<02.3}"
-    // Note: cast u8 to int to avoid std::format treating them as char
-    return std::format_to(ctx.out(), "{:0>2}:{:0>2}:{:0>6.3f}",
-                          static_cast<int>(t.hour), static_cast<int>(t.minute),
-                          t.second);
+    // Format options:
+    // {:dp} - date and time with high precision (microseconds)
+    // {:d}  - date and time with low precision (milliseconds)
+    // {:p}  - time only with high precision (microseconds)
+    // {}    - time only with low precision (milliseconds)
+    if (printDate && highPrecisionTime) {
+      // Date + high precision time (microseconds)
+      return std::format_to(ctx.out(), "{:04}-{:02}-{:02} {:02}:{:02}:{:09.6f}",
+                            t.year, static_cast<int>(t.month),
+                            static_cast<int>(t.day), static_cast<int>(t.hour),
+                            static_cast<int>(t.minute), t.second);
+    } else if (printDate) {
+      // Date + low precision time (milliseconds)
+      return std::format_to(ctx.out(), "{:04}-{:02}-{:02} {:02}:{:02}:{:06.3f}",
+                            t.year, static_cast<int>(t.month),
+                            static_cast<int>(t.day), static_cast<int>(t.hour),
+                            static_cast<int>(t.minute), t.second);
+    } else if (highPrecisionTime) {
+      // Time only with high precision (microseconds)
+      return std::format_to(ctx.out(), "{:02}:{:02}:{:09.6f}",
+                            static_cast<int>(t.hour),
+                            static_cast<int>(t.minute), t.second);
+    } else {
+      // Time only with low precision (milliseconds)
+      return std::format_to(ctx.out(), "{:02}:{:02}:{:06.3f}",
+                            static_cast<int>(t.hour),
+                            static_cast<int>(t.minute), t.second);
+    }
   }
 };
 
