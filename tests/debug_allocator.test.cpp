@@ -53,25 +53,32 @@ DTEST(debugAllocatorReallocFromNull) {
 }
 
 DTEST(debugAllocatorLeakDetection) {
+  void* ptr;
   ASSERT_EXCEPTION({
     DebugAllocator allocator;
-    void* ptr = allocator.alloc(64);
-    DC_UNUSED(ptr);
+    ptr = allocator.alloc(64);
   });
+
+  IAllocator& backingDebugAllcator = getDefaultAllocator();
+  backingDebugAllcator.free(ptr);
 }
 
 DTEST(debugAllocatorLeakDetectionTwice) {
+  void* ptr;
   ASSERT_EXCEPTION({
     DebugAllocator allocator;
-    void* ptr = allocator.alloc(64);
-    DC_UNUSED(ptr);
+    ptr = allocator.alloc(64);
   });
+
+  IAllocator& backingDebugAllcator = getDefaultAllocator();
+  backingDebugAllcator.free(ptr);
 
   ASSERT_EXCEPTION({
     DebugAllocator allocator;
-    void* ptr = allocator.alloc(64);
-    DC_UNUSED(ptr);
+    ptr = allocator.alloc(64);
   });
+
+  backingDebugAllcator.free(ptr);
 }
 
 DTEST(debugAllocatorFreeNull) {
