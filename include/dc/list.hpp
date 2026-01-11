@@ -483,7 +483,7 @@ void List<T, N>::reserve(u64 capacity) {
 template <typename T, u64 N>
 void List<T, N>::resize(u64 newSize) {
   if (newSize > m_capacity) {
-	reserve(newSize + newSize / 10);
+    reserve(newSize + newSize / 10);
   }
 
   if (newSize <= m_capacity) {

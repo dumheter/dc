@@ -32,8 +32,8 @@
 #include <dc/time.hpp>
 #include <dc/traits.hpp>
 #include <functional>
-#include <thread>
 #include <mutex>
+#include <thread>
 
 #if defined(DC_PLATFORM_WINDOWS)
 #if !defined(VC_EXTRALEAN)
@@ -78,13 +78,13 @@ struct Logger::Data {
   std::vector<TaggedSink> internalSinks;
 
   struct SinksAccessor {
-	std::scoped_lock<std::mutex> lock;
-	std::vector<TaggedSink>* sinks;
+    std::scoped_lock<std::mutex> lock;
+    std::vector<TaggedSink>* sinks;
   };
 
-  SinksAccessor sinksAccesssor()
-  {
-	return SinksAccessor(std::scoped_lock<std::mutex>(internalSinksMutex), &internalSinks);
+  SinksAccessor sinksAccesssor() {
+    return SinksAccessor(std::scoped_lock<std::mutex>(internalSinksMutex),
+                         &internalSinks);
   }
 };
 
@@ -156,7 +156,7 @@ void Logger::run() {
   for (;;) {
     m_data->queue.wait_dequeue(payload);
     if (isShutdownPayload(payload)) break;
-	Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+    Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
     for (auto& taggedSink : *sinksAccessor.sinks)
       if (payload.level >= m_level) taggedSink.sink(payload, m_level);
   }
@@ -170,8 +170,9 @@ void Logger::run() {
     ++payloadsDrained;
     if (isShutdownPayload(payload))
       continue;  //< protect from multiple shutdowns
-	Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
-    for (auto& taggedSink : *sinksAccessor.sinks) taggedSink.sink(payload, m_level);
+    Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
+    for (auto& taggedSink : *sinksAccessor.sinks)
+      taggedSink.sink(payload, m_level);
   }
 
 #if defined(DC_LOG_DEBUG)
@@ -194,11 +195,12 @@ Logger& Logger::attachSink(Sink sink, const char* name) {
 Logger& Logger::detachSink(const char* name) {
   const u32 tag = dc::hash32fnv1a(name);
   Data::SinksAccessor sinksAccessor = m_data->sinksAccesssor();
-  sinksAccessor.sinks->erase(std::remove_if(sinksAccessor.sinks->begin(), sinksAccessor.sinks->end(),
-                                     [tag](const TaggedSink& taggedSink) {
-                                       return taggedSink.tag == tag;
-                                     }),
-                      sinksAccessor.sinks->end());
+  sinksAccessor.sinks->erase(
+      std::remove_if(sinksAccessor.sinks->begin(), sinksAccessor.sinks->end(),
+                     [tag](const TaggedSink& taggedSink) {
+                       return taggedSink.tag == tag;
+                     }),
+      sinksAccessor.sinks->end());
   return *this;
 }
 

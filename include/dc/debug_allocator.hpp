@@ -65,7 +65,8 @@ class DebugAllocator final : public IAllocator {
 #ifdef _WIN32
 constexpr u32 kDebugAllocatorLeakException = 0xDC000001;
 #else
-constexpr int kDebugAllocatorLeakSignal = 6; //#define	SIGABRT		6	/* Abnormal termination.  */
+constexpr int kDebugAllocatorLeakSignal =
+    6;  // #define	SIGABRT		6	/* Abnormal termination.  */
 #endif
 
 }  // namespace dc

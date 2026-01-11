@@ -58,7 +58,7 @@ class Map {
     Value value;
   };
 
-private:
+ private:
   struct InternalEntry {
     u32 probeSequenceLength;  // 0 = empty/tombstone
     Entry entry;

@@ -78,7 +78,8 @@ DTEST(ringReserveDoesNotShrink) {
 }
 
 DTEST(ringReservePreservesData) {
-  dc::Ring<s32> ring;
+  dc::DebugAllocator allocator;
+  dc::Ring<s32> ring(allocator);
   ring.reserve(4);
   s32 v1 = 10;
   s32 v2 = 20;
