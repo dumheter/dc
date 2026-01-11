@@ -46,7 +46,7 @@ DebugAllocator::DebugAllocator(IAllocator& backing) : m_backing(backing) {}
 DebugAllocator::~DebugAllocator() {
   if (hasLeaks()) {
     reportLeaks();
-    std::unordered_map<void*, Record>().swap(m_allocations);
+    m_allocations.clear();
 #ifdef _WIN32
     RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
@@ -65,7 +65,10 @@ void* DebugAllocator::alloc(usize count, usize align) {
     }
     record.size = count;
     record.alignment = align;
-    m_allocations[ptr] = dc::move(record);
+    Record* slot = m_allocations.insert(ptr);
+    if (slot) {
+      *slot = dc::move(record);
+    }
   }
   return ptr;
 }
@@ -75,11 +78,11 @@ void* DebugAllocator::realloc(void* data, usize count, usize align) {
     return alloc(count, align);
   }
 
-  auto it = m_allocations.find(data);
+  auto* entry = m_allocations.tryGet(data);
   Record oldRecord;
-  if (it != m_allocations.end()) {
-    oldRecord = dc::move(it->second);
-    m_allocations.erase(it);
+  if (entry) {
+    oldRecord = dc::move(entry->value);
+    m_allocations.remove(*entry);
   }
 
   void* newPtr = m_backing.realloc(data, count, align);
@@ -91,32 +94,35 @@ void* DebugAllocator::realloc(void* data, usize count, usize align) {
     }
     record.size = count;
     record.alignment = align;
-    m_allocations[newPtr] = dc::move(record);
+    Record* slot = m_allocations.insert(newPtr);
+    if (slot) {
+      *slot = dc::move(record);
+    }
   }
   return newPtr;
 }
 
 void DebugAllocator::free(void* data) {
   if (data) {
-    m_allocations.erase(data);
+    m_allocations.remove(data);
     m_backing.free(data);
   }
 }
 
 usize DebugAllocator::getAllocationCount() const {
-  return m_allocations.size();
+  return m_allocations.getSize();
 }
 
-bool DebugAllocator::hasLeaks() const { return !m_allocations.empty(); }
+bool DebugAllocator::hasLeaks() const { return !m_allocations.isEmpty(); }
 
 void DebugAllocator::reportLeaks() const {
   LOG_ERROR("DebugAllocator: {} memory leak(s) detected!",
-            m_allocations.size());
+            m_allocations.getSize());
   usize index = 0;
-  for (const auto& [ptr, record] : m_allocations) {
-    LOG_ERROR("Leak #{}: {} bytes at {} (alignment {})", index, record.size,
-              ptr, record.alignment);
-    auto resolvedCallstack = resolveCallstack(record.callstack);
+  for (const auto& entry : m_allocations) {
+    LOG_ERROR("Leak #{}: {} bytes at {} (alignment {})", index,
+              entry.value.size, entry.key, entry.value.alignment);
+    auto resolvedCallstack = resolveCallstack(entry.value.callstack);
     if (resolvedCallstack.isOk()) {
       LOG_ERROR("Allocation callstack:\n{}",
                 resolvedCallstack.value().callstack);

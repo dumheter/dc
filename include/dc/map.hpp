@@ -116,6 +116,10 @@ class Map {
   /// @return true if found and removed, false otherwise
   bool remove(const Key& key, Value* valueOut);
 
+  /// Remove an entry by reference.
+  /// @param entry Reference to an entry obtained from tryGet() or iteration
+  void remove(Entry& entry);
+
   /// Evaluate each entry in the map with @ref fn, remove those who match.
   /// @param Fn A function that takes a const Entry& and returns true if it
   /// should be removed
@@ -228,6 +232,7 @@ class Map {
   // ------------------------------------------------------------------------ //
 
   bool resize(u64 newCapacity);
+  void removeAtBucket(u64 bucket);
 
   List<InternalEntry> m_data;
   u64 m_size = 0;
@@ -432,13 +437,6 @@ bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
     return false;
   }
 
-  InternalEntry* entry = reinterpret_cast<InternalEntry*>(
-      reinterpret_cast<uintptr>(userEntry) - sizeof(u32));
-
-  u64 bucket = (reinterpret_cast<uintptr>(entry) -
-                reinterpret_cast<uintptr>(m_data.begin())) /
-               sizeof(InternalEntry);
-
   // Copy out the value if requested
   if (valueOut) {
     if constexpr (isTriviallyRelocatable<Value>) {
@@ -448,6 +446,31 @@ bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
     }
   }
 
+  InternalEntry* entry = reinterpret_cast<InternalEntry*>(
+      reinterpret_cast<uintptr>(userEntry) - sizeof(u32));
+
+  u64 bucket = (reinterpret_cast<uintptr>(entry) -
+                reinterpret_cast<uintptr>(m_data.begin())) /
+               sizeof(InternalEntry);
+
+  removeAtBucket(bucket);
+  return true;
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+void Map<Key, Value, HashFn, EqualFn>::remove(Entry& entry) {
+  InternalEntry* internalEntry = reinterpret_cast<InternalEntry*>(
+      reinterpret_cast<uintptr>(&entry) - sizeof(u32));
+
+  u64 bucket = (reinterpret_cast<uintptr>(internalEntry) -
+                reinterpret_cast<uintptr>(m_data.begin())) /
+               sizeof(InternalEntry);
+
+  removeAtBucket(bucket);
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+void Map<Key, Value, HashFn, EqualFn>::removeAtBucket(u64 bucket) {
   m_size -= 1;
 
   // Backshift entries with PSL > 1 to fill the gap
@@ -498,8 +521,6 @@ bool Map<Key, Value, HashFn, EqualFn>::remove(const Key& key, Value* valueOut) {
 
     bucket = nextBucket;
   }
-
-  return true;
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>

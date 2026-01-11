@@ -27,8 +27,8 @@
 #include <dc/allocator.hpp>
 #include <dc/callstack.hpp>
 #include <dc/macros.hpp>
+#include <dc/map.hpp>
 #include <dc/types.hpp>
-#include <unordered_map>
 
 namespace dc {
 
@@ -59,7 +59,7 @@ class DebugAllocator final : public IAllocator {
   };
 
   IAllocator& m_backing;
-  std::unordered_map<void*, Record> m_allocations;
+  Map<void*, Record> m_allocations;
 };
 
 #ifdef _WIN32
