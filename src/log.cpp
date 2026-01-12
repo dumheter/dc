@@ -217,13 +217,13 @@ void ConsoleSink::operator()(const Payload& payload, Level level) const {
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{:dp} "
+          "UTC {:dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{:d} "
+          "UTC {:d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{:p} "
+          "UTC {:p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
-          "{} "
+          "UTC {} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
           "{:<7} "
@@ -290,13 +290,13 @@ void ColoredConsoleSink::operator()(const Payload& payload, Level level) const {
           "["
 #endif
 #if DC_LOG_PREFIX_DATETIME == 1
-          "{:dp} "
+          "UTC {:dp} "
 #elif DC_LOG_PREFIX_DATETIME == 2
-          "{:d} "
+          "UTC {:d} "
 #elif DC_LOG_PREFIX_DATETIME == 3
-          "{:p} "
+          "UTC {:p} "
 #elif DC_LOG_PREFIX_DATETIME == 4
-          "{} "
+          "UTC {} "
 #endif
 #if DC_LOG_PREFIX_LEVEL == 1
           "{:16} "
