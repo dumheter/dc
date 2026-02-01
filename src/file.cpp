@@ -26,7 +26,7 @@ static const char8* modeToCString(const File::Mode mode) {
 
 dc::Result<dc::String, File::Result> File::open(const dc::String& path,
                                                 const Mode mode) {
-  m_path = path.clone();
+  m_path = path;
 
 #if defined(__STDC_LIB_EXT1__) || defined(_WIN32)
   FILE* file = nullptr;
@@ -34,14 +34,14 @@ dc::Result<dc::String, File::Result> File::open(const dc::String& path,
   constexpr errno_t kSuccess = 0;
   if (err == kSuccess) {
     m_file = file;
-    return Ok<dc::String>(m_path.clone());
+    return Ok<dc::String>(m_path);
   } else {
     return Err<File::Result>(File::Result::kCannotOpenPath);
   }
 #else
   m_file = fopen(path.c_str(), modeToCString(mode));
   if (m_file != nullptr) {
-    return Ok<dc::String>(m_path.clone());
+    return Ok<dc::String>(m_path);
   } else {
     return Err<File::Result>(File::Result::kCannotOpenPath);
   }

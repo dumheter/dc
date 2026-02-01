@@ -266,7 +266,7 @@ Result<Callstack, CallstackErr> resolveCallstack(
       auto res = formatTo(
           str, "  {} ({})\n",
           fnName.match(
-              [](const String& s) -> String { return s.clone(); },
+              [](const String& s) -> String { return String(s); },
               [](const CallstackErr&) -> String { return String("?fn?"); }),
           fileLine);
       if (res.isErr()) {

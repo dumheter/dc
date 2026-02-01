@@ -167,12 +167,8 @@ class [[nodiscard]] String {
 
   void operator=(StringView view);
 
-  // use clone() instead
-  String(const String& other) = delete;
-  String& operator=(const String& other) = delete;
-
-  /// Make a copy of this string instance.
-  String clone() const;
+  String(const String& other);
+  String& operator=(const String& other);
 
   StringView toView() const { return StringView(c_str(), getSize()); }
 

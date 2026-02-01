@@ -233,9 +233,13 @@ void String::operator=(StringView view) {
   m_list[size] = 0;
 }
 
-String String::clone() const {
-  String out(m_list.clone());
-  return out;
+String::String(const String& other) : m_list(other.m_list.clone()) {}
+
+String& String::operator=(const String& other) {
+  if (this != &other) {
+    m_list = other.m_list.clone();
+  }
+  return *this;
 }
 
 const char8* String::c_str() const { return m_list.begin(); }

@@ -136,7 +136,7 @@ DTEST(fileAppendMode) {
   auto readResult = readFile.read();
   ASSERT_TRUE(readResult.isOk());
 
-  dc::String combined(firstContent.clone());
+  dc::String combined(firstContent);
   combined += secondContent;
   ASSERT_EQ(readResult.value(), combined);
 

@@ -270,9 +270,16 @@ DTEST(emptyAfterBeingBigString) {
   ASSERT_TRUE(str.isEmpty());
 }
 
-DTEST(clone) {
+DTEST(copyConstructor) {
   const String original("friday", TEST_ALLOCATOR);
-  const String copy = original.clone();
+  const String copy(original);
+  ASSERT_EQ(original, copy);
+}
+
+DTEST(copyAssignment) {
+  const String original("friday", TEST_ALLOCATOR);
+  String copy("initial", TEST_ALLOCATOR);
+  copy = original;
   ASSERT_EQ(original, copy);
 }
 
