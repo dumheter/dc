@@ -30,6 +30,7 @@
 #include <dc/pointer_int_pair.hpp>
 #include <dc/traits.hpp>
 #include <dc/types.hpp>
+#include <new>
 
 namespace dc {
 
@@ -120,9 +121,8 @@ class List {
   List(u64 capacity, const detail::BufferAwareAllocator& allocator);
 
  public:
-  /// Use clone instead
-  List(const List& other) = delete;
-  List& operator=(const List& other) = delete;
+  List(const List& other);
+  List& operator=(const List& other);
 
   List(List&& other);
   List& operator=(List&& other) noexcept;
@@ -170,8 +170,6 @@ class List {
   [[nodiscard]] u64 getCapacity() const noexcept { return m_capacity; }
 
   [[nodiscard]] bool isEmpty() const noexcept { return getSize() == 0; }
-
-  [[nodiscard]] List clone() const;
 
   /// Reserve block of memory. May (re)allocate. All active elements are moved
   /// on reallocation. Iterators and references are invaliated.
@@ -431,12 +429,80 @@ void List<T, N>::removeIf(Fn fn) {
 }
 
 template <typename T, u64 N>
-List<T, N> List<T, N>::clone() const {
-  List<T> out(getCapacity(), m_allocator);
+List<T, N>::List(const List& other)
+    : m_allocator(other.m_allocator), m_capacity(other.m_capacity) {
+  if (other.m_capacity <= N) {
+    // Other uses internal buffer, use our internal buffer too
+    m_begin = m_buffer;
+    m_end = m_buffer;
+  } else {
+    // Other uses heap, allocate on heap
+    m_begin = static_cast<T*>(m_allocator.alloc(sizeof(T) * other.m_capacity));
+    if (!m_begin) {
+      // Allocation failed, fall back to internal buffer
+      m_begin = m_buffer;
+      m_end = m_buffer;
+      m_capacity = N;
+      return;
+    }
+    m_end = m_begin;
+  }
 
-  for (const T& iter : *this) out.add(iter);
+  // Copy elements
+  if constexpr (isTriviallyRelocatable<T>) {
+    const u64 size = other.getSize();
+    memcpy(m_begin, other.m_begin, sizeof(T) * size);
+    m_end = m_begin + size;
+  } else {
+    for (const T& elem : other) {
+      new (m_end) T(elem);
+      ++m_end;
+    }
+  }
+}
 
-  return out;
+template <typename T, u64 N>
+List<T, N>& List<T, N>::operator=(const List& other) {
+  if (&other != this) {
+    // Clean up current state
+    this->~List();
+
+    // Reconstruct with other's allocator and capacity
+    new (&m_allocator) detail::BufferAwareAllocator(other.m_allocator);
+    m_capacity = other.m_capacity;
+
+    if (other.m_capacity <= N) {
+      // Other uses internal buffer, use our internal buffer too
+      m_begin = m_buffer;
+      m_end = m_buffer;
+    } else {
+      // Other uses heap, allocate on heap
+      m_begin =
+          static_cast<T*>(m_allocator.alloc(sizeof(T) * other.m_capacity));
+      if (!m_begin) {
+        // Allocation failed, fall back to internal buffer
+        m_begin = m_buffer;
+        m_end = m_buffer;
+        m_capacity = N;
+        return *this;
+      }
+      m_end = m_begin;
+    }
+
+    // Copy elements
+    if constexpr (isTriviallyRelocatable<T>) {
+      const u64 size = other.getSize();
+      memcpy(m_begin, other.m_begin, sizeof(T) * size);
+      m_end = m_begin + size;
+    } else {
+      for (const T& elem : other) {
+        new (m_end) T(elem);
+        ++m_end;
+      }
+    }
+  }
+
+  return *this;
 }
 
 template <typename T, u64 N>

@@ -233,11 +233,11 @@ void String::operator=(StringView view) {
   m_list[size] = 0;
 }
 
-String::String(const String& other) : m_list(other.m_list.clone()) {}
+String::String(const String& other) : m_list(other.m_list) {}
 
 String& String::operator=(const String& other) {
   if (this != &other) {
-    m_list = other.m_list.clone();
+    m_list = other.m_list;
   }
   return *this;
 }

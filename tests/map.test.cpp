@@ -351,7 +351,7 @@ DTEST(mapMoveAssignment) {
 // Clone
 // ========================================================================== //
 
-DTEST(mapClone) {
+DTEST(mapCopyConstructor) {
   Map<u64, u64> map1(TEST_ALLOCATOR);
 
   u64* val1 = map1[1];
@@ -366,7 +366,7 @@ DTEST(mapClone) {
   ASSERT_TRUE(val3 != nullptr);
   *val3 = 30;
 
-  auto map2 = map1.clone();
+  Map<u64, u64> map2(map1);
 
   ASSERT_EQ(map2.getSize(), 3);
 

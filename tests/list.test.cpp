@@ -200,18 +200,57 @@ DTEST(find) {
   ASSERT_TRUE(iter == v.end());
 }
 
-DTEST(clone) {
+DTEST(copyConstructor) {
   List<int> v(TEST_ALLOCATOR);
 
   v.add(10);
   v.add(20);
   v.add(30);
 
-  List<int> clone = v.clone();
-  ASSERT_EQ(clone[0], 10);
-  ASSERT_EQ(clone[1], 20);
-  ASSERT_EQ(clone[2], 30);
-  ASSERT_EQ(clone.getSize(), v.getSize());
+  List<int> copy(v);
+  ASSERT_EQ(copy[0], 10);
+  ASSERT_EQ(copy[1], 20);
+  ASSERT_EQ(copy[2], 30);
+  ASSERT_EQ(copy.getSize(), v.getSize());
+
+  // Modify original, copy should be unchanged
+  v[0] = 100;
+  ASSERT_EQ(copy[0], 10);
+  ASSERT_EQ(v[0], 100);
+}
+
+DTEST(copyAssignment) {
+  List<int> v(TEST_ALLOCATOR);
+
+  v.add(10);
+  v.add(20);
+  v.add(30);
+
+  List<int> copy(TEST_ALLOCATOR);
+  copy.add(99);
+
+  copy = v;
+  ASSERT_EQ(copy[0], 10);
+  ASSERT_EQ(copy[1], 20);
+  ASSERT_EQ(copy[2], 30);
+  ASSERT_EQ(copy.getSize(), v.getSize());
+
+  // Modify original, copy should be unchanged
+  v[0] = 100;
+  ASSERT_EQ(copy[0], 10);
+  ASSERT_EQ(v[0], 100);
+}
+
+DTEST(selfCopyAssignment) {
+  List<int> v(TEST_ALLOCATOR);
+  v.add(10);
+  v.add(20);
+
+  List<int>& ref = v;
+  v = ref;
+  ASSERT_EQ(v[0], 10);
+  ASSERT_EQ(v[1], 20);
+  ASSERT_EQ(v.getSize(), 2);
 }
 
 DTEST(constIterator) {

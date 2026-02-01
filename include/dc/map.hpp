@@ -78,11 +78,10 @@ class Map {
       IAllocator& allocator = getDefaultAllocator());
   ~Map() = default;
 
-  DC_DELETE_COPY(Map);
+  Map(const Map& other);
+  Map& operator=(const Map& other);
   Map(Map&& other) noexcept = default;
   Map& operator=(Map&& other) noexcept = default;
-
-  [[nodiscard]] Map clone() const;
 
   // ------------------------------------------------------------------------ //
   // Core Operations
@@ -261,18 +260,20 @@ Map<Key, Value, HashFn, EqualFn>::Map(u64 capacity, f32 maxLoadFactor,
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
-Map<Key, Value, HashFn, EqualFn> Map<Key, Value, HashFn, EqualFn>::clone()
-    const {
-  // Note: clone() requires Key to be copy-constructible
-  Map result(getCapacity(), m_maxLoadFactor);
-  for (const auto& entry : *this) {
-    Key keyCopy = entry.key;
-    Value* val = result.insert(dc::move(keyCopy));
-    if (val) {
-      *val = entry.value;
-    }
+Map<Key, Value, HashFn, EqualFn>::Map(const Map& other)
+    : m_data(other.m_data),
+      m_size(other.m_size),
+      m_maxLoadFactor(other.m_maxLoadFactor) {}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
+Map<Key, Value, HashFn, EqualFn>& Map<Key, Value, HashFn, EqualFn>::operator=(
+    const Map& other) {
+  if (&other != this) {
+    m_data = other.m_data;
+    m_size = other.m_size;
+    m_maxLoadFactor = other.m_maxLoadFactor;
   }
-  return result;
+  return *this;
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
