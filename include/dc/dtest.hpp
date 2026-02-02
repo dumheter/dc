@@ -86,7 +86,10 @@
 namespace dtest {
 
 /// Place this in your test main function.
-int main(int argc, char** argv);
+/// @param logLevel Optional log level to set after initialization (defaults to
+/// Verbose)
+int main(int argc, char** argv,
+         dc::log::Level logLevel = dc::log::Level::Verbose);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helpers

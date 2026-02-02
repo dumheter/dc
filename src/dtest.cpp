@@ -52,9 +52,10 @@ void LifetimeStats::resetInstance() {
   instance.destructs = 0;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv, dc::log::Level logLevel) {
   dc::log::windowsFixConsole();
   dc::log::init();
+  dc::log::setLevel(logLevel);
   const auto res = dtest::internal::runTests(argc, argv);
   dc::log::deinit();
   return res;
