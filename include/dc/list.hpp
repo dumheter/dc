@@ -308,6 +308,7 @@ List<T, N>::~List() {
 
   m_allocator.free(m_begin);
   m_begin = nullptr;
+  m_end = nullptr;
 }
 
 constexpr u64 kDefaultExtraBytes = 32;
