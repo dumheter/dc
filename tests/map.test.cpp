@@ -425,6 +425,45 @@ DTEST(mapWithStringKeys) {
   ASSERT_EQ(entry2->value, 100);
 }
 
+DTEST(mapStringKeyResizeCrash) {
+  // Regression: Map::resize moved m_data into a local List. When that List
+  // was destroyed, it called ~InternalEntry() on every slot including
+  // empty/tombstone slots whose Entry (containing a String key) was never
+  // constructed.  Destructing uninitialized String memory caused a crash.
+
+  Map<String, u64> map(4, 0.75f, TEST_ALLOCATOR);
+
+  // Insert enough entries to force multiple resizes with non-trivial keys.
+  // Starting with capacity 4 and load factor 0.75, resize triggers at 3+
+  // entries, so 30 entries will cause several resizes.
+  const char8* keys[] = {
+      "texture_00", "texture_01", "texture_02", "texture_03", "texture_04",
+      "texture_05", "texture_06", "texture_07", "texture_08", "texture_09",
+      "texture_10", "texture_11", "texture_12", "texture_13", "texture_14",
+      "texture_15", "texture_16", "texture_17", "texture_18", "texture_19",
+      "texture_20", "texture_21", "texture_22", "texture_23", "texture_24",
+      "texture_25", "texture_26", "texture_27", "texture_28", "texture_29",
+  };
+  constexpr u64 kKeyCount = sizeof(keys) / sizeof(keys[0]);
+
+  for (u64 i = 0; i < kKeyCount; ++i) {
+    auto key = String(keys[i], TEST_ALLOCATOR);
+    u64* val = map.insert(dc::move(key));
+    ASSERT_TRUE(val != nullptr);
+    *val = i;
+  }
+
+  ASSERT_EQ(map.getSize(), kKeyCount);
+
+  // Verify all entries survived the resizes
+  for (u64 i = 0; i < kKeyCount; ++i) {
+    auto key = String(keys[i], TEST_ALLOCATOR);
+    auto* entry = map.tryGet(key);
+    ASSERT_TRUE(entry != nullptr);
+    ASSERT_EQ(entry->value, i);
+  }
+}
+
 DTEST(mapWithStringViewKeys) {
   Map<StringView, u64> map(TEST_ALLOCATOR);
 

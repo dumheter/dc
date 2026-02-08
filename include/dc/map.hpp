@@ -622,8 +622,19 @@ bool Map<Key, Value, HashFn, EqualFn>::resize(u64 newCapacity) {
     }
   }
 
-  // Keys were moved, values were moved, old data will be cleaned up by List
-  // destructor
+  // Destruct moved-from keys of occupied entries. Unoccupied (tombstone)
+  // slots never had their Entry constructed, so we must not destruct them.
+  // After this loop, we shrink oldData to size 0 so that List's destructor
+  // does not run ~InternalEntry() on any slot (which would be UB for
+  // unoccupied slots containing uninitialized Key/Value memory).
+  if constexpr (!isTriviallyRelocatable<Key>) {
+    for (u64 i = 0; i < oldData.getCapacity(); ++i) {
+      if (oldData[i].probeSequenceLength != kTombstone) {
+        oldData[i].entry.key.~Key();
+      }
+    }
+  }
+  oldData.resize(0);
 
   return true;
 }
