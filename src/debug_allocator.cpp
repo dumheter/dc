@@ -46,8 +46,10 @@ DebugAllocator::DebugAllocator(IAllocator& backing) : m_backing(backing) {}
 DebugAllocator::~DebugAllocator() {
   if (hasLeaks()) {
     reportLeaks();
-    m_allocations.clear();
-	m_allocations = Map<void*, Record>(0);
+    // Explicitly destruct the map to free its backing storage before raising
+    // the signal. The signal handler uses siglongjmp (or SEH on Windows) which
+    // skips normal destructor execution, so we must release resources here.
+    m_allocations.~Map();
 #ifdef _WIN32
     RaiseException(kDebugAllocatorLeakException, 0, 0, nullptr);
 #else
