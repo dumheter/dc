@@ -560,7 +560,7 @@ void List<T, N>::resize(u64 newSize) {
   }
 
   for (u64 i = oldSize; i < newSize; ++i) {
-    m_begin[i] = T();
+    new (&m_begin[i]) T();
   }
 }
 
