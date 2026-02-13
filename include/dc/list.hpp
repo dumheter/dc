@@ -272,7 +272,10 @@ List<T, N>::List(List&& other)
 template <typename T, u64 N>
 List<T, N>& List<T, N>::operator=(List&& other) noexcept {
   if (&other != this) {
-    this->~List();
+    if constexpr (!isTriviallyRelocatable<T>) {
+      for (T& elem : *this) elem.~T();
+    }
+    m_allocator.free(m_begin);
 
     m_allocator.m_pair = dc::move(other.m_allocator.m_pair);
     m_capacity = other.m_capacity;
@@ -465,23 +468,21 @@ List<T, N>::List(const List& other)
 template <typename T, u64 N>
 List<T, N>& List<T, N>::operator=(const List& other) {
   if (&other != this) {
-    // Clean up current state
-    this->~List();
+    if constexpr (!isTriviallyRelocatable<T>) {
+      for (T& elem : *this) elem.~T();
+    }
+    m_allocator.free(m_begin);
 
-    // Reconstruct with other's allocator and capacity
-    new (&m_allocator) detail::BufferAwareAllocator(other.m_allocator);
+    m_allocator.m_pair = other.m_allocator.m_pair;
     m_capacity = other.m_capacity;
 
     if (other.m_capacity <= N) {
-      // Other uses internal buffer, use our internal buffer too
       m_begin = m_buffer;
       m_end = m_buffer;
     } else {
-      // Other uses heap, allocate on heap
       m_begin =
           static_cast<T*>(m_allocator.alloc(sizeof(T) * other.m_capacity));
       if (!m_begin) {
-        // Allocation failed, fall back to internal buffer
         m_begin = m_buffer;
         m_end = m_buffer;
         m_capacity = N;
@@ -490,7 +491,6 @@ List<T, N>& List<T, N>::operator=(const List& other) {
       m_end = m_begin;
     }
 
-    // Copy elements
     if constexpr (isTriviallyRelocatable<T>) {
       const u64 size = other.getSize();
       memcpy(m_begin, other.m_begin, sizeof(T) * size);
@@ -560,7 +560,7 @@ void List<T, N>::resize(u64 newSize) {
   }
 
   for (u64 i = oldSize; i < newSize; ++i) {
-	m_begin[i] = T();
+    m_begin[i] = T();
   }
 }
 

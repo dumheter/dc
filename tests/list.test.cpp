@@ -545,3 +545,69 @@ DTEST(customTriviallyRelocatableType) {
   ASSERT_EQ(list[1].x, 3);
   ASSERT_EQ(list[1].y, 4);
 }
+
+DTEST(moveAssignmentDoesNotUseDestroyedObject) {
+  List<int, 4> list1(TEST_ALLOCATOR);
+  list1.add(10);
+  list1.add(20);
+  list1.add(30);
+
+  List<int, 4> list2(TEST_ALLOCATOR);
+  list2.add(99);
+  list2.add(88);
+
+  list2 = dc::move(list1);
+
+  ASSERT_EQ(list2.getSize(), 3);
+  ASSERT_EQ(list2[0], 10);
+  ASSERT_EQ(list2[1], 20);
+  ASSERT_EQ(list2[2], 30);
+}
+
+DTEST(moveAssignmentHeapToHeap) {
+  List<int, 2> list1(TEST_ALLOCATOR);
+  for (int i = 0; i < 100; ++i) list1.add(i);
+
+  List<int, 2> list2(TEST_ALLOCATOR);
+  for (int i = 0; i < 50; ++i) list2.add(i * 10);
+
+  list2 = dc::move(list1);
+
+  ASSERT_EQ(list2.getSize(), 100);
+  for (int i = 0; i < 100; ++i) {
+    ASSERT_EQ(list2[i], i);
+  }
+}
+
+DTEST(copyAssignmentDoesNotUseDestroyedObject) {
+  List<int, 4> list1(TEST_ALLOCATOR);
+  list1.add(10);
+  list1.add(20);
+  list1.add(30);
+
+  List<int, 4> list2(TEST_ALLOCATOR);
+  list2.add(99);
+  list2.add(88);
+
+  list2 = list1;
+
+  ASSERT_EQ(list2.getSize(), 3);
+  ASSERT_EQ(list2[0], 10);
+  ASSERT_EQ(list2[1], 20);
+  ASSERT_EQ(list2[2], 30);
+}
+
+DTEST(copyAssignmentHeapToHeap) {
+  List<int, 2> list1(TEST_ALLOCATOR);
+  for (int i = 0; i < 100; ++i) list1.add(i);
+
+  List<int, 2> list2(TEST_ALLOCATOR);
+  for (int i = 0; i < 50; ++i) list2.add(i * 10);
+
+  list2 = list1;
+
+  ASSERT_EQ(list2.getSize(), 100);
+  for (int i = 0; i < 100; ++i) {
+    ASSERT_EQ(list2[i], i);
+  }
+}
