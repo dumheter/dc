@@ -549,12 +549,18 @@ void List<T, N>::reserve(u64 capacity) {
 
 template <typename T, u64 N>
 void List<T, N>::resize(u64 newSize) {
+  const u64 oldSize = getSize();
+
   if (newSize > m_capacity) {
     reserve(newSize + newSize / 10);
   }
 
   if (newSize <= m_capacity) {
     m_end = m_begin + newSize;
+  }
+
+  for (u64 i = oldSize; i < newSize; ++i) {
+	m_begin[i] = T();
   }
 }
 
