@@ -28,7 +28,9 @@
 #include <dc/list.hpp>
 #include <dc/spsc_ring.hpp>
 #include <dc/time.hpp>
+#include <mutex>
 #include <thread>
+#include <unordered_map>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // SpscRing tests
@@ -287,4 +289,54 @@ DTEST(jobHandleCopySharesCompletion) {
   h1.await();
 
   ASSERT_TRUE(h2.isDone());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Distribution tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DTEST(jobBatchSpreadAcrossWorkers) {
+  // Verify that a large batch of jobs is spread somewhat evenly across all
+  // workers. Each job records the thread ID it ran on. After all jobs
+  // complete we check that every worker thread handled at least
+  // (1 / workerCount) * 0.25 of the total jobs — a generous lower bound that
+  // still catches a scheduler that routes everything to a single worker.
+  constexpr u32 kWorkerCount = 4;
+  constexpr s32 kJobCount = 400;  // 100 per worker on average
+
+  dc::JobSystem js(kWorkerCount);
+
+  std::mutex mapMutex;
+  std::unordered_map<std::thread::id, s32> jobsPerThread;
+
+  dc::List<dc::Job> jobs;
+  for (s32 i = 0; i < kJobCount; ++i) {
+    jobs.add(dc::Job{[&mapMutex, &jobsPerThread] {
+      const auto id = std::this_thread::get_id();
+      std::scoped_lock lock(mapMutex);
+      jobsPerThread[id]++;
+    }});
+  }
+
+  dc::JobHandle handle = js.add(jobs);
+  handle.await();
+
+  // Every worker thread should have received work.
+  ASSERT_EQ(static_cast<u32>(jobsPerThread.size()), kWorkerCount);
+
+  // No single worker should have received more than 75% of all jobs. With a
+  // uniform random assignment the expected max is ~25%+noise, so 75% is a
+  // very conservative ceiling that only triggers on a broken scheduler.
+  const s32 maxAllowed = static_cast<s32>(kJobCount * 3 / 4);
+  for (const auto& [id, count] : jobsPerThread) {
+    ASSERT_TRUE(count <= maxAllowed);
+  }
+
+  // Each worker should have received at least 5% of all jobs. This rules out
+  // a scheduler that starves some workers entirely while still being lenient
+  // enough not to flake under heavy system load.
+  const s32 minRequired = static_cast<s32>(kJobCount * 5 / 100);
+  for (const auto& [id, count] : jobsPerThread) {
+    ASSERT_TRUE(count >= minRequired);
+  }
 }
