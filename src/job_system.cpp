@@ -35,25 +35,27 @@ namespace dc {
 
 static void workerLoop(Worker& worker) {
   while (true) {
-    // Wait until there is work or a shutdown signal.
+    // Wait until there is work or a shutdown signal. The predicate is
+    // evaluated while holding worker.mutex, which is the same mutex the
+    // producer holds when it calls notify_one(). This eliminates the
+    // lost-wakeup race: a notify cannot be missed between the predicate
+    // check and the actual sleep.
     {
       std::unique_lock lock(worker.mutex);
       worker.cv.wait(lock, [&worker] {
         return !worker.ring.isEmpty() || worker.shutdown;
       });
+
+      // Check exit condition while still holding the mutex and before
+      // releasing it to drain. If shutdown was requested and the ring is
+      // already empty, exit now.
+      if (worker.shutdown && worker.ring.isEmpty()) break;
     }
 
-    // Drain all available jobs before waiting again. We do NOT hold the mutex
-    // during job execution — the ring is SPSC so no lock is needed.
+    // Drain all available jobs. We do NOT hold the mutex during job
+    // execution — the ring is SPSC so no lock is needed for ring access.
     while (Job* job = worker.ring.remove()) {
       job->run();
-    }
-
-    // Re-check shutdown after draining. If the ring is empty and shutdown was
-    // requested, exit the loop.
-    {
-      std::unique_lock lock(worker.mutex);
-      if (worker.shutdown && worker.ring.isEmpty()) break;
     }
   }
 }
@@ -109,6 +111,13 @@ void JobSystem::dispatch(Job job) {
     Worker& worker = *m_workers[index];
 
     if (worker.ring.add(dc::move(job))) {
+      // Notify while holding the worker's mutex to prevent a lost-wakeup.
+      // Without this, the worker could: check the predicate (empty=true),
+      // release its mutex to sleep, and miss a notify that fired in between.
+      // Holding worker.mutex here ensures the notify arrives either while
+      // the worker is already in cv.wait(), or before it re-evaluates the
+      // predicate — both are safe.
+      std::scoped_lock workerLock(worker.mutex);
       worker.cv.notify_one();
       return;
     }
@@ -141,7 +150,10 @@ void JobSystem::drainOverflow() {
       if (!overflowJob) break;
 
       if (worker.ring.add(dc::move(*overflowJob))) {
-        worker.cv.notify_one();
+        {
+          std::scoped_lock workerLock(worker.mutex);
+          worker.cv.notify_one();
+        }
         dispatched = true;
         break;
       } else {
