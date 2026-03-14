@@ -38,13 +38,13 @@ namespace dc {
 
 /// Global work/job system.
 ///
-/// Create one instance per application. Thread-safe: jobs may be dispatched
+/// Create one instance per application. Thread-safe: jobs may be added
 /// from any thread concurrently.
 ///
 /// Workers each own a lock-free SpscRing<Job>. The JobSystem randomly assigns
 /// incoming jobs to a worker and notifies it via a condition variable. If all
 /// worker rings are full, jobs are placed in an overflow ring (protected by
-/// m_mutex) which is drained on the next dispatch call.
+/// m_mutex) which is drained on the next add call.
 ///
 /// Lifecycle is RAII: the constructor starts worker threads and the destructor
 /// joins them after signaling shutdown. Jobs already in a worker's ring when
@@ -53,7 +53,7 @@ namespace dc {
 /// Usage:
 /// @code
 ///   dc::JobSystem js;
-///   js.dispatch(dc::Job{[] { doWork(); }});
+///   js.add(dc::Job{[] { doWork(); }});
 /// @endcode
 class JobSystem {
  public:
@@ -64,19 +64,19 @@ class JobSystem {
 
   /// Signal all workers to stop and join their threads.
   /// Pending jobs in the overflow ring may not be executed.
-  /// Jobs already dispatched to worker rings will be completed.
+  /// Jobs already added to worker rings will be completed.
   ~JobSystem();
 
   DC_DELETE_COPY(JobSystem);
   DC_DELETE_MOVE(JobSystem);
 
-  /// Dispatch a job to one of the workers. Thread-safe.
+  /// Add a job to one of the workers. Thread-safe.
   ///
   /// Selects a worker at random and attempts to add the job to its ring.
   /// If the chosen worker's ring is full, tries remaining workers in order.
   /// If all rings are full, the job is queued in the overflow ring and will
-  /// be dispatched on the next call to dispatch().
-  void dispatch(Job job);
+  /// be added on the next call to add().
+  void add(Job job);
 
   /// Number of worker threads.
   [[nodiscard]] u32 workerCount() const {

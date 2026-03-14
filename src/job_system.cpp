@@ -96,7 +96,7 @@ JobSystem::~JobSystem() {
   }
 }
 
-void JobSystem::dispatch(Job job) {
+void JobSystem::add(Job job) {
   std::scoped_lock lock(m_mutex);
 
   // First, try to drain any previously overflowed jobs.

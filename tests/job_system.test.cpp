@@ -131,30 +131,30 @@ DTEST(jobSystemConstructCustomThreadCount) {
   ASSERT_EQ(js.workerCount(), 2u);
 }
 
-DTEST(jobSystemDispatchSingleJob) {
+DTEST(jobSystemAddSingleJob) {
   dc::JobSystem js(2);
   std::atomic<s32> counter{0};
 
-  js.dispatch(
+  js.add(
       dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
 
   ASSERT_TRUE(waitForCount(counter, 1));
 }
 
-DTEST(jobSystemDispatchManyJobs) {
+DTEST(jobSystemAddManyJobs) {
   dc::JobSystem js(4);
   constexpr s32 kJobCount = 100;
   std::atomic<s32> counter{0};
 
   for (s32 i = 0; i < kJobCount; ++i) {
-    js.dispatch(dc::Job{
+    js.add(dc::Job{
         [&counter] { counter.fetch_add(1, std::memory_order_release); }});
   }
 
   ASSERT_TRUE(waitForCount(counter, kJobCount));
 }
 
-DTEST(jobSystemDispatchFromMultipleThreads) {
+DTEST(jobSystemAddFromMultipleThreads) {
   dc::JobSystem js(4);
   constexpr s32 kThreads = 4;
   constexpr s32 kJobsPerThread = 25;
@@ -165,7 +165,7 @@ DTEST(jobSystemDispatchFromMultipleThreads) {
   for (s32 t = 0; t < kThreads; ++t) {
     producers[t] = std::thread([&js, &counter] {
       for (s32 i = 0; i < kJobsPerThread; ++i) {
-        js.dispatch(dc::Job{
+        js.add(dc::Job{
             [&counter] { counter.fetch_add(1, std::memory_order_release); }});
       }
     });
@@ -187,7 +187,7 @@ DTEST(jobSystemShutdownDrainsWorkerRings) {
   {
     dc::JobSystem js(2);
     for (s32 i = 0; i < kJobCount; ++i) {
-      js.dispatch(dc::Job{
+      js.add(dc::Job{
           [&counter] { counter.fetch_add(1, std::memory_order_release); }});
     }
     // Destructor joins workers here — workers will finish their rings first.
@@ -206,7 +206,7 @@ DTEST(jobSystemOverflowRingHandlesFullWorkerRings) {
   {
     dc::JobSystem js(1);
     for (s32 i = 0; i < kJobCount; ++i) {
-      js.dispatch(dc::Job{
+      js.add(dc::Job{
           [&counter] { counter.fetch_add(1, std::memory_order_release); }});
     }
     // Wait for jobs to complete before destruction.
