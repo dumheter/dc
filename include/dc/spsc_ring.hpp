@@ -73,17 +73,28 @@ class SpscRing {
   }
 
   /// Remove the front element. Called only by the consumer thread.
-  /// @return Pointer to the removed element (valid until the next remove()),
-  ///         or nullptr if the ring is empty.
+  ///
+  /// The returned pointer is valid until the *next* call to remove().
+  /// The element is copied into an internal single-slot buffer so that the
+  /// ring slot is freed to the producer immediately, yet the caller can safely
+  /// read through the returned pointer until the next remove() call.
+  ///
+  /// @return Pointer to the front element, or nullptr if the ring is empty.
   T* remove() {
     const u32 read = m_read.load(std::memory_order_relaxed);
     const u32 write = m_write.load(std::memory_order_acquire);
 
     if (read == write) return nullptr;  // empty
 
-    T* elem = &m_data[mask(read)];
+    // Copy the value out of the shared ring slot into the consumer-private
+    // buffer before advancing m_read.  The producer may not touch the slot
+    // until m_read is stored, and we store it only after the copy, so there
+    // is no race on the read side.  The caller reads from m_lastRemoved (not
+    // from the ring slot), so even if the producer immediately refills the
+    // slot after our store, the returned pointer remains valid.
+    m_lastRemoved = m_data[mask(read)];
     m_read.store(read + 1, std::memory_order_release);
-    return elem;
+    return &m_lastRemoved;
   }
 
   /// Number of elements currently in the ring.
@@ -109,7 +120,14 @@ class SpscRing {
   // Pad to separate cache lines to avoid false sharing between producer and
   // consumer.
   alignas(64) std::atomic<u32> m_write{0};
+
+  // Consumer-owned cache line.
+  // m_lastRemoved is a private copy of the most recently removed element.
+  // remove() copies into this buffer before advancing m_read so the returned
+  // pointer stays valid while the caller inspects it, even after the producer
+  // refills the original ring slot.
   alignas(64) std::atomic<u32> m_read{0};
+  T m_lastRemoved{};
 };
 
 }  // namespace dc
