@@ -22,6 +22,7 @@ set(TEST_SOURCES
   result.option.test.cpp
   result.result.test.cpp
   ring.test.cpp
+  spsc_ring.test.cpp
   string.test.cpp
   time.test.cpp
   track_lifetime.test.cpp
