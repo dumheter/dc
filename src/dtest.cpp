@@ -68,8 +68,12 @@ using Color = dc::log::Color;
 
 static bool g_silentMode = false;
 static dc::String g_filterPattern;
+static s32 g_repeatCount = 1;
+static bool g_breakOnFailure = false;
 
 bool isSilentMode() { return g_silentMode; }
+s32 getRepeatCount() { return g_repeatCount; }
+bool isBreakOnFailure() { return g_breakOnFailure; }
 
 static bool matchesPattern(const dc::StringView testFullName,
                            const dc::StringView pattern) {
@@ -201,6 +205,16 @@ int runTests(int argc, char** argv) {
       if (equals) {
         g_filterPattern = dc::String(equals + 1);
       }
+    } else if (memcmp(arg.c_str(), "--repeat=", 9) == 0 ||
+               memcmp(arg.c_str(), "--gtest_repeat=", 15) == 0) {
+      const char* equals = strchr(argv[i], '=');
+      if (equals) {
+        g_repeatCount = static_cast<s32>(atoi(equals + 1));
+        if (g_repeatCount < 1) g_repeatCount = 1;
+      }
+    } else if (arg == "--break_on_failure" ||
+               arg == "--gtest_break_on_failure") {
+      g_breakOnFailure = true;
     }
   }
 
@@ -211,106 +225,142 @@ int runTests(int argc, char** argv) {
   LOG_INFO("~~~ D T E S T ~~~");
   LOG_INFO("Found {} test files.",
            static_cast<int>(r.getTestCategories().size()));
+  if (g_repeatCount > 1) {
+    LOG_INFO("Repeating tests {} times.", g_repeatCount);
+  }
 
   dc::Stopwatch stopwatch;
 
   usize testCount = 0;
   usize assertCount = 0;
   int warnings = 0;
-  for (auto& [hash, category] : r.getTestCategories()) {
-    usize categoryTestsRan = 0;
-    const u64 catBefore = dc::getTimeUs();
-    int i = 0;
-    for (TestCase& test : category.tests) {
-      dc::String fullName = dc::format("{}.{}", category.name, test.state.name);
+  int totalFailedCategories = 0;
 
-      if (filterActive &&
-          !matchesPattern(fullName.toView(), g_filterPattern.toView())) {
-        ++i;
-        continue;
+  for (s32 rep = 0; rep < g_repeatCount; ++rep) {
+    if (g_repeatCount > 1) {
+      LOG_INFO(
+          "===================================================================="
+          "=="
+          "==");
+      LOG_INFO("Repetition {}/{}.", rep + 1, g_repeatCount);
+    }
+
+    // Reset per-category pass/fail counts for this repetition.
+    for (auto& [hash, category] : r.getTestCategories()) {
+      category.pass = 0;
+      category.fail = 0;
+      for (auto& test : category.tests) {
+        test.state.pass = 0;
+        test.state.fail = 0;
       }
+    }
 
-      if (categoryTestsRan == 0 && !g_silentMode) {
-        LOG_INFO(
-            "------------------------------------------------------------------"
-            "---"
-            "-");
-        LOG_INFO("{}, running matched tests.",
-                 Paint(category.name, Color::Magenta).c_str());
-      }
+    for (auto& [hash, category] : r.getTestCategories()) {
+      usize categoryTestsRan = 0;
+      const u64 catBefore = dc::getTimeUs();
+      int i = 0;
+      for (TestCase& test : category.tests) {
+        dc::String fullName =
+            dc::format("{}.{}", category.name, test.state.name);
 
-      if (!g_silentMode) {
-        LOG_INFO("\t{} {} ...... ", i,
-                 Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                     .c_str());
-      }
-      const u64 testBefore = dc::getTimeUs();
+        if (filterActive &&
+            !matchesPattern(fullName.toView(), g_filterPattern.toView())) {
+          ++i;
+          continue;
+        }
 
-      // Run the test with leak detection
-      bool leakDetected = false;
+        if (categoryTestsRan == 0 && !g_silentMode) {
+          LOG_INFO(
+              "----------------------------------------------------------------"
+              "--"
+              "---"
+              "-");
+          LOG_INFO("{}, running matched tests.",
+                   Paint(category.name, Color::Magenta).c_str());
+        }
+
+        if (!g_silentMode) {
+          LOG_INFO(
+              "\t{} {} ...... ", i,
+              Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                  .c_str());
+        }
+        const u64 testBefore = dc::getTimeUs();
+
+        // Run the test with leak detection
+        bool leakDetected = false;
 #if defined(_WIN32)
-      // Windows: Use SEH to catch leak exceptions
-      __try {
-        dc::DebugAllocator testAllocator;
-        test.state.allocator = &testAllocator;
-        test.fn(test.state);
-        // testAllocator destructs here, may raise exception if leaks
-      } __except (GetExceptionCode() == dc::kDebugAllocatorLeakException
-                      ? EXCEPTION_EXECUTE_HANDLER
-                      : EXCEPTION_CONTINUE_SEARCH) {
-        leakDetected = true;
-      }
+        // Windows: Use SEH to catch leak exceptions
+        __try {
+          dc::DebugAllocator testAllocator;
+          test.state.allocator = &testAllocator;
+          test.fn(test.state);
+          // testAllocator destructs here, may raise exception if leaks
+        } __except (GetExceptionCode() == dc::kDebugAllocatorLeakException
+                        ? EXCEPTION_EXECUTE_HANDLER
+                        : EXCEPTION_CONTINUE_SEARCH) {
+          leakDetected = true;
+        }
 #else
-      // Linux: Use sigsetjmp/siglongjmp to catch SIGABRT from leak detection
-      internal::g_leakCaught = 0;
-      if (sigsetjmp(internal::g_leakJmpBuf, 1) == 0) {
-        dc::DebugAllocator testAllocator;
-        test.state.allocator = &testAllocator;
-        test.fn(test.state);
-        // testAllocator destructs here, may raise SIGABRT if leaks
-      }
-      if (internal::g_leakCaught) {
-        leakDetected = true;
-      }
+        // Linux: Use sigsetjmp/siglongjmp to catch SIGABRT from leak detection
+        internal::g_leakCaught = 0;
+        if (sigsetjmp(internal::g_leakJmpBuf, 1) == 0) {
+          dc::DebugAllocator testAllocator;
+          test.state.allocator = &testAllocator;
+          test.fn(test.state);
+          // testAllocator destructs here, may raise SIGABRT if leaks
+        }
+        if (internal::g_leakCaught) {
+          leakDetected = true;
+        }
 #endif
 
-      if (leakDetected) {
-        ++test.state.fail;
-        LOG_INFO("\t\t- {}",
-                 Paint("Memory leak detected!", Color::Red).c_str());
-      }
+        if (leakDetected) {
+          ++test.state.fail;
+          LOG_INFO("\t\t- {}",
+                   Paint("Memory leak detected!", Color::Red).c_str());
+        }
 
-      const u64 testAfter = dc::getTimeUs();
-      category.fail += (test.state.fail > 0);
-      if (test.state.fail == 0) category.pass++;
-      assertCount += test.state.pass + test.state.fail;
-      if (test.state.pass + test.state.fail == 0) {
-        LOG_INFO("\t\t{}",
-                 Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
-        ++warnings;
+        const u64 testAfter = dc::getTimeUs();
+        category.fail += (test.state.fail > 0);
+        if (test.state.fail == 0) category.pass++;
+        assertCount += test.state.pass + test.state.fail;
+        if (test.state.pass + test.state.fail == 0) {
+          LOG_INFO(
+              "\t\t{}",
+              Paint("Warning, no assert ran.", Color::BrightYellow).c_str());
+          ++warnings;
+        }
+        ++testCount;
+        ++categoryTestsRan;
+        if (!g_silentMode || test.state.fail > 0) {
+          LOG_INFO(
+              "\t{} {} {} in {:.6f}s, {} asserts.", i,
+              Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
+                  .c_str(),
+              !test.state.fail ? Paint("PASSED", Color::Green).c_str()
+                               : Paint("FAILED", Color::Red).c_str(),
+              (testAfter - testBefore) / 1'000'000.f, test.state.pass);
+        }
+        ++i;
       }
-      ++testCount;
-      ++categoryTestsRan;
-      if (!g_silentMode || test.state.fail > 0) {
-        LOG_INFO("\t{} {} {} in {:.6f}s, {} asserts.", i,
-                 Paint(test.state.name, i % 2 == 0 ? Color::Blue : Color::Teal)
-                     .c_str(),
-                 !test.state.fail ? Paint("PASSED", Color::Green).c_str()
+      const u64 catAfter = dc::getTimeUs();
+
+      if (categoryTestsRan > 0) {
+        if (!g_silentMode || category.fail > 0) {
+          LOG_INFO("{} {} in {:.6f}s ({} tests ran)",
+                   Paint(category.name, Color::Magenta).c_str(),
+                   !category.fail ? Paint("PASSED", Color::Green).c_str()
                                   : Paint("FAILED", Color::Red).c_str(),
-                 (testAfter - testBefore) / 1'000'000.f, test.state.pass);
+                   (catAfter - catBefore) / 1'000'000.f,
+                   static_cast<int>(categoryTestsRan));
+        }
       }
-      ++i;
     }
-    const u64 catAfter = dc::getTimeUs();
 
-    if (categoryTestsRan > 0) {
-      if (!g_silentMode || category.fail > 0) {
-        LOG_INFO("{} {} in {:.6f}s ({} tests ran)",
-                 Paint(category.name, Color::Magenta).c_str(),
-                 !category.fail ? Paint("PASSED", Color::Green).c_str()
-                                : Paint("FAILED", Color::Red).c_str(),
-                 (catAfter - catBefore) / 1'000'000.f,
-                 static_cast<int>(categoryTestsRan));
+    for (const auto& [_, category] : r.getTestCategories()) {
+      if (category.fail) {
+        totalFailedCategories += category.fail;
       }
     }
   }
@@ -321,11 +371,14 @@ int runTests(int argc, char** argv) {
       "----------------------------------------------------------------------");
   LOG_INFO("SUMMARY:\t(ran {} tests containing {} asserts in {:.9f}s)",
            testCount, assertCount, stopwatch.fs());
+  if (g_repeatCount > 1) {
+    LOG_INFO("Across {} repetitions.", g_repeatCount);
+  }
 
-  int failedCategories = 0;
+  int failedCategories = totalFailedCategories;
+  // Print per-category failure details based on last repetition's state.
   for (const auto& [_, category] : r.getTestCategories()) {
     if (category.fail) {
-      failedCategories += category.fail;
       LOG_INFO("{}: {} with {}/{} failed tests.",
                Paint("FAILED", Color::Red).c_str(), category.name,
                category.fail, category.fail + category.pass);

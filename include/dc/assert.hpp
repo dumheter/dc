@@ -58,4 +58,7 @@ void dcFatalAssert(bool condition, const char* msg, const char* file,
 
 void debugBreak();
 
+/// @return true if a debugger is currently attached to this process.
+bool isDebuggerPresent();
+
 }  // namespace dc::details

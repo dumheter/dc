@@ -242,6 +242,22 @@ struct TestBodyState {
 };
 
 bool isSilentMode();
+s32 getRepeatCount();
+bool isBreakOnFailure();
+
+/// Called by assert macros on every failure.
+/// - Always calls dc::details::debugBreak() (traps if a debugger is present).
+/// - When --break_on_failure is active and no debugger is attached, aborts so
+///   the test run stops immediately rather than continuing past the failure.
+inline void onAssertFailed() {
+  dc::details::debugBreak();
+  if (isBreakOnFailure() && !dc::details::isDebuggerPresent()) {
+    // No debugger present — stop the test run immediately.
+    LOG_ERROR("break_on_failure: stopping test run after first failure.");
+    dc::log::deinit();
+    std::abort();
+  }
+}
 
 using TestFunction = std::function<void(TestBodyState&)>;
 
@@ -368,7 +384,7 @@ dc::String formatOrFallback(const T& value) {
       LOG_INFO("\t\t- Assert:{} true " #expr " {}", line,                  \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       const auto exprFmt = dtest::internal::formatOrFallback(!!(expr));    \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -383,7 +399,7 @@ dc::String formatOrFallback(const T& value) {
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       const auto exprFmt = dtest::internal::formatOrFallback(!!(expr));    \
       LOG_INFO("\t\t- Actual value: {}", exprFmt);                         \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -399,7 +415,7 @@ dc::String formatOrFallback(const T& value) {
       const auto lhs = dtest::internal::formatOrFallback(a);               \
       const auto rhs = dtest::internal::formatOrFallback(b);               \
       LOG_INFO("\t\t- Actual values: {} == {}", lhs, rhs);                 \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -415,7 +431,7 @@ dc::String formatOrFallback(const T& value) {
       const auto lhs = dtest::internal::formatOrFallback(a);               \
       const auto rhs = dtest::internal::formatOrFallback(b);               \
       LOG_INFO("\t\t- Actual values: {} != {}", lhs, rhs);                 \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -440,7 +456,7 @@ dc::String formatOrFallback(const T& value) {
       LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       LOG_INFO("\t\t- Expected exception, but none was thrown");           \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -460,7 +476,7 @@ dc::String formatOrFallback(const T& value) {
       LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION(" #expr ") {}", line,     \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       LOG_INFO("\t\t- Expected exception, but none was thrown");           \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)
@@ -486,7 +502,7 @@ dc::String formatOrFallback(const T& value) {
       LOG_INFO("\t\t- Assert:{} ASSERT_EXCEPTION({}) {}", line, #expr,     \
                dc::log::Paint<20>("failed", dc::log::Color::Red).c_str()); \
       LOG_INFO("\t\t- Expected exception, but none was thrown");           \
-      dc::details::debugBreak();                                           \
+      dtest::internal::onAssertFailed();                                   \
       return;                                                              \
     }                                                                      \
   } while (0)

@@ -133,21 +133,10 @@ void dcFatalAssert(bool condition, const char* msg, const char* file,
   dcDoFatalAssert(msg, file, func, line);
 }
 
-void debugBreak() {
+bool isDebuggerPresent() {
 #if defined(DC_PLATFORM_WINDOWS)
-#if defined(DC_COMPILER_MSVC)
-  DC_TRY { DebugBreak(); }
-  DC_EXCEPT(GetExceptionCode() == EXCEPTION_BREAKPOINT
-                ? EXCEPTION_EXECUTE_HANDLER
-                : EXCEPTION_CONTINUE_SEARCH) {}
-#else
-  if (IsDebuggerPresent()) {
-    DebugBreak();
-  }
-#endif
+  return ::IsDebuggerPresent() != 0;
 #elif defined(DC_PLATFORM_LINUX)
-  // Only break if a debugger is attached
-  // Check for debugger by reading /proc/self/status
   FILE* statusFile = fopen("/proc/self/status", "r");
   bool debuggerPresent = false;
   if (statusFile) {
@@ -162,8 +151,26 @@ void debugBreak() {
     }
     fclose(statusFile);
   }
+  return debuggerPresent;
+#else
+  return false;
+#endif
+}
 
-  if (debuggerPresent) {
+void debugBreak() {
+#if defined(DC_PLATFORM_WINDOWS)
+#if defined(DC_COMPILER_MSVC)
+  DC_TRY { DebugBreak(); }
+  DC_EXCEPT(GetExceptionCode() == EXCEPTION_BREAKPOINT
+                ? EXCEPTION_EXECUTE_HANDLER
+                : EXCEPTION_CONTINUE_SEARCH) {}
+#else
+  if (isDebuggerPresent()) {
+    DebugBreak();
+  }
+#endif
+#elif defined(DC_PLATFORM_LINUX)
+  if (isDebuggerPresent()) {
     asm("int3");
   }
 #else
