@@ -25,6 +25,7 @@
 #include <atomic>
 #include <dc/dtest.hpp>
 #include <dc/job_system.hpp>
+#include <dc/list.hpp>
 #include <dc/spsc_ring.hpp>
 #include <dc/time.hpp>
 #include <thread>
@@ -214,4 +215,76 @@ DTEST(jobSystemOverflowRingHandlesFullWorkerRings) {
   }
 
   ASSERT_EQ(counter.load(std::memory_order_acquire), kJobCount);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// JobHandle / batch add tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DTEST(jobHandleAwaitSmallBatch) {
+  // Submit a small batch via the List overload and block until all finish.
+  dc::JobSystem js(4);
+  constexpr s32 kJobCount = 16;
+  std::atomic<s32> counter{0};
+
+  dc::List<dc::Job> jobs;
+  for (s32 i = 0; i < kJobCount; ++i) {
+    jobs.add(dc::Job{
+        [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+  }
+
+  dc::JobHandle handle = js.add(jobs);
+  handle.await();
+
+  ASSERT_EQ(counter.load(std::memory_order_acquire), kJobCount);
+}
+
+DTEST(jobHandleAwaitLargeBatch) {
+  // 500 jobs — the core use-case described in the feature request.
+  dc::JobSystem js(4);
+  constexpr s32 kJobCount = 500;
+  std::atomic<s32> counter{0};
+
+  dc::List<dc::Job> jobs;
+  for (s32 i = 0; i < kJobCount; ++i) {
+    jobs.add(dc::Job{
+        [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+  }
+
+  dc::JobHandle handle = js.add(jobs);
+  handle.await();
+
+  ASSERT_EQ(counter.load(std::memory_order_acquire), kJobCount);
+}
+
+DTEST(jobHandleIsDoneAfterAwait) {
+  dc::JobSystem js(2);
+  std::atomic<s32> counter{0};
+
+  dc::List<dc::Job> jobs;
+  jobs.add(
+      dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
+
+  dc::JobHandle handle = js.add(jobs);
+  handle.await();
+
+  ASSERT_TRUE(handle.isDone());
+  ASSERT_EQ(counter.load(std::memory_order_acquire), 1);
+}
+
+DTEST(jobHandleCopySharesCompletion) {
+  // Two handles sharing the same counter — both become done at the same time.
+  dc::JobSystem js(2);
+  std::atomic<s32> counter{0};
+
+  dc::List<dc::Job> jobs;
+  jobs.add(
+      dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
+
+  dc::JobHandle h1 = js.add(jobs);
+  dc::JobHandle h2 = h1;  // copy — shared counter
+
+  h1.await();
+
+  ASSERT_TRUE(h2.isDone());
 }

@@ -25,7 +25,9 @@
 #pragma once
 
 #include <dc/job/job.hpp>
+#include <dc/job/job_handle.hpp>
 #include <dc/job/worker.hpp>
+#include <dc/list.hpp>
 #include <dc/macros.hpp>
 #include <dc/ring.hpp>
 #include <dc/types.hpp>
@@ -77,6 +79,16 @@ class JobSystem {
   /// If all rings are full, the job is queued in the overflow ring and will
   /// be added on the next call to add().
   void add(Job job);
+
+  /// Add a batch of jobs and return a JobHandle that can be awaited.
+  ///
+  /// Each job in the list is wrapped so that it decrements a shared counter
+  /// when it finishes. When all jobs have completed the counter reaches zero
+  /// and any thread blocked in JobHandle::await() is unblocked.
+  ///
+  /// @param jobs List of jobs to schedule.
+  /// @return A JobHandle whose await() blocks until all jobs finish.
+  [[nodiscard]] JobHandle add(dc::List<Job>& jobs);
 
   /// Number of worker threads.
   [[nodiscard]] u32 workerCount() const {

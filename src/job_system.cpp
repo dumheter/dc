@@ -24,6 +24,7 @@
 
 #include <dc/assert.hpp>
 #include <dc/job_system.hpp>
+#include <dc/list.hpp>
 #include <dc/traits.hpp>
 #include <thread>
 
@@ -133,6 +134,23 @@ void JobSystem::add(Job job) {
 
   [[maybe_unused]] const bool added = m_overflowRing.add(dc::move(job));
   DC_ASSERT(added, "Failed to add job to overflow ring after growing");
+}
+
+JobHandle JobSystem::add(dc::List<Job>& jobs) {
+  const usize count = jobs.getSize();
+  auto counter = std::make_shared<JobCounter>(static_cast<u32>(count));
+
+  for (usize i = 0; i < count; ++i) {
+    // Capture the job fn by value and the counter by shared_ptr copy so that
+    // each lambda keeps the counter alive until it runs.
+    Job wrapped{[fn = dc::move(jobs[i].fn), counter] {
+      fn();
+      counter->decrement();
+    }};
+    add(dc::move(wrapped));
+  }
+
+  return JobHandle{dc::move(counter)};
 }
 
 void JobSystem::drainOverflow() {
