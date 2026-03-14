@@ -140,14 +140,57 @@ JobHandle JobSystem::add(dc::List<Job>& jobs) {
   const usize count = jobs.getSize();
   auto counter = std::make_shared<JobCounter>(static_cast<u32>(count));
 
+  std::scoped_lock lock(m_mutex);
+
+  // First, try to drain any previously overflowed jobs.
+  drainOverflow();
+
+  const u32 workerCount = static_cast<u32>(m_workers.size());
+
+  // Distribute jobs across workers in contiguous chunks so that each worker
+  // receives roughly (count / workerCount) jobs rather than all ending up on
+  // a single worker through the per-job random walk.
+  //
+  // Start at a random worker so that repeated small batches don't always
+  // favour worker 0.
+  const u32 startWorker = randomWorkerIndex();
+
   for (usize i = 0; i < count; ++i) {
-    // Capture the job fn by value and the counter by shared_ptr copy so that
-    // each lambda keeps the counter alive until it runs.
+    // Wrap the job with the counter decrement before dispatching.
     Job wrapped{[fn = dc::move(jobs[i].fn), counter] {
       fn();
       counter->decrement();
     }};
-    add(dc::move(wrapped));
+
+    // Round-robin: assign job i to worker ((startWorker + i) % workerCount).
+    const u32 preferredIndex =
+        static_cast<u32>((startWorker + static_cast<u32>(i)) % workerCount);
+
+    // Try the preferred worker first, then walk forward if its ring is full.
+    bool dispatched = false;
+    for (u32 attempt = 0; attempt < workerCount; ++attempt) {
+      const u32 index = (preferredIndex + attempt) % workerCount;
+      Worker& worker = *m_workers[index];
+
+      if (worker.ring.add(dc::move(wrapped))) {
+        std::scoped_lock workerLock(worker.mutex);
+        worker.cv.notify_one();
+        dispatched = true;
+        break;
+      }
+    }
+
+    if (!dispatched) {
+      // All worker rings are full — push to the overflow ring.
+      if (m_overflowRing.isFull() || m_overflowRing.data == nullptr) {
+        const u32 newCapacity =
+            m_overflowRing.capacity == 0 ? 64u : m_overflowRing.capacity * 2;
+        [[maybe_unused]] const bool ok = m_overflowRing.reserve(newCapacity);
+        DC_ASSERT(ok, "Failed to grow overflow ring");
+      }
+      [[maybe_unused]] const bool added = m_overflowRing.add(dc::move(wrapped));
+      DC_ASSERT(added, "Failed to add job to overflow ring after growing");
+    }
   }
 
   return JobHandle{dc::move(counter)};

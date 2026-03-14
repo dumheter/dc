@@ -296,11 +296,12 @@ DTEST(jobHandleCopySharesCompletion) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 DTEST(jobBatchSpreadAcrossWorkers) {
-  // Verify that a large batch of jobs is spread somewhat evenly across all
-  // workers. Each job records the thread ID it ran on. After all jobs
-  // complete we check that every worker thread handled at least
-  // (1 / workerCount) * 0.25 of the total jobs — a generous lower bound that
-  // still catches a scheduler that routes everything to a single worker.
+  // Verify that a large batch of jobs is spread evenly across all workers via
+  // the round-robin chunk dispatch. With 400 jobs and 4 workers the ideal share
+  // is exactly 100 jobs per worker. We allow a ±40% tolerance around that
+  // ideal (i.e. 60–140 jobs per worker) to accommodate OS scheduling jitter
+  // while still catching a broken scheduler that routes everything to one
+  // worker.
   constexpr u32 kWorkerCount = 4;
   constexpr s32 kJobCount = 400;  // 100 per worker on average
 
@@ -321,21 +322,20 @@ DTEST(jobBatchSpreadAcrossWorkers) {
   dc::JobHandle handle = js.add(jobs);
   handle.await();
 
-  // Every worker thread should have received work.
+  // Every worker thread must have received work — round-robin guarantees this
+  // as long as jobCount >= workerCount.
   ASSERT_EQ(static_cast<u32>(jobsPerThread.size()), kWorkerCount);
 
-  // No single worker should have received more than 75% of all jobs. With a
-  // uniform random assignment the expected max is ~25%+noise, so 75% is a
-  // very conservative ceiling that only triggers on a broken scheduler.
-  const s32 maxAllowed = static_cast<s32>(kJobCount * 3 / 4);
+  const s32 idealPerWorker = kJobCount / static_cast<s32>(kWorkerCount);
+
+  // No single worker should exceed 140% of the ideal share.
+  const s32 maxAllowed = idealPerWorker * 14 / 10;
   for (const auto& [id, count] : jobsPerThread) {
     ASSERT_TRUE(count <= maxAllowed);
   }
 
-  // Each worker should have received at least 5% of all jobs. This rules out
-  // a scheduler that starves some workers entirely while still being lenient
-  // enough not to flake under heavy system load.
-  const s32 minRequired = static_cast<s32>(kJobCount * 5 / 100);
+  // Each worker must receive at least 60% of the ideal share.
+  const s32 minRequired = idealPerWorker * 6 / 10;
   for (const auto& [id, count] : jobsPerThread) {
     ASSERT_TRUE(count >= minRequired);
   }
