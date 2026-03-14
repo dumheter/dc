@@ -44,6 +44,11 @@ set(DC_SOURCES
   include/dc/types.hpp
   include/dc/utf.hpp
   include/dc/list.hpp
+  include/dc/job/job.hpp
+  include/dc/spsc_ring.hpp
+  include/dc/job/worker.hpp
+  include/dc/job_system.hpp
+  src/job_system.cpp
   src/allocator.cpp
   src/assert.cpp
   src/callstack.cpp

@@ -1,0 +1,168 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Christoffer Gustafsson
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <dc/assert.hpp>
+#include <dc/job_system.hpp>
+#include <dc/traits.hpp>
+#include <thread>
+
+namespace dc {
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Worker thread loop
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void workerLoop(Worker& worker) {
+  while (true) {
+    // Wait until there is work or a shutdown signal.
+    {
+      std::unique_lock lock(worker.mutex);
+      worker.cv.wait(lock, [&worker] {
+        return !worker.ring.isEmpty() || worker.shutdown;
+      });
+    }
+
+    // Drain all available jobs before waiting again. We do NOT hold the mutex
+    // during job execution — the ring is SPSC so no lock is needed.
+    while (Job* job = worker.ring.remove()) {
+      job->run();
+    }
+
+    // Re-check shutdown after draining. If the ring is empty and shutdown was
+    // requested, exit the loop.
+    {
+      std::unique_lock lock(worker.mutex);
+      if (worker.shutdown && worker.ring.isEmpty()) break;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// JobSystem
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+JobSystem::JobSystem(u32 threadCount) : m_rng(std::random_device{}()) {
+  if (threadCount == 0) {
+    const u32 hwThreads = static_cast<u32>(std::thread::hardware_concurrency());
+    threadCount = hwThreads > 0 ? hwThreads : 1;
+  }
+
+  m_workers.reserve(threadCount);
+  for (u32 i = 0; i < threadCount; ++i) {
+    auto worker = std::make_unique<Worker>();
+    worker->thread = std::thread(workerLoop, std::ref(*worker));
+    m_workers.push_back(dc::move(worker));
+  }
+}
+
+JobSystem::~JobSystem() {
+  // Signal all workers to shut down.
+  for (auto& worker : m_workers) {
+    {
+      std::scoped_lock lock(worker->mutex);
+      worker->shutdown = true;
+    }
+    worker->cv.notify_one();
+  }
+
+  // Join all worker threads.
+  for (auto& worker : m_workers) {
+    if (worker->thread.joinable()) {
+      worker->thread.join();
+    }
+  }
+}
+
+void JobSystem::dispatch(Job job) {
+  std::scoped_lock lock(m_mutex);
+
+  // First, try to drain any previously overflowed jobs.
+  drainOverflow();
+
+  // Try to assign the new job to a worker, starting from a random index.
+  const u32 workerCount = static_cast<u32>(m_workers.size());
+  const u32 startIndex = randomWorkerIndex();
+
+  for (u32 i = 0; i < workerCount; ++i) {
+    const u32 index = (startIndex + i) % workerCount;
+    Worker& worker = *m_workers[index];
+
+    if (worker.ring.add(dc::move(job))) {
+      worker.cv.notify_one();
+      return;
+    }
+  }
+
+  // All worker rings are full — push to the overflow ring.
+  if (m_overflowRing.isFull() || m_overflowRing.data == nullptr) {
+    const u32 newCapacity =
+        m_overflowRing.capacity == 0 ? 64u : m_overflowRing.capacity * 2;
+    [[maybe_unused]] const bool ok = m_overflowRing.reserve(newCapacity);
+    DC_ASSERT(ok, "Failed to grow overflow ring");
+  }
+
+  [[maybe_unused]] const bool added = m_overflowRing.add(dc::move(job));
+  DC_ASSERT(added, "Failed to add job to overflow ring after growing");
+}
+
+void JobSystem::drainOverflow() {
+  // m_mutex must be held by the caller.
+  while (!m_overflowRing.isEmpty()) {
+    const u32 workerCount = static_cast<u32>(m_workers.size());
+    const u32 startIndex = randomWorkerIndex();
+    bool dispatched = false;
+
+    for (u32 i = 0; i < workerCount; ++i) {
+      const u32 index = (startIndex + i) % workerCount;
+      Worker& worker = *m_workers[index];
+
+      Job* overflowJob = m_overflowRing.remove();
+      if (!overflowJob) break;
+
+      if (worker.ring.add(dc::move(*overflowJob))) {
+        worker.cv.notify_one();
+        dispatched = true;
+        break;
+      } else {
+        // Worker ring full — put the job back. Since we just removed it, the
+        // overflow ring has space for it.
+        [[maybe_unused]] const bool readded =
+            m_overflowRing.add(dc::move(*overflowJob));
+        DC_ASSERT(readded, "Failed to re-add job to overflow ring");
+        break;
+      }
+    }
+
+    if (!dispatched) break;
+  }
+}
+
+u32 JobSystem::randomWorkerIndex() {
+  // m_mutex must be held by the caller.
+  std::uniform_int_distribution<u32> dist(
+      0u, static_cast<u32>(m_workers.size()) - 1u);
+  return dist(m_rng);
+}
+
+}  // namespace dc

@@ -575,7 +575,7 @@ DTEST(moveAssignmentHeapToHeap) {
 
   ASSERT_EQ(list2.getSize(), 100);
   for (int i = 0; i < 100; ++i) {
-    ASSERT_EQ(list2[i], i);
+    ASSERT_EQ(list2[static_cast<u64>(i)], i);
   }
 }
 
@@ -608,6 +608,6 @@ DTEST(copyAssignmentHeapToHeap) {
 
   ASSERT_EQ(list2.getSize(), 100);
   for (int i = 0; i < 100; ++i) {
-    ASSERT_EQ(list2[i], i);
+    ASSERT_EQ(list2[static_cast<u64>(i)], i);
   }
 }
