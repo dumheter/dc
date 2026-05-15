@@ -219,7 +219,7 @@ class [[nodiscard]] String {
   void operator+=(u8 data);
   void operator+=(const char8* str);
 
-  [[nodiscard]] Utf8Iterator utf8Iterator() {
+  [[nodiscard]] Utf8Iterator utf8Iterator() const {
     return Utf8Iterator(c_str(), getSize(), 0);
   }
 
