@@ -48,6 +48,7 @@ DTEST(lazyResolution) {
   for (int i = 0; i < 1000; ++i) {
     sum += i;
   }
+  ASSERT_EQ(sum, 499500);
 
   // Resolve later
   Result<Callstack, CallstackErr> resolveResult = resolveCallstack(addresses);

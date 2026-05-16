@@ -46,7 +46,7 @@ namespace dc {
 ///
 /// Not intended to be used directly — obtain one via JobHandle.
 struct JobCounter {
-  explicit JobCounter(u32 count) : m_count(count) {}
+  explicit JobCounter(u32 count) noexcept : m_count(count) {}
 
   DC_DELETE_COPY(JobCounter);
   DC_DELETE_MOVE(JobCounter);

@@ -67,7 +67,7 @@ static void workerLoop(Worker& worker) {
 
 JobSystem::JobSystem(u32 threadCount) : m_rng(std::random_device{}()) {
   if (threadCount == 0) {
-    const u32 hwThreads = static_cast<u32>(std::thread::hardware_concurrency());
+    const u32 hwThreads = std::thread::hardware_concurrency();
     threadCount = hwThreads > 0 ? hwThreads : 1;
   }
 
@@ -164,7 +164,7 @@ JobHandle JobSystem::add(dc::List<Job>& jobs) {
 
     // Round-robin: assign job i to worker ((startWorker + i) % workerCount).
     const u32 preferredIndex =
-        static_cast<u32>((startWorker + static_cast<u32>(i)) % workerCount);
+        (startWorker + static_cast<u32>(i)) % workerCount;
 
     // Try the preferred worker first, then walk forward if its ring is full.
     bool dispatched = false;

@@ -139,7 +139,7 @@ DTEST(jobSystemAddSingleJob) {
   std::atomic<s32> counter{0};
 
   js.add(
-      dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
+      dc::Job{[&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
 
   ASSERT_TRUE(waitForCount(counter, 1));
 }
@@ -151,7 +151,7 @@ DTEST(jobSystemAddManyJobs) {
 
   for (s32 i = 0; i < kJobCount; ++i) {
     js.add(dc::Job{
-        [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+        [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
   }
 
   ASSERT_TRUE(waitForCount(counter, kJobCount));
@@ -169,7 +169,7 @@ DTEST(jobSystemAddFromMultipleThreads) {
     producers[t] = std::thread([&js, &counter] {
       for (s32 i = 0; i < kJobsPerThread; ++i) {
         js.add(dc::Job{
-            [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+            [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
       }
     });
   }
@@ -191,7 +191,7 @@ DTEST(jobSystemShutdownDrainsWorkerRings) {
     dc::JobSystem js(2);
     for (s32 i = 0; i < kJobCount; ++i) {
       js.add(dc::Job{
-          [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+          [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
     }
     // Destructor joins workers here — workers will finish their rings first.
   }
@@ -210,7 +210,7 @@ DTEST(jobSystemOverflowRingHandlesFullWorkerRings) {
     dc::JobSystem js(1);
     for (s32 i = 0; i < kJobCount; ++i) {
       js.add(dc::Job{
-          [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+          [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
     }
     // Wait for jobs to complete before destruction.
     ASSERT_TRUE(waitForCount(counter, kJobCount, 5000));
@@ -232,7 +232,7 @@ DTEST(jobHandleAwaitSmallBatch) {
   dc::List<dc::Job> jobs;
   for (s32 i = 0; i < kJobCount; ++i) {
     jobs.add(dc::Job{
-        [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+        [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
   }
 
   dc::JobHandle handle = js.add(jobs);
@@ -250,7 +250,7 @@ DTEST(jobHandleAwaitLargeBatch) {
   dc::List<dc::Job> jobs;
   for (s32 i = 0; i < kJobCount; ++i) {
     jobs.add(dc::Job{
-        [&counter] { counter.fetch_add(1, std::memory_order_release); }});
+        [&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
   }
 
   dc::JobHandle handle = js.add(jobs);
@@ -265,7 +265,7 @@ DTEST(jobHandleIsDoneAfterAwait) {
 
   dc::List<dc::Job> jobs;
   jobs.add(
-      dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
+      dc::Job{[&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
 
   dc::JobHandle handle = js.add(jobs);
   handle.await();
@@ -281,7 +281,7 @@ DTEST(jobHandleCopySharesCompletion) {
 
   dc::List<dc::Job> jobs;
   jobs.add(
-      dc::Job{[&counter] { counter.fetch_add(1, std::memory_order_release); }});
+      dc::Job{[&counter]() noexcept { counter.fetch_add(1, std::memory_order_release); }});
 
   dc::JobHandle h1 = js.add(jobs);
   dc::JobHandle h2 = h1;  // copy — shared counter
