@@ -632,3 +632,104 @@ DTEST(mapRemoveIfByKey) {
     ASSERT_TRUE(entry == nullptr);
   }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Element lifetimes
+//
+
+namespace {
+
+/// Counts how many times each value is destroyed, in a destructor that writes
+/// nothing to the object itself, so that the count holds in optimized builds
+/// too. A default constructed or moved-from probe holds no value.
+struct MapValueProbe {
+  static constexpr u64 kValues = 4;
+  static inline s32 destroyed[kValues];
+
+  static void reset() {
+    for (s32& count : destroyed) count = 0;
+  }
+
+  MapValueProbe() = default;
+  explicit MapValueProbe(u64 v) : value(v) {}
+  MapValueProbe(const MapValueProbe& other) = default;
+  MapValueProbe(MapValueProbe&& other) noexcept : value(other.value) {
+    other.value = 0;
+  }
+  MapValueProbe& operator=(const MapValueProbe& other) = default;
+  MapValueProbe& operator=(MapValueProbe&& other) noexcept {
+    if (&other != this) {
+      release();
+      value = other.value;
+      other.value = 0;
+    }
+    return *this;
+  }
+  ~MapValueProbe() { release(); }
+
+  void release() {
+    if (value != 0) ++destroyed[value];
+  }
+
+  u64 value = 0;
+};
+
+}  // namespace
+
+DTEST(mapRemoveDestroysValueOnce) {
+  MapValueProbe::reset();
+  {
+    Map<u64, MapValueProbe> map(TEST_ALLOCATOR);
+    *map.insert(1) = MapValueProbe(1);
+    ASSERT_TRUE(map.remove(1));
+    ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+  }
+  ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+}
+
+DTEST(mapRemoveByEntryDestroysValueOnce) {
+  MapValueProbe::reset();
+  {
+    Map<u64, MapValueProbe> map(TEST_ALLOCATOR);
+    *map.insert(1) = MapValueProbe(1);
+    map.remove(*map.tryGet(1));
+    ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+  }
+  ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+}
+
+DTEST(mapClearDestroysValueOnce) {
+  MapValueProbe::reset();
+  {
+    Map<u64, MapValueProbe> map(TEST_ALLOCATOR);
+    *map.insert(1) = MapValueProbe(1);
+    *map.insert(2) = MapValueProbe(2);
+    map.clear();
+    ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+    ASSERT_EQ(MapValueProbe::destroyed[2], 1);
+  }
+  ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+  ASSERT_EQ(MapValueProbe::destroyed[2], 1);
+}
+
+DTEST(mapSlotIsReusableAfterRemove) {
+  MapValueProbe::reset();
+  {
+    Map<u64, MapValueProbe> map(TEST_ALLOCATOR);
+    *map.insert(1) = MapValueProbe(1);
+    ASSERT_TRUE(map.remove(1));
+    *map.insert(1) = MapValueProbe(2);
+    ASSERT_EQ(map.tryGet(1)->value.value, 2);
+  }
+  ASSERT_EQ(MapValueProbe::destroyed[1], 1);
+  ASSERT_EQ(MapValueProbe::destroyed[2], 1);
+}
+
+DTEST(mapRemoveHeapStringKeyAndValue) {
+  constexpr const char8* kHeapString =
+      "alsa_output.pci-0000_00_1f.3.analog-stereo";
+  Map<String, String> map;
+  *map.insert(String(kHeapString)) = String(kHeapString);
+  ASSERT_TRUE(map.remove(String(kHeapString)));
+  ASSERT_EQ(map.getSize(), 0);
+}

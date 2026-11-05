@@ -104,7 +104,7 @@ class List {
  public:
   /// Construct a new list. Starts off with the internal buffer memory.
   List(IAllocator& allocator = getDefaultAllocator())
-      : List(allocator, m_buffer, m_buffer, N) {}
+      : List(allocator, getInternalBuffer(), getInternalBuffer(), N) {}
 
   /// Construct a new list. Depending on capacity, will either use internal
   /// buffer, or allocate from allocator.
@@ -119,6 +119,10 @@ class List {
         m_capacity(capacity) {}
 
   List(u64 capacity, const detail::BufferAwareAllocator& allocator);
+
+  T* getInternalBuffer() {
+    return static_cast<T*>(static_cast<void*>(m_buffer));
+  }
 
  public:
   List(const List& other);
@@ -218,7 +222,10 @@ class List {
   detail::BufferAwareAllocator m_allocator;
   T *m_begin = nullptr, *m_end = nullptr;
   u64 m_capacity = 0;
-  T m_buffer[N];
+  /// Raw storage: only the slots in [m_begin, m_end) hold live elements. It
+  /// must not be a `T m_buffer[N]`, since the compiler would then construct and
+  /// destroy those N elements itself, on top of the ones the list manages.
+  alignas(T) u8 m_buffer[sizeof(T) * N];
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -228,8 +235,8 @@ class List {
 template <typename T, u64 N>
 List<T, N>::List(u64 capacity, IAllocator& allocator) : m_allocator(allocator) {
   if (capacity <= N) {
-    m_begin = m_buffer;
-    m_end = m_buffer;
+    m_begin = getInternalBuffer();
+    m_end = getInternalBuffer();
     m_capacity = N;
   } else
     reserve(capacity);
@@ -239,8 +246,8 @@ template <typename T, u64 N>
 List<T, N>::List(u64 capacity, const detail::BufferAwareAllocator& allocator)
     : m_allocator(allocator) {
   if (capacity <= N) {
-    m_begin = m_buffer;
-    m_end = m_buffer;
+    m_begin = getInternalBuffer();
+    m_end = getInternalBuffer();
     m_capacity = N;
   } else
     reserve(capacity);
@@ -253,13 +260,14 @@ List<T, N>::List(List&& other)
     m_begin = other.m_begin;
     m_end = other.m_end;
   } else {
-    m_begin = m_buffer;
-    m_end = m_buffer + other.getSize();
+    m_begin = getInternalBuffer();
+    m_end = getInternalBuffer() + other.getSize();
     if constexpr (isTriviallyRelocatable<T>) {
       memcpy(m_begin, other.m_begin, sizeof(T) * other.getSize());
     } else {
       for (u64 i = 0; i < other.getSize(); ++i) {
         new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+        (other.m_begin + i)->~T();
       }
     }
   }
@@ -284,13 +292,14 @@ List<T, N>& List<T, N>::operator=(List&& other) noexcept {
       m_begin = other.m_begin;
       m_end = other.m_end;
     } else {
-      m_begin = m_buffer;
-      m_end = m_buffer + other.getSize();
+      m_begin = getInternalBuffer();
+      m_end = getInternalBuffer() + other.getSize();
       if constexpr (isTriviallyRelocatable<T>) {
         memcpy(m_begin, other.m_begin, sizeof(T) * other.getSize());
       } else {
         for (u64 i = 0; i < other.getSize(); ++i) {
           new (m_begin + i) T(dc::move(*(other.m_begin + i)));
+          (other.m_begin + i)->~T();
         }
       }
     }
@@ -376,6 +385,7 @@ void List<T, N>::remove(T* elem) {
     elem->~T();
     for (; (elem + 1) != m_end; ++elem) {
       new (elem) T(dc::move(*(elem + 1)));
+      (elem + 1)->~T();
     }
   }
 
@@ -390,6 +400,9 @@ void List<T, N>::remove(const T& elem) {
 
   for (; (it + 1) != m_end; ++it) *it = dc::move(*(it + 1));
 
+  if constexpr (!isTriviallyRelocatable<T>) {
+    (m_end - 1)->~T();
+  }
   --m_end;
 }
 
@@ -426,7 +439,7 @@ void List<T, N>::removeIf(Fn fn) {
   }
 
   // destruct
-  for (T* elem = lastElem; elem >= swapIter; --elem) {
+  for (T* elem = lastElem; elem > swapIter; --elem) {
     elem->~T();
   }
   m_end = swapIter + 1;
@@ -437,15 +450,15 @@ List<T, N>::List(const List& other)
     : m_allocator(other.m_allocator), m_capacity(other.m_capacity) {
   if (other.m_capacity <= N) {
     // Other uses internal buffer, use our internal buffer too
-    m_begin = m_buffer;
-    m_end = m_buffer;
+    m_begin = getInternalBuffer();
+    m_end = getInternalBuffer();
   } else {
     // Other uses heap, allocate on heap
     m_begin = static_cast<T*>(m_allocator.alloc(sizeof(T) * other.m_capacity));
     if (!m_begin) {
       // Allocation failed, fall back to internal buffer
-      m_begin = m_buffer;
-      m_end = m_buffer;
+      m_begin = getInternalBuffer();
+      m_end = getInternalBuffer();
       m_capacity = N;
       return;
     }
@@ -477,14 +490,14 @@ List<T, N>& List<T, N>::operator=(const List& other) {
     m_capacity = other.m_capacity;
 
     if (other.m_capacity <= N) {
-      m_begin = m_buffer;
-      m_end = m_buffer;
+      m_begin = getInternalBuffer();
+      m_end = getInternalBuffer();
     } else {
       m_begin =
           static_cast<T*>(m_allocator.alloc(sizeof(T) * other.m_capacity));
       if (!m_begin) {
-        m_begin = m_buffer;
-        m_end = m_buffer;
+        m_begin = getInternalBuffer();
+        m_end = getInternalBuffer();
         m_capacity = N;
         return *this;
       }
@@ -535,8 +548,10 @@ void List<T, N>::reserve(u64 capacity) {
       T* newBegin = static_cast<T*>(m_allocator.alloc(sizeof(T) * capacity));
       if (!newBegin) return;  // failed to alloc, noop
 
-      for (T* elem = m_begin; elem != m_end; ++elem)
+      for (T* elem = m_begin; elem != m_end; ++elem) {
         new (newBegin + (elem - m_begin)) T(dc::move(*elem));
+        elem->~T();
+      }
 
       if (hasAllocated) m_allocator.free(m_begin);
 

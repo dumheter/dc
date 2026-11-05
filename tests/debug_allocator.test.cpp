@@ -53,7 +53,8 @@ DTEST(debugAllocatorReallocFromNull) {
 }
 
 DTEST(debugAllocatorLeakDetection) {
-  void* ptr;
+  // volatile: assigned between the setjmp and longjmp of ASSERT_EXCEPTION.
+  void* volatile ptr = nullptr;
   ASSERT_EXCEPTION({
     DebugAllocator allocator;
     ptr = allocator.alloc(64);
@@ -64,7 +65,8 @@ DTEST(debugAllocatorLeakDetection) {
 }
 
 DTEST(debugAllocatorLeakDetectionTwice) {
-  void* ptr;
+  // volatile: assigned between the setjmp and longjmp of ASSERT_EXCEPTION.
+  void* volatile ptr = nullptr;
   ASSERT_EXCEPTION({
     DebugAllocator allocator;
     ptr = allocator.alloc(64);

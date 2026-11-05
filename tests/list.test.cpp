@@ -43,7 +43,8 @@ DTEST(removeByPosition) {
 
   ASSERT_EQ(list.getSize(), 2);
   ASSERT_EQ(list[1], 30);
-  ASSERT_EQ(stats.destructs, destructsBefore + 1);
+  // The removed element, and the moved-from slot of the one shifted down.
+  ASSERT_EQ(stats.destructs, destructsBefore + 2);
   ASSERT_EQ(stats.copies, 0);
 }
 
@@ -69,7 +70,8 @@ DTEST(removeByIterator) {
   ASSERT_EQ(list.getSize(), 0);
   ASSERT_EQ(stats.copies, 0);
   // ASSERT_EQ(stats.moves, 0);
-  ASSERT_EQ(stats.destructs, destructsBefore + 3);
+  // The 3 removed elements, and the moved-from slot of the 1 shifted down.
+  ASSERT_EQ(stats.destructs, destructsBefore + 4);
 }
 
 DTEST(removeByReference) {
@@ -98,7 +100,8 @@ DTEST(removeByReference) {
   ASSERT_EQ(list.getSize(), 0);
   ASSERT_EQ(stats.copies, 0);
   // ASSERT_EQ(stats.moves, 0);
-  ASSERT_EQ(stats.destructs, destructsBefore + 3);
+  // The 3 temporaries the lookups convert to, and the 3 removed elements.
+  ASSERT_EQ(stats.destructs, destructsBefore + 6);
 }
 
 DTEST(removeIfHappyPath) {
@@ -610,4 +613,210 @@ DTEST(copyAssignmentHeapToHeap) {
   for (int i = 0; i < 100; ++i) {
     ASSERT_EQ(list2[static_cast<u64>(i)], i);
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Element lifetimes in the internal buffer
+//
+
+namespace {
+
+/// Counts how many times each value is destroyed, in a destructor that writes
+/// nothing to the object itself, so that the count holds in optimized builds
+/// too. A moved-from probe holds no value and is not counted.
+struct ValueProbe {
+  static constexpr u64 kValues = 8;
+  static inline s32 destroyed[kValues];
+  static inline s32 defaultConstructed;
+
+  static void reset() {
+    for (s32& count : destroyed) count = 0;
+    defaultConstructed = 0;
+  }
+
+  ValueProbe() { ++defaultConstructed; }
+  explicit ValueProbe(u64 v) : value(v) {}
+  ValueProbe(const ValueProbe& other) = default;
+  ValueProbe& operator=(const ValueProbe& other) = default;
+  ValueProbe(ValueProbe&& other) noexcept : value(other.value) {
+    other.value = 0;
+  }
+  ValueProbe& operator=(ValueProbe&& other) noexcept {
+    if (&other != this) {
+      release();
+      value = other.value;
+      other.value = 0;
+    }
+    return *this;
+  }
+  ~ValueProbe() { release(); }
+
+  void release() {
+    if (value != 0) ++destroyed[value];
+  }
+
+  [[nodiscard]] bool operator==(const ValueProbe& other) const {
+    return value == other.value;
+  }
+
+  u64 value = 0;
+};
+
+/// Long enough for the string to own heap memory rather than its small buffer.
+constexpr const char8* kHeapString =
+    "alsa_output.pci-0000_00_1f.3.analog-stereo";
+
+}  // namespace
+
+DTEST(internalBufferElementDestroyedOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 1> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+}
+
+DTEST(internalBufferIsNotDefaultConstructed) {
+  ValueProbe::reset();
+  List<ValueProbe, 4> list(TEST_ALLOCATOR);
+  ASSERT_EQ(ValueProbe::defaultConstructed, 0);
+}
+
+DTEST(singleHeapStringInInternalBuffer) {
+  List<String, 1> list;
+  list.add(String(kHeapString));
+  ASSERT_EQ(list.getSize(), 1);
+  ASSERT_TRUE(list[0] == kHeapString);
+}
+
+DTEST(listOfListsWithSingleHeapString) {
+  List<List<String, 1>, 1> outer;
+  List<String, 1> inner;
+  inner.add(String(kHeapString));
+  outer.add(dc::move(inner));
+  ASSERT_TRUE(outer[0][0] == kHeapString);
+}
+
+DTEST(moveConstructFromInternalBufferDestroysEachValueOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 2> a(TEST_ALLOCATOR);
+    a.add(ValueProbe(1));
+    a.add(ValueProbe(2));
+    const List<ValueProbe, 2> b(dc::move(a));
+    ASSERT_EQ(b[0].value, 1);
+    ASSERT_EQ(b[1].value, 2);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  ASSERT_EQ(ValueProbe::destroyed[2], 1);
+}
+
+DTEST(moveAssignFromInternalBufferDestroysEachValueOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 2> a(TEST_ALLOCATOR);
+    a.add(ValueProbe(1));
+    List<ValueProbe, 2> b(TEST_ALLOCATOR);
+    b.add(ValueProbe(2));
+    b = dc::move(a);
+    ASSERT_EQ(ValueProbe::destroyed[2], 1);
+    ASSERT_EQ(b[0].value, 1);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  ASSERT_EQ(ValueProbe::destroyed[2], 1);
+}
+
+DTEST(copyDestroysEachCopyOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 1> a(TEST_ALLOCATOR);
+    a.add(ValueProbe(1));
+    const List<ValueProbe, 1> b(a);
+    ASSERT_EQ(b[0].value, 1);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 2);
+}
+
+DTEST(growingOutOfInternalBufferDestroysEachValueOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 1> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+    list.add(ValueProbe(2));
+    list.add(ValueProbe(3));
+    ASSERT_EQ(list.getSize(), 3);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  ASSERT_EQ(ValueProbe::destroyed[2], 1);
+  ASSERT_EQ(ValueProbe::destroyed[3], 1);
+}
+
+DTEST(clearDestroysInternalBufferElementOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 1> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+    list.clear();
+    ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+}
+
+DTEST(removeAtDestroysInternalBufferElementOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 2> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+    list.add(ValueProbe(2));
+    list.removeAt(0);
+    ASSERT_EQ(ValueProbe::destroyed[1], 1);
+    ASSERT_EQ(list[0].value, 2);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  ASSERT_EQ(ValueProbe::destroyed[2], 1);
+}
+
+DTEST(removeByValueDestroysInternalBufferElementOnce) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 2> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+    const ValueProbe lookup(2);
+    list.add(ValueProbe(2));
+    list.remove(lookup);
+    ASSERT_EQ(list.getSize(), 1);
+    ASSERT_EQ(ValueProbe::destroyed[2], 1);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+}
+
+DTEST(removeIfKeepsLastElementWhenNothingMatches) {
+  List<String> list;
+  list.add(String(kHeapString));
+  list.add(String(kHeapString));
+  list.removeIf([](const String&) -> bool { return false; });
+  ASSERT_EQ(list.getSize(), 2);
+  ASSERT_TRUE(list[0] == kHeapString);
+  ASSERT_TRUE(list[1] == kHeapString);
+}
+
+DTEST(removeIfDestroysOnlyRemovedElements) {
+  ValueProbe::reset();
+  {
+    List<ValueProbe, 3> list(TEST_ALLOCATOR);
+    list.add(ValueProbe(1));
+    list.add(ValueProbe(2));
+    list.add(ValueProbe(3));
+    list.removeIf([](const ValueProbe& p) -> bool { return p.value == 2; });
+    ASSERT_EQ(list.getSize(), 2);
+    ASSERT_EQ(list[0].value, 1);
+    ASSERT_EQ(list[1].value, 3);
+    ASSERT_EQ(ValueProbe::destroyed[1], 0);
+    ASSERT_EQ(ValueProbe::destroyed[2], 1);
+    ASSERT_EQ(ValueProbe::destroyed[3], 0);
+  }
+  ASSERT_EQ(ValueProbe::destroyed[1], 1);
+  ASSERT_EQ(ValueProbe::destroyed[2], 1);
+  ASSERT_EQ(ValueProbe::destroyed[3], 1);
 }

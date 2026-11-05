@@ -231,6 +231,9 @@ class Map {
   // ------------------------------------------------------------------------ //
 
   bool resize(u64 newCapacity);
+  /// Destroy the entry and default construct it again, leaving it live.
+  static void resetEntry(Entry& entry);
+
   void removeAtBucket(u64 bucket);
 
   List<InternalEntry> m_data;
@@ -471,6 +474,18 @@ void Map<Key, Value, HashFn, EqualFn>::remove(Entry& entry) {
 }
 
 template <typename Key, typename Value, typename HashFn, typename EqualFn>
+void Map<Key, Value, HashFn, EqualFn>::resetEntry(Entry& entry) {
+  if constexpr (!isTriviallyRelocatable<Key>) {
+    entry.key.~Key();
+    new (&entry.key) Key();
+  }
+  if constexpr (!isTriviallyRelocatable<Value>) {
+    entry.value.~Value();
+    new (&entry.value) Value();
+  }
+}
+
+template <typename Key, typename Value, typename HashFn, typename EqualFn>
 void Map<Key, Value, HashFn, EqualFn>::removeAtBucket(u64 bucket) {
   m_size -= 1;
 
@@ -485,14 +500,9 @@ void Map<Key, Value, HashFn, EqualFn>::removeAtBucket(u64 bucket) {
       // No more entries to backshift, mark current bucket as empty
       m_data[bucket].probeSequenceLength = kTombstone;
 
-      // Destroy the key/value in this slot
-      // (safe to call destructor on moved-from objects)
-      if constexpr (!isTriviallyRelocatable<Key>) {
-        m_data[bucket].entry.key.~Key();
-      }
-      if constexpr (!isTriviallyRelocatable<Value>) {
-        m_data[bucket].entry.value.~Value();
-      }
+      // Reset the key/value in this slot, rather than only destroying them:
+      // every slot holds a live entry, which m_data will destroy in turn.
+      resetEntry(m_data[bucket].entry);
       break;
     }
 
@@ -558,12 +568,7 @@ void Map<Key, Value, HashFn, EqualFn>::clear() {
                 !isTriviallyRelocatable<Value>) {
     for (u64 i = 0; i < getCapacity(); ++i) {
       if (m_data[i].probeSequenceLength != kTombstone) {
-        if constexpr (!isTriviallyRelocatable<Key>) {
-          m_data[i].entry.key.~Key();
-        }
-        if constexpr (!isTriviallyRelocatable<Value>) {
-          m_data[i].entry.value.~Value();
-        }
+        resetEntry(m_data[i].entry);
       }
     }
   }
